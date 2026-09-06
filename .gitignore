@@ -111,3 +111,10 @@ screenshots/*.webm
 
 replays/
 results/
+
+# Sentinel training artefacts (keep my-saved-model.pt + best.pt export)
+agent_code/sentinel/checkpoints/ep_*.pt
+agent_code/sentinel/checkpoints/last.pt
+agent_code/sentinel/runs/
+agent_code/overlord/checkpoints/
+agent_code/overlord/runs/
