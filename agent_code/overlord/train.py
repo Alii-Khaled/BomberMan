@@ -20,7 +20,8 @@ try:
     from dml_trainkit import (update_config, DutyTimer, get_cuda_device,
                               get_device, is_cuda_device,
                               CheckpointStore, log_metrics_row, apply_schedule,
-                              amp_enabled)
+                              amp_enabled, append_metrics_row,
+                              save_every_config)
 except ImportError:
     from callbacks import ACTION_LIST, ACTION_TO_IDX
     from features_cnn import state_to_tensor, N_CHANNELS
@@ -30,7 +31,8 @@ except ImportError:
         from dml_trainkit import (update_config, DutyTimer, get_cuda_device,
                                   get_device, is_cuda_device,
                                   CheckpointStore, log_metrics_row, apply_schedule,
-                                  amp_enabled)
+                                  amp_enabled, append_metrics_row,
+                                  save_every_config)
     except ImportError:
         import sys
         _root = os.path.dirname(
@@ -41,7 +43,8 @@ except ImportError:
         from dml_trainkit import (update_config, DutyTimer, get_cuda_device,
                                   get_device, is_cuda_device,
                                   CheckpointStore, log_metrics_row, apply_schedule,
-                                  amp_enabled)
+                                  amp_enabled, append_metrics_row,
+                                  save_every_config)
 
 Transition = namedtuple('Transition', ('img', 'sc', 'action', 'next_img', 'next_sc', 'reward', 'done', 'aux'))
 
@@ -54,7 +57,25 @@ TARGET_SYNC = 2000
 BUFFER_SIZE = 300000
 MIN_REPLAY = 5000
 AUX_W = 0.1
-EPS_START, EPS_END, EPS_DECAY = 1.0, 0.05, 50000  # epsilon-greedy, sentinel-proven
+def _env_int(name, default, lo, hi):
+    try:
+        v = int(os.environ.get(name, str(default)))
+    except ValueError:
+        v = default
+    return max(lo, min(hi, v))
+
+EPS_START, EPS_END = 1.0, 0.05
+EPS_DECAY = _env_int('OVERLORD_EPS_DECAY', 100000, 5000, 1000000)  # epsilon-greedy, sentinel-proven (lengthened for cold CNN; was 50000)
+# GPU-throughput switches (env-gated; defaults = aggressive L40S path):
+#   OVERLORD_CHANNELS_LAST=1 (default) keeps conv inputs channels-last
+#   OVERLORD_COMPILE=1 enables torch.compile on the train nets (default 0:
+#     validate first — BatchNorm/amax usually compile cleanly but graph
+#     breaks would silently slow the loop)
+#   OVERLORD_SAVE_EVERY (default 5): rounds between full last.pt saves
+#     (best.pt still on EMA improvement; tournament export every round).
+CHANNELS_LAST = os.environ.get('OVERLORD_CHANNELS_LAST', '1') == '1'
+USE_COMPILE = os.environ.get('OVERLORD_COMPILE', '0') == '1'
+SAVE_EVERY = save_every_config('OVERLORD', 5)
 # Optimizer select (env-gated; default = legacy AdamW behavior):
 #   OVERLORD_OPT: 'adam' (stock AdamW) | 'lion' (Lion, benchmark winner on sentinel)
 #   OVERLORD_LR: base LR override (default LR)
@@ -234,12 +255,23 @@ def setup_training(self):
     self.utd = UTD
     self.eor_updates = EOR_UPDATES
     self.duty = DutyTimer()
-    self.ckpts = CheckpointStore(here, logger=self.logger)
+    self.ckpts = CheckpointStore(here, logger=self.logger, save_every=SAVE_EVERY)
     self.logger.info(
         f'overlord device={self.device} batch={self.batch_size} '
         f'utd={self.utd} eor={self.eor_updates}'
     )
     self.q_net = build_model().to(self.device)
+    # L40S throughput: autotune conv algorithms once (fixed 17x17 input
+    # shape, so benchmark cost is one-time); channels-last keeps NHWC
+    # tensor cores fed on Ampere+ (sm_89 here).
+    try:
+        import torch as _t
+        if is_cuda_device(self.device):
+            _t.backends.cudnn.benchmark = True
+            if CHANNELS_LAST:
+                self.q_net = self.q_net.to(memory_format=_t.channels_last)
+    except Exception as ex:
+        self.logger.debug(f'overlord cudnn/channels-last setup skipped: {ex}')
     if getattr(self, 'model', None) is None:
         self.model = build_model()
     try:
@@ -250,6 +282,22 @@ def setup_training(self):
     self.target_net = build_model().to(self.device)
     self.target_net.load_state_dict(self.q_net.state_dict())
     self.target_net.eval()
+    if CHANNELS_LAST:
+        try:
+            import torch as _t2
+            if is_cuda_device(self.device):
+                self.target_net = self.target_net.to(memory_format=_t2.channels_last)
+        except Exception:
+            pass
+    # Optional torch.compile (env-gated, default off). Compiles the hot
+    # train net only; CPU act() model and tournament export stay eager.
+    if USE_COMPILE:
+        try:
+            import torch as _t3
+            self.q_net = _t3.compile(self.q_net)
+            self.logger.info('overlord torch.compile enabled on q_net')
+        except Exception as ex:
+            self.logger.warning(f'overlord torch.compile failed, eager fallback: {ex}')
     # Optimizer via shared factory (AdamW default = legacy; Lion via env).
     try:
         from dml_optimizer import build_optimizer_for_device, assert_params_on_device
@@ -395,6 +443,13 @@ def _payload(self):
                    'batch': self.batch_size, 'opt': type(self.optimizer).__name__,
                    'schedule': self.opt_schedule, 'utd': self.utd,
                    'eor': self.eor_updates,
+                   'base': int(os.environ.get('OVERLORD_BASE', '96')),
+                   'fc': int(os.environ.get('OVERLORD_FC', '512')),
+                   'norm': os.environ.get('OVERLORD_NORM', 'bn'),
+                   'deep': os.environ.get('OVERLORD_DEEP', '0'),
+                   'eps_decay': EPS_DECAY,
+                   'channels_last': CHANNELS_LAST, 'compile': USE_COMPILE,
+                   'save_every': SAVE_EVERY,
                    'amp': bool(getattr(self, 'use_amp', False))},
     }
     try:
@@ -459,12 +514,27 @@ def _update(self):
                        warmup=SCHED_WARMUP, total=SCHED_TOTAL, min_ratio=SCHED_MIN)
     batch, idx, w = self.buffer.sample(self.batch_size, beta)
     dev = self.device
-    I = torch.from_numpy(np.stack([t.img for t in batch])).to(dev)
-    S = torch.from_numpy(np.stack([t.sc for t in batch])).to(dev)
-    NI = torch.stack([torch.from_numpy(t.next_img) if t.next_img is not None
-                      else torch.zeros_like(torch.from_numpy(batch[0].img)) for t in batch]).to(dev)
-    NS = torch.stack([torch.from_numpy(t.next_sc) if t.next_sc is not None
-                      else torch.zeros_like(torch.from_numpy(batch[0].sc)) for t in batch]).to(dev)
+    # One stacked H2D copy per tensor (was: per-sample from_numpy + per-
+    # element zeros_like → N small PCIe transfers per update). Stack on
+    # CPU, then a single async copy; channels-last for conv inputs.
+    use_cl = bool(CHANNELS_LAST and is_cuda_device(dev))
+    I_cpu = np.stack([t.img for t in batch])
+    S_cpu = np.stack([t.sc for t in batch])
+    I = torch.from_numpy(I_cpu).to(dev, non_blocking=True)
+    S = torch.from_numpy(S_cpu).to(dev, non_blocking=True)
+    if use_cl:
+        I = I.to(memory_format=torch.channels_last)
+    has_next = [t.next_img is not None for t in batch]
+    if all(has_next):
+        NI = torch.from_numpy(np.stack([t.next_img for t in batch])).to(dev, non_blocking=True)
+        NS = torch.from_numpy(np.stack([t.next_sc for t in batch])).to(dev, non_blocking=True)
+    else:
+        NI_cpu = np.stack([t.next_img if t.next_img is not None else batch[0].img for t in batch])
+        NS_cpu = np.stack([t.next_sc if t.next_sc is not None else batch[0].sc for t in batch])
+        NI = torch.from_numpy(NI_cpu).to(dev, non_blocking=True)
+        NS = torch.from_numpy(NS_cpu).to(dev, non_blocking=True)
+    if use_cl:
+        NI = NI.to(memory_format=torch.channels_last)
     A = torch.tensor([ACTION_TO_IDX[t.action] for t in batch], device=dev).unsqueeze(1)
     R = torch.tensor([t.reward for t in batch], dtype=torch.float32, device=dev)
     D = torch.tensor([0.0 if t.done else 1.0 for t in batch], dtype=torch.float32, device=dev)
@@ -595,8 +665,16 @@ def end_of_round(self, last_game_state, last_action, events):
     if improved:
         self.best_ema = float(self.ema_reward)
 
+    # Weight norm (divergence guard: E04 lesson — |w| 447→2139 signaled
+    # MSE blowup; healthy Huber runs deflate to ~15-30 and hold).
     try:
-        log_metrics_row(os.path.join(here, 'runs', 'metrics.csv'), {
+        import torch as _tw
+        with _tw.no_grad():
+            wnorm = float(_tw.cat([p.detach().flatten().float().cpu() for p in self.q_net.parameters()]).norm().item())
+    except Exception:
+        wnorm = 0.0
+    try:
+        append_metrics_row(os.path.join(here, 'runs', 'metrics.csv'), {
             'episode': self.episode,
             'total_steps': self.total_steps,
             'epsilon': round(float(self.epsilon), 4),
@@ -609,6 +687,7 @@ def end_of_round(self, last_game_state, last_action, events):
             'suicides': int(self._round_suicides),
             'killed_self': int(self._round_killed_self),
             'got_killed': int(self._round_got_killed),
+            'wnorm': round(float(wnorm), 2),
             'device': str(self.device),
             'gpu_ms': gpu_ms,
             'wall_ms': wall_ms,
@@ -625,7 +704,7 @@ def end_of_round(self, last_game_state, last_action, events):
         self.logger.warning(f'overlord save failed: {ex}')
     self.logger.info(
         f'overlord ep={self.episode} buf={len(self.buffer)} loss={self.last_loss:.4f} '
-        f'r={rr:.2f} ema={self.ema_reward:.2f} duty={duty_pct}% dev={self.device}'
+        f'r={rr:.2f} ema={self.ema_reward:.2f} wnorm={wnorm:.1f} duty={duty_pct}% dev={self.device}'
     )
     self._round_reward = 0.0
     self._round_coins = 0
