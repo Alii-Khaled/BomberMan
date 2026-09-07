@@ -49,6 +49,13 @@ Companion files: `docs/training_stages.md` (stage dossier),
 |---|---|---|---|---|---|
 | SHIPPED combo | S5-final weights + margin gate + E20 activity tunings (see E14b/E20; payoff vetted then reverted E21) | — | — | — | ✅ Current `sentinel/`: gate 3.70 (s .29); w2 validation 3.56 pooled |
 
+Overlord lineage (validation run, L40S path — second model for report §4):
+
+| Tag | Checkpoint | Ep | EMA | \|w\| | Status |
+|---|---|---|---|---|---|
+| O1s-best (nav) | `results/archive/overlord_val_best_O1s.pt` | 200 | +53.84 | 40.5 | O2s resume base (see E22) |
+| O2s-best | `results/archive/overlord_val_best_O2s.pt` | 293 | +13.79 | ~41 | O3s resume base (see E23) |
+
 `best.pt` semantics: argmax-EMA tracker. Cross-regime EMA is incomparable
 (Stage-1 +52 vs classic negative), so `best_ema` is reset at each stage start
 with the prior best archived (E04 setup, E10/E12 surgery notes).
@@ -435,6 +442,14 @@ with the prior best archived (E04 setup, E10/E12 surgery notes).
   SIGINT/SIGQUIT ignored in children (`SigIgn 0x1001007`), and SIGTERM proved
   ineffective mid-GPU-wait — only SIGKILL stops a run. Per-round checkpoints
   make KILL safe (≤1 round lost). Future stops: KILL directly, never INT.
+- **Postscript (2026-09-06):** validation O1s/O2s complete — see E22 (O1s
+  ceiling 44.5 coins, gate leg passed) + E23 (O2s healthy-opt/flat-behavior)
+  + E24 (O3s training-time: hunts, can't earn — frozen verdict pending);
+  O4s running, E25 queued on completion.
+- **Postscript (2026-09-07):** validation DONE — O4s + 3.70 frozen
+  (beats best rule_based 3.64) + GATE GO, see E25. Full run stopped at
+  ~110 O1 rounds per refocus; base = ep_1400 (fallback ep_1200); focused
+  program E26 (attribution → crate pull → warden sparring).
 
 ### E15 — Economy diagnosis: placement, not volume 📦
 - **Author:** Ali Mahbob · **Date:** 2026-09-06
@@ -505,6 +520,204 @@ with the prior best archived (E04 setup, E10/E12 surgery notes).
 - **Verdict:** SHIP (live == validated w2, diff-checked). Residual early WAIT
   25% + 65% pacing remain open (crate-approach pull = next candidate).
   **Report:** §6 (behavioral figure: WAIT% by phase + displacement).
+
+### E22 — Overlord O1s navigation (Task 1) ✅ ceiling, gate leg passed
+- **Author:** Ali Mahbob · **Date:** 2026-09-06
+- **Question:** Can the cold-started ResNet-CNN (base-96/fc-512/BN, ~2M params,
+  Huber td+aux, ε 1.0→0.05/100k) learn coin-heaven navigation from scratch?
+- **Setup:** `scripts/train_overlord_validation.sh` O1s, solo coin-heaven,
+  200 rounds in two invocations (15 + 185 across the pre-O1s session kill;
+  `STAGE_O1_N=185` relaunch resuming `last.pt`), aggressive L40S env
+  (`OVERLORD_BATCH=1024 UTD=2 EOR_UPDATES=12 EPS_DECAY=100000 SAVE_EVERY=5`,
+  tuned AdamW, AMP, channels-last) → `results/overlord_val_stage1.json`,
+  metrics eps 1–200, best archived to
+  `results/archive/overlord_val_best_O1s.pt` (ep 200, EMA 53.84).
+- **Results:** **44.5 coins/round** (metrics full-200; stage JSON 8418/185 =
+  45.5/round training-time), EMA → 53.84, suicides 0.000 (no bombs exist),
+  lossMed ~0.003 falling, `|w|` 36.4 → 40.5 (stable growth, no blowup),
+  ε 1.0 → 0.09, buffer 401 → 51k. Validation gate leg 1 (O1 coins ≥ 25)
+  PASSED by ~1.8×. For reference: sentinel Stage-1 MLP reached 48.6/round —
+  the CNN matches navigation from pixels with no feature engineering.
+- **Verdict:** SHIP as navigation base; O2s launched from these weights with
+  EMA reset + ε re-warm (E23). Caveat for plots: stage JSON covers only the
+  185-round continuation (`--save-stats` overwrites per invocation); the
+  first 15 rounds survive only in `metrics.csv`. **Report:** §6
+  training-start baseline (CNN-from-scratch vs sentinel MLP).
+- **Follow-up queued:** E24 (O3s hunting), E25 (O4s combat + frozen eval +
+  gate) on validation completion.
+
+### E23 — Overlord O2s bombs + escape (Task 2) ✅ healthy-opt, flat behavior
+- **Author:** Ali Mahbob · **Date:** 2026-09-06
+- **Question:** Does the O1s navigator survive the classic regime shock and
+  learn crate bombing without dying?
+- **Setup:** O2s solo classic, eps 201–500 (129 + 175 across the 17:24
+  session kill with zero traceback; resumed from `last.pt` ep 325, 4 rounds
+  re-emitted under `SAVE_EVERY=5` — dedup eps 326–329 before plotting),
+  EMA reset + ε re-warm 0.40 on stage entry, otherwise identical L40S env →
+  `results/overlord_val_stage2.json` (175-round continuation only, first
+  129 rounds' JSON stats overwritten — metrics.csv is the complete record),
+  best archived to `results/archive/overlord_val_best_O2s.pt`
+  (ep 293, EMA 13.79).
+- **Results (300 unique eps, deduped):** coins **1.34/round**, suicides
+  **0.000 over 300 rounds** (zero own-bomb deaths), crates 18.1/round at
+  8.3 bombs/round (stage JSON: 3176 crates / 1457 bombs / 175 rounds),
+  EMA → 11.87 (best 13.79); lossMed head-50 0.00161 → tail-50 0.00039
+  (monotonic fall); `|w|` 40.45 → 41.53 (no E04-style divergence);
+  ε 0.40 → floored 0.05; buffer 401 → 70k (in-memory PER restarts empty
+  each invocation — ~12 refill rounds at loss 0, expected, harmless).
+- **Verdict:** OPTIMIZATION HEALTHY, BEHAVIOR FLAT — same pattern as
+  sentinel S5-training (E10): judge frozen, not on training curves. Zero
+  suicide + low coins = over-conservative bombing (compare sentinel S2:
+  0.7 coins at 0.26 suicide — overlord survives everything, converts
+  nothing). Pacing suspect logged (LEFT/RIGHT oscillation in the pre-kill
+  `game.log` tail, E20-like) but deliberately NOT intervened
+  (resume-unchanged decision) — O4s + frozen eval deliver the verdict.
+  Scoreboard (§5) update deferred to E25 (no frozen numbers yet).
+  **Report:** §5 (regime-shock + resume discipline on the second model) +
+  §6 (O1→O2 shock figure: 44.5 → 1.3 coins, EMA 53.8 → ~12).
+
+### E24 — Overlord O3s hunting (Task 3) ✅ combat, ❌ economy (INTERIM)
+- **Author:** Ali Mahbob · **Date:** 2026-09-06
+- **Question:** Can the O2s survivor hunt a bomber (`coin_collector_agent`)
+  and a pacifist (`peaceful_agent`)?
+- **Setup:** O3s, classic, `overlord peaceful_agent coin_collector_agent`,
+  300 rounds, unchanged L40S env → `results/overlord_val_stage3.json`,
+  metrics eps 501–800. Training-time verdict only — frozen eval pending
+  (E25).
+- **Results (training-time, 300 rounds):**
+
+| Agent | Score | Coins/rd | Kills/rd | Suicide/rd | Bombs/rd |
+|---|---|---|---|---|---|
+| overlord | 1571 | 1.70 | **0.71** | **0.17** | 11.9 |
+| coin_collector | 1655 | 3.85 | 0.33 | 0.49 | 19.0 |
+| peaceful | 12 | — | — | — | — |
+
+Metrics cross-check (eps 501–800): coins 1.70, kills 0.70, sui 0.22,
+  EMA → 7.65, `|w|` 41.53 → 43.32 (healthy, no divergence).
+- **Interpretation:**
+  1. Genuine combat signal — beats sentinel's equivalent stage (S3/E03:
+  0.49 kills at 0.53 suicides) on both legs, from pixels, cold-started.
+  2. Same E15 disease — coins less than half the collector's on fewer
+  bombs: placement, not volume. Combat learned before profit, same arc
+  as the MLP.
+  3. O4s-partial context (146/500 at time of writing): suicide 0.17 →
+  0.52, kills 0.39 — regime shock vs real bombers; own-vs-enemy
+  attribution unanswerable until the frozen eval, the single most
+  informative pending number.
+  4. Port thesis holding — `|w|` 36 → 44 slow drift with falling loss
+  over 900+ rounds on the second architecture (Huber + tuned AdamW +
+  N5 = no divergence beyond the MLP).
+- **Verdict:** INTERIM SHIP on hunting (best kill rate either agent has
+  shown at this stage); economy open; frozen eval delivers the real
+  verdict. **Report:** §6 hunting table + CNN-vs-MLP combat comparison.
+- **Queued:** E25 (O4s + frozen eval + gate) and E26 (whichever curve —
+  kills or coins — fails to meet the other).
+
+### E25 — Overlord validation close-out: O4s + 3.70 frozen + GATE GO ✅
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Does the validation curriculum (O1s–O4s, 1300 rounds) produce
+  a frozen policy that beats the best rule_based agent (Task-4 gate)?
+- **Setup:** O4s 500 rounds vs 3× rule_based (eps 801–1300) + frozen
+  100-round CPU eval (`OVERLORD_DEVICE=cpu --train 0
+  --continue-without-training`) → `results/overlord_val_stage4.json`,
+  `results/overlord_val_eval.json`. Metrics O4s slice: coins 1.36, kills
+  0.37, sui 0.55 (split 0.35 own / 0.20 enemy — training-time, ε-noise
+  included), lossMed head-50 0.00016 → tail-50 0.00018 (converged floor,
+  nothing left to squeeze), `|w|` 43.32 → 46.11 (no divergence), ε floored
+  0.05 throughout, EMA end 6.52.
+- **Results — O4s training-time (500 rounds):** overlord 3.21 score / 1.36
+  coins / 0.37 kills / 0.35 sui per round vs rule_based 2.61–2.96 /
+  ~2.0 coins / ~0.16 kills / ~0.39 sui. Bombs 17.5/rd (≈ rb 13.7),
+  invalids 2.9/rd (cleaner than rb ~4.9).
+- **Results — frozen eval (100 rounds, CPU):**
+
+| Agent | Score/rd | Coins/rd | Kills/rd | Suicide/rd | Bombs/rd | Crates/rd |
+|---|---|---|---|---|---|---|
+| **overlord** | **3.70** | 1.35 | **0.47** | **0.33** | 17.1 | 11.7 |
+| best rule_based | 3.64 | 2.49 | 0.23 | 0.53 | 19.8 | 35.5 |
+
+- **Gate (watcher, all PASS → GO):** loss falling; O1 coins 44.5 ≥ 25;
+  O4 sui 0.55 < 0.6; wnorm 46.1 < 100. Full 5250-round curriculum launched
+  01:03, then **stopped at ~110/750 coin-heaven rounds per refocus
+  decision** (navigation already ceiling — expendable; partials archived to
+  `results/archive/overlord_fullO1_partial_*.pt`). Resume base switched
+  1200 → **1400** per directive (`ep_001400.pt` verified full payload,
+  restored to `last.pt` with EMA cleared + ε re-warm 0.40); `ep_001200.pt`
+  kept as fallback. Eval-exact weights (ep 1300) were never snapshotted —
+  closest surviving eval-regime policy is ep_1200 (caveat for E26 audit).
+- **Verdict:** VALIDATION COMPLETE — gate-passing frozen policy banked
+  (shippable tournament agent as-is); everything after is upside harvest.
+  Handoff to E26 focused program (attribution → crate pull → warden
+  sparring). **Report:** §6 centerpiece (frozen gate table above) + §5
+  (validation → gate → refocus narrative).
+
+### E26 — Overlord death attribution (frozen audit) ✅ 69% own-bomb → branch 2a
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** What kills the frozen overlord — own bombs or enemy bombs?
+  (Training-time split 0.35/0.20 exists but carries ε-noise; E14a lesson:
+  judge frozen.)
+- **Setup:** E14a protocol mirrored. Observer `overlord_e26` (ep_1200 q_net
+  extracted to `my-saved-model.pt` format — closest surviving eval-regime
+  policy, eval-exact ep-1300 weights were never snapshotted; E05/E11
+  isolation pattern; dir removed after) + temporary gated engine death
+  log (`OVERLORD_ATTRIBUTION=1`, victim/owner/step/pos per lethal hit).
+  60 frozen rounds vs 3× rule_based (30 × seeds 0,1) →
+  `results/e26_deaths.jsonl` + `results/e26_attr_s*.json`. Hooks reverted
+  after (`git diff environment.py` empty — tournament framework pristine).
+- **Results (157 unique deaths, 10 same-step overlaps deduped):**
+  overlord 36 deaths (0.60/round): **25 own-bomb (69%) vs 11 enemy
+  (31%)**; mean death step 143 (mid-game — diffuse positions, no
+  sentinel-style spawn-corner cluster); enemy owners spread 5/4/2 (no
+  seating effect); overlord-caused kills 23 (0.38/round). Audit runs
+  scored 3.30/round vs eval 3.70 — older weights + 60-round noise (E09
+  law holds); the split is robust to that drift.
+- **Verdict:** OWN-BOMB DOMINATED (69% — between sentinel's 78% and the
+  training-time 64%) → **branch 2a**: `dist_hyp` lethality re-audit on
+  CNN plants (E14b protocol) before any survival change; enemy 31%
+  noted, no threat-feature work (E14c) yet. Crate-approach pull still
+  rides W1 (separately motivated by E15/E21, not gated by this split).
+  **Report:** §6 attribution table (side-by-side with E14a).
+
+### E27 — Overlord escape-solver audit ✅ transplant validated, NO CHANGE
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Is the transplanted margin gate (dist>3 ban) optimal for CNN
+  dynamics, or do dist-3 plants drive the 69% own-bomb share (E26)?
+- **Setup:** E14b protocol. Observer `overlord_e27` (ep_1200 policy,
+  bit-identical delegation + recomputed-verdict BOMB log; dir removed
+  after) + temporary gated engine hooks (effective plants + lethal hits
+  → per-seed `e27_events_*.jsonl`; reverted after, `git diff
+  environment.py` empty). 60 frozen rounds vs 3× rule_based (30 × seeds
+  0,1) → `results/e27_decisions_s*.jsonl` + `e27_eval_s*.json`. Joins by
+  file-order round zip (round-key formats differ: engine `Round NN
+  (timestamp)` vs game_state int — the E14b pitfall, bypassed).
+- **Method note (process fix):** first probe logged zero decisions —
+  `SequentialAgentBackend` chdirs into `agent_code/<name>/` around act
+  (`agents.py:304-309`), so observer log paths must resolve from
+  `__file__`, never from cwd. Engine hooks are unaffected (repo-root
+  cwd). Future observer harnesses: absolute paths only.
+- **Results (1099 plants, 100% verdict-matched, 0 deaths-without-plant):**
+
+| Plant type | Plants | Deadly | P(death\|plant) |
+|---|---|---|---|
+| all | 1099 | 24 | 0.022 |
+| dist_hyp = 2.0 | 422 | 6 | 0.014 |
+| dist_hyp = 3.0 | 677 | 18 | 0.027 |
+| dist_hyp ≥ 4 | 0 | — | — (margin gate holds) |
+| can_escape False | 0 | — | — (fallback never triggers) |
+| opps_hit ≥ 1 | 887 | 24 | 0.027 (ALL deadly plants) |
+| opps_hit = 0 | 212 | 0 | 0.000 |
+| crates_hit = 0 | 773 | 16 | 0.021 (70% of plants) |
+
+- **Verdict:** TRANSPLANT VALIDATED — NO GATE CHANGE. Zero ranking-failure
+  plants (no `can_escape=False`, no dist>3 — unlike sentinel, whose solver
+  *said* escape at dist-4 and lied 85% of the time). Residual deaths are
+  volume-priced kill-chasing (81% of plants chase opponents at 2.7% each),
+  the same volume that yields 0.38–0.47 kills/round. Tightening to ≥3
+  would gut 62% of bombing (11.3/round) to save 0.30 deaths/round — the
+  E14b ≥3 rejection replayed. Survival lever moves to placement quality
+  (70% zero-crate plants — E15 confirmed on CNN) + warden discipline, not
+  thresholds. **Report:** §6 audit table (P(death\|plant) by dist_hyp,
+  sentinel-vs-overlord side-by-side).
 
 ## §4 Append template (copy from here)
 
