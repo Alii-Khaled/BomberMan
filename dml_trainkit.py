@@ -124,7 +124,7 @@ def apply_schedule(optimizer, base_lr, total_steps,
 __all__ = ["update_config", "DutyTimer", "apply_schedule",
            "get_dml_device", "get_cuda_device", "get_device",
            "is_dml_device", "is_cuda_device", "CheckpointStore",
-           "log_metrics_row"]
+           "log_metrics_row", "append_metrics_row", "save_every_config"]
 
 
 def is_cuda_device(device) -> bool:
@@ -319,3 +319,41 @@ def log_metrics_row(path, row):
         w.writeheader()
         w.writerows(old_rows)
         w.writerow({k: row.get(k, '') for k in fields})
+
+
+def append_metrics_row(path, row):
+    """Fast append-only path for hot training loops (O(1) per round).
+
+    If the file exists and its header already covers ``row`` keys, appends
+    without rewriting (no read-back). Otherwise falls back to
+    :func:`log_metrics_row` (header widen). Never raises.
+    """
+    try:
+        directory = os.path.dirname(path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+        if not os.path.isfile(path):
+            return log_metrics_row(path, row)
+        with open(path, 'r', newline='') as f:
+            reader = csv.DictReader(f)
+            old_fields = list(reader.fieldnames or [])
+        if all(k in old_fields for k in row.keys()):
+            with open(path, 'a', newline='') as f:
+                w = csv.DictWriter(f, fieldnames=old_fields)
+                w.writerow({k: row.get(k, '') for k in old_fields})
+            return
+        return log_metrics_row(path, row)
+    except Exception:
+        try:
+            return log_metrics_row(path, row)
+        except Exception:
+            return
+
+
+def save_every_config(prefix, default=5):
+    """Rounds between full ``last.pt`` saves (env ``{PREFIX}_SAVE_EVERY``)."""
+    try:
+        v = int(os.environ.get(f'{prefix}_SAVE_EVERY', str(default)))
+    except ValueError:
+        v = default
+    return max(1, min(100, v))
