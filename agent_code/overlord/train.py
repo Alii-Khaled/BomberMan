@@ -200,6 +200,10 @@ def _custom(old_state, action, new_state):
                 out.append('MOVE_TOWARD_TARGET')
             elif nd > od:
                 out.append('MOVE_AWAY_TARGET')
+        # NOTE (E29): crate-approach pull (CRATE_APPROACH/RETREAT ±0.05)
+        # was tried in W1 and REJECTED (coins 1.09 vs O2s 1.34 — trigger
+        # fired). Removed; sparring alone continues. See probe_crate_pull.py
+        # (now asserts absence) and E28/E29.
         if action == 'BOMB' and old_state is not None:
             try:
                 s = action_safety(old_state)
@@ -207,6 +211,10 @@ def _custom(old_state, action, new_state):
                     out.append('BOMB_NO_ESCAPE')
                 elif s.get('crates_hit_if_bomb', 0) > 0 or s.get('opps_hit_if_bomb', 0) > 0:
                     out.append('BOMB_GOOD')
+                # NOTE (E44): multi-crate bonus (CRATE_EXTRA +0.15) tried in
+                # C1 and REJECTED (crates 11.0 vs bar 16+; bombs up to
+                # 22.1/rd with crates DOWN — bought volume, not placement).
+                # Removed; probe_multicrate.py now asserts absence.
             except Exception:
                 pass
         if int(new_state.get('step', 0)) > 280 and action in ('UP', 'DOWN', 'LEFT', 'RIGHT'):
@@ -506,8 +514,9 @@ def _update(self):
         return
     import torch
     self.total_steps += 1
-    self.epsilon_steps += 1
-    self.epsilon = epsilon_now(self.epsilon_steps)
+    # NOTE (E31/C2): epsilon_steps is counted per env step in
+    # game_events_occurred/end_of_round, NOT here — update counts would
+    # couple the exploration schedule to UTD/EOR.
     beta = min(1.0, 0.4 + 0.6 * self.total_steps / 150000)
     if getattr(self, 'opt_schedule', False):
         apply_schedule(self.optimizer, self.opt_base_lr, self.total_steps,
@@ -621,6 +630,11 @@ def game_events_occurred(self, old_game_state, self_action, new_game_state, even
     nimg, nsc, _ = _encode(new_game_state) if new_game_state is not None else (None, None, 0.0)
     done = new_game_state is None
     _push(self, img, sc, self_action, nimg, nsc, r, done, aux)
+    # E31/C2: epsilon counts ENV steps (one per callback here), not gradient
+    # steps — the old per-_update counting made the schedule silently depend
+    # on UTD/EOR (≈800 updates/round burned 100k decay in ~125 rounds).
+    self.epsilon_steps += 1
+    self.epsilon = epsilon_now(self.epsilon_steps)
     for _ in range(getattr(self, 'utd', 1)):
         with self.duty.measure():
             _update(self)
@@ -652,6 +666,8 @@ def end_of_round(self, last_game_state, last_action, events):
     _push(self, img, sc, last_action, None, None, r, True, aux)
     # _push with done=True already drains n-step buffer
     self.n_step_buf.clear()
+    self.epsilon_steps += 1  # final env step of the round (E31/C2)
+    self.epsilon = epsilon_now(self.epsilon_steps)
     for _ in range(getattr(self, 'eor_updates', 6)):
         with self.duty.measure():
             _update(self)

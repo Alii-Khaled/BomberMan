@@ -9,6 +9,23 @@ but fixes rule_based_agent flaws:
 from collections import deque
 import numpy as np
 
+import os as _os
+
+
+def _env_flag(name):
+    return _os.environ.get(name, '0') == '1'
+
+
+# E47 warden-discipline transplants (default off = validated ship behavior;
+# probes assert default-off identity on real states before any screen):
+#  _PAYOFF_TIER: non-opp bombs need crates>=2 or fast escape (dist<=2).
+#    Warden bombs 1-crate spots only with hyp_dist<=2, 2+ crates with <=3;
+#    overlord allows 1-crate at dist-3 (E27: 2.7% vs 1.4% lethal).
+#  _MUSTFLEE1: refuse BOMB while own tile is lethal NEXT step (danger[1]).
+#    Warden never bombs under threat<=1; overlord vetoes only danger[0].
+_PAYOFF_TIER = _env_flag('OVERLORD_G_PAYOFF_TIER')
+_MUSTFLEE1 = _env_flag('OVERLORD_G_MUSTFLEE1')
+
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 MOVE_DELTA = {'UP': (0, -1), 'DOWN': (0, 1), 'LEFT': (-1, 0), 'RIGHT': (1, 0), 'WAIT': (0, 0)}
 BOMB_TIMER_DEFAULT = 4
@@ -254,6 +271,15 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                 can_escape = False
         except Exception:
             pass
+    # E47 tiered payoff (warden discipline, default off): non-opp bombs
+    # need crates>=2 or fast escape (dist<=2).
+    if _PAYOFF_TIER and valid.get('BOMB', False) and can_escape:
+        try:
+            if opps_tmp == 0 and not (crates_tmp >= 2 or float(dist_hyp) <= 2):
+                safe['BOMB'] = False
+                can_escape = False
+        except Exception:
+            pass
     # NOTE (E21 lesson): a crate-payoff gate was tried on sentinel and
     # REJECTED after a true live test (200rd pooled neutral-to-negative:
     # vetoed slots don't convert without a crate-approach pull). Margin gate
@@ -265,6 +291,15 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
             safe['WAIT'] = False
             safe['BOMB'] = False
             can_escape = False
+    except Exception:
+        pass
+    # E47 must-flee strictness (warden discipline, default off): refuse
+    # BOMB while own tile is lethal NEXT step (threat<=1 gates warden's
+    # want_bomb; overlord only vetoed danger[0]). Selection veto only —
+    # the hypothetical-escape verdict is untouched.
+    try:
+        if _MUSTFLEE1 and horizon >= 1 and bool(danger[1, x, y]):
+            safe['BOMB'] = False
     except Exception:
         pass
 

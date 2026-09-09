@@ -19,7 +19,49 @@ from .features_cnn import state_to_tensor
 from .model import build_model, scalars_from_state, ACTION_LIST
 
 ACTION_TO_IDX = {a: i for i, a in enumerate(ACTION_LIST)}
-Q_WEIGHT = 0.2
+Q_WEIGHT = 1.0
+
+
+def _env_float(name, default):
+    try:
+        return float(os.environ.get(name, str(default)))
+    except ValueError:
+        return default
+
+
+# Track-1 frozen grid knobs (E31): env overrides, defaults = shipped values.
+# With env unset the policy is behavior-identical to the 3.79 ship.
+G_WAIT = _env_float('OVERLORD_G_WAIT', 0.30)
+G_HUNT_BASE = _env_float('OVERLORD_G_HUNT_BASE', 0.5)
+G_BOMB_OPP = _env_float('OVERLORD_G_BOMB_OPP', 1.1)
+G_BOMB_CRATE = _env_float('OVERLORD_G_BOMB_CRATE', 0.5)
+G_CORRIDOR = _env_float('OVERLORD_G_CORRIDOR', 1.5)
+G_REVISIT3 = _env_float('OVERLORD_G_REVISIT3', 0.45)
+G_REVISIT2 = _env_float('OVERLORD_G_REVISIT2', 0.15)
+G_FLEE_BOOST = _env_float('OVERLORD_G_FLEE_BOOST', 2.0)
+G_BOMB_REPEAT = _env_float('OVERLORD_G_BOMB_REPEAT', 0.9)
+G_COIN = _env_float('OVERLORD_G_COIN', 0.45)
+G_LATE = _env_float('OVERLORD_G_LATE', 0.4)
+# E45 additive openness bonus (user hypothesis: open 4-neighbourhood
+# maximizes blast tiles + shortens escapes). Default 0.0 = ship behavior
+# (running training never sets it, so live runs are unaffected).
+G_OPENNESS = _env_float('OVERLORD_G_OPENNESS', 0.0)
+# E39 late-hunt veto (E16 leg never live-tested): 1 = refuse BOMB with no
+# crates but opponents in blast after step 250 (P(kill) ~0.007 there).
+# Default 0 = ship behavior.
+G_LATEHUNT_VETO = _env_float('OVERLORD_G_LATEHUNT_VETO', 0)
+
+
+def _latehunt_vetoed(game_state, safety):
+    """True when the E39 veto forbids BOMB this step."""
+    if not G_LATEHUNT_VETO:
+        return False
+    try:
+        return (int(game_state.get('step', 0)) > 250
+                and safety.get('crates_hit_if_bomb', 0) == 0
+                and safety.get('opps_hit_if_bomb', 0) >= 1)
+    except Exception:
+        return False
 
 
 def _flee_scores(game_state):
@@ -92,14 +134,14 @@ def _heuristic(game_state, safety):
             nd = abs(cx - (x + dx)) + abs(cy - (y + dy))
             od = abs(cx - x) + abs(cy - y)
             if nd < od:
-                scores[a] += 0.45
+                scores[a] += G_COIN
             elif nd > od:
                 scores[a] -= 0.2
     # hunt: stronger than sentinel, esp. late / 1v1
     crates_left = int((arena == 1).sum())
-    hunt_w = 0.5 + 0.8 * min(1.0, step / 200.0)
+    hunt_w = G_HUNT_BASE + 0.8 * min(1.0, step / 200.0)
     if crates_left + len(coins) <= 4 or step > 250:
-        hunt_w += 0.4
+        hunt_w += G_LATE
     if others_xy:
         tgt = min(others_xy, key=lambda o: abs(o[0] - x) + abs(o[1] - y))
         for a, (dx, dy) in moves.items():
@@ -123,21 +165,30 @@ def _heuristic(game_state, safety):
     if safety.get('can_escape_if_bomb') and bombs_left:
         b = 0.0
         if safety.get('opps_hit_if_bomb', 0):
-            b += 1.1 * min(hunt_w, 1.5)
+            b += G_BOMB_OPP * min(hunt_w, 1.5)
         elif crate_near:
             free_nb = sum(1 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
                           if 0 <= x + dx < W and 0 <= y + dy < H and arena[x + dx, y + dy] == 0)
             dist_hyp = float(safety.get('dist_hyp', 9))
             if free_nb == 1:
-                b += 0.5 + 0.12 * min(crate_near, 3) + 0.2
+                b += G_BOMB_CRATE + 0.12 * min(crate_near, 3) + 0.2
             elif dist_hyp <= 2:
-                b += 0.5 + 0.12 * min(crate_near, 3)
+                b += G_BOMB_CRATE + 0.12 * min(crate_near, 3)
             else:
                 b -= 1.0
+        # E45 additive openness: bomb score += G_OPENNESS per open neighbour
+        # (blast coverage + short escapes). Pure addition — dead-end bonus
+        # above untouched; default 0.0 reproduces ship exactly.
+        try:
+            _open_nb = sum(1 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                           if 0 <= x + dx < W and 0 <= y + dy < H and arena[x + dx, y + dy] == 0)
+            b += G_OPENNESS * _open_nb
+        except Exception:
+            pass
         scores['BOMB'] += b
     else:
         scores['BOMB'] -= 0.7
-    scores['WAIT'] -= 0.30  # E20-port: -0.12 let WAIT win over flat moves
+    scores['WAIT'] -= G_WAIT  # E20-port: -0.12 let WAIT win over flat moves
     return scores
 
 
@@ -218,14 +269,14 @@ def act(self, game_state):
     for a, c in nxt.items():
         cnt = list(self.coord_history).count(c)
         if cnt >= 3:
-            heu[a] -= 0.45
+            heu[a] -= G_REVISIT3
         elif cnt == 2:
-            heu[a] -= 0.15
+            heu[a] -= G_REVISIT2
     if (x, y) in list(self.bomb_history)[-3:]:
-        heu['BOMB'] -= 0.9
+        heu['BOMB'] -= G_BOMB_REPEAT
     try:
         flee = _flee_scores(game_state)
-        boost = 2.0 if flee_locked else 1.0
+        boost = G_FLEE_BOOST if flee_locked else 1.0
         if flee_locked:
             heu['BOMB'] -= 3.0
             for a in ('UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT'):
@@ -243,7 +294,7 @@ def act(self, game_state):
         rt_b = not (0 <= x + 1 < W and arena[x + 1, y] == 0)
         if ((up_b and dn_b) or (lf_b and rt_b)) and not flee_locked:
             if safety.get('opps_hit_if_bomb', 0) == 0 and safety.get('crates_hit_if_bomb', 0) < 2:
-                heu['BOMB'] -= 1.5
+                heu['BOMB'] -= G_CORRIDOR
     except Exception:
         pass
 
@@ -284,8 +335,11 @@ def act(self, game_state):
     order = sorted(range(len(ACTION_LIST)), key=lambda i: total[i], reverse=True)
     # killer exception: allow stepping toward kill even if marginally unsafe? No:
     # keep strict safety, but prefer BOMB when opps_hit and escape exists (already safe-flagged)
+    _veto = _latehunt_vetoed(game_state, safety)
     for i in order:
         a = ACTION_LIST[i]
+        if a == 'BOMB' and _veto:
+            continue
         if valid.get(a) and safe.get(a):
             if a == 'BOMB':
                 self.bomb_history.append((x, y))
@@ -295,6 +349,8 @@ def act(self, game_state):
             return a
     for i in order:
         a = ACTION_LIST[i]
+        if a == 'BOMB' and _veto:
+            continue
         if valid.get(a):
             if a == 'BOMB':
                 self.bomb_history.append((x, y))
