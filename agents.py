@@ -225,7 +225,15 @@ class AgentRunner:
         self.fake_self.logger.setLevel(s.LOG_AGENT_CODE)
         log_dir = f'agent_code/{self.code_name}/logs/'
         if not os.path.exists(log_dir): os.makedirs(log_dir)
-        handler = logging.FileHandler(f'{log_dir}{self.agent_name}.log', mode="w")
+        # Rotating logs: unbounded FileHandler filled the 2G volume and
+        # helped kill the Jupyter server. 10MB x3 keeps forensics, caps disk.
+        try:
+            from logging.handlers import RotatingFileHandler
+            handler = RotatingFileHandler(
+                f'{log_dir}{self.agent_name}.log', mode="w",
+                maxBytes=10 * 1024 * 1024, backupCount=2)
+        except Exception:
+            handler = logging.FileHandler(f'{log_dir}{self.agent_name}.log', mode="w")
         handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(asctime)s [%(name)s] %(levelname)s: %(message)s')
         handler.setFormatter(formatter)

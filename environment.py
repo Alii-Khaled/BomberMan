@@ -58,7 +58,12 @@ class GenericWorld:
     def setup_logging(self):
         self.logger = logging.getLogger('BombeRLeWorld')
         self.logger.setLevel(s.LOG_GAME)
-        handler = logging.FileHandler(f'{self.args.log_dir}/game.log', mode="w")
+        try:
+            from logging.handlers import RotatingFileHandler
+            handler = RotatingFileHandler(f'{self.args.log_dir}/game.log', mode="w",
+                                          maxBytes=20 * 1024 * 1024, backupCount=2)
+        except Exception:
+            handler = logging.FileHandler(f'{self.args.log_dir}/game.log', mode="w")
         handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter('%(asctime)s [%(name)s] %(levelname)s: %(message)s')
         handler.setFormatter(formatter)

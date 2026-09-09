@@ -118,3 +118,14 @@ agent_code/sentinel/checkpoints/last.pt
 agent_code/sentinel/runs/
 agent_code/overlord/checkpoints/
 agent_code/overlord/runs/
+agent_code/reaper/checkpoints/
+agent_code/reaper/runs/
+agent_code/apex/checkpoints/
+agent_code/apex/runs/
+agent_code/apex/logs/
+agent_code/arbiter/checkpoints/
+agent_code/arbiter/runs/
+agent_code/arbiter/logs/
+# Runtime logs anywhere (game + agent backends; never commit)
+agent_code/*/logs/
+logs/game.log*

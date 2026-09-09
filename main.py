@@ -1,4 +1,5 @@
 import os
+import sys
 from argparse import ArgumentParser
 from pathlib import Path
 from time import sleep, time
@@ -29,6 +30,41 @@ class Timekeeper:
             sleep(duration)
 
 
+def _progress_iter(n_rounds, gui):
+    """Terminal-safe progress for long training runs.
+
+    Jupyter xterm.js (+ tmux redraw) chokes on tqdm's default per-round
+    \\r rewrites: a 1500-round run grows a single line to ~100KB and kills
+    the terminal tab at random points (backend often survives in tmux).
+    For headless training (gui is None, i.e. --no-gui) default to plain
+    newline logs every 25 rounds. Opt in to a throttled bar with
+    APEX_TQDM=1. Honors TQDM_DISABLE=1 / NO_TQDM=1. GUI runs keep tqdm.
+    """
+    if gui is not None:
+        yield from tqdm(range(n_rounds))
+        return
+    if os.environ.get('TQDM_DISABLE', '') == '1' \
+            or os.environ.get('NO_TQDM', '') == '1':
+        yield from range(n_rounds)
+        return
+    if os.environ.get('APEX_TQDM', '0') != '1':
+        every = int(os.environ.get('APEX_LOG_EVERY', '25') or 25)
+        every = max(1, every)
+        t0 = time()
+        for i in range(n_rounds):
+            yield i
+            if (i + 1) % every == 0 or (i + 1) == n_rounds:
+                dt = time() - t0
+                print(f"[progress] round {i + 1}/{n_rounds} "
+                      f"elapsed={dt:.0f}s", flush=True)
+        return
+    # Opt-in live bar: heavily throttled so the terminal sees ~1 update/min
+    # instead of ~8/s; fixed width avoids xterm.js reflow blowups.
+    yield from tqdm(range(n_rounds), mininterval=60.0, maxinterval=300.0,
+                    miniters=25, dynamic_ncols=False, ncols=80,
+                    file=sys.stderr)
+
+
 def world_controller(world, n_rounds, *,
                      gui, every_step, turn_based, make_video, update_interval):
     if make_video and not gui.screenshot_dir.exists():
@@ -48,7 +84,7 @@ def world_controller(world, n_rounds, *,
             pygame.display.flip()
 
     user_input = None
-    for _ in tqdm(range(n_rounds)):
+    for _ in _progress_iter(n_rounds, gui):
         world.new_round()
         while world.running:
             # Only render when the last frame is not too old

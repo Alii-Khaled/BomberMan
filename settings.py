@@ -25,6 +25,14 @@ SCENARIOS = {
     "classic": {
         "CRATE_DENSITY": 0.75,
         "COIN_COUNT": 9
+    },
+    # training-only (E40): sparse crates, classic coins — teaches crate->coin
+    # conversion at survivable punishment. Never used for eval; classic
+    # remains the tournament mode. Safe to keep: submissions ship agent_code/
+    # only, and the tournament runs the original framework.
+    "crate-light": {
+        "CRATE_DENSITY": 0.4,
+        "COIN_COUNT": 9
     }
     # Feel free to add more game modes and properties
     # game is created in environment.py -> BombeRLeWorld -> build_arena()
