@@ -185,3 +185,127 @@ sentinel (`dml_trainkit.py`, repo root):
   the same `OVERLORD_*` flags from its first stage.
 - Known gap (not changed): overlord `act()` has no epsilon-greedy
   exploration (sentinel does) — flagged for its first training stage.
+
+---
+
+## Reaper curriculum (third model, distilled feature-MLP — see E33)
+
+Goal: beat the overlord ship (frozen 3.79) at a fraction of the training
+cost, stretch-goal surpass warden (5.35 reference). Design thesis:
+engineered features + small MLP + teacher distillation + short RL
+fine-tune. All artifacts probe-gated before any game is played.
+E37 reengineering (Phases 1-5): kill-centric features, objective-exact
+reward, parallel training, tactical inference overlay — see E37.
+
+### Architecture (agent_code/reaper/)
+
+- **Features** (`features.py`): 98-dim vector = sentinel's 46-dim base
+  extended with good-bomb-spot BFS, safe-move mask, own-bomb state,
+  opponent model, PLUS (E37/P2) per-direction kill table 68-83 (trap
+  mask, opps_hit, crates_hit, escape margin — the net finally knows
+  WHERE to step for a kill), own mobility 84-87 (free neighbours,
+  reachable area, dead-end, junction dist), richer opponent model 88-92
+  (incl. their `bombs_left`, which the engine supplies but reaper used
+  to ignore), kill/coin/mobility potentials 93-95, board state 96-97.
+  f[50] repurposed from the mask-invariant `can_escape_if_bomb` (dead
+  constant-1) to the bomb-here escape margin. Probe-verified equivariant
+  under the 8 board symmetries (9/9 groups in
+  `scripts/probe_reaper_features.py`, incl. brute-force parity for the
+  vectorized blast tables and constructed-trap direction checks).
+- **Model**: dueling MLP 512-256-256 (~234K params), zero-init heads,
+  CPU forward <0.5 ms. Env: `REAPER_HID1/2/3`.
+- **Safety**: overlord's mask, semantics frozen (parity-probed exact),
+  internals rewritten for latency: flat-buffer time-expanded BFS +
+  O(1) first-lethal map (`first_lethal`), shared `danger_no_explosion`
+  across trap checks, `REAPER_HORIZON` knob (default 8 = parity).
+  Helpers: `opp_can_escape` (+ shared-`danger` fast path),
+  `bomb_here_traps` (exact forced-kill proof for the tactical overlay).
+- **Act policy**: learned Q (clip ±50, not ±6) + bounded soft-prior
+  heuristic (`REAPER_HEUR_WEIGHT` 0.5, `REAPER_HEUR_MAX` 2.0 — never
+  outvotes the net) + trap-move nudge (`REAPER_TRAP_BONUS` 1.5) + strict
+  mask + wall-clock budget guard (`REAPER_TIME_BUDGET` 0.12 s, graceful
+  heuristic-only degradation) + optional tactical overlay
+  (`REAPER_SEARCH=tactical`: exact guaranteed-kill BOMB override,
+  least-bad fallback); ε-greedy during training over the safety-masked
+  pool. Measured: p50 ~1.9 ms, p99.9 ~5 ms on a pinned core (limit 500).
+
+### Pipeline (scripts/)
+
+1. **Demos** (`collect_demos.sh`): `reaper_teacher` records warden (400)
+   / sentinel (200) / overlord (200) in the GATE fields (50% 3×rb, 25%
+   warden-mix, 12.5% random, 12.5% collector — not weak lineups), plus
+   optional DAgger (`STAGE_DAGGER_N`, `REAPER_DAGGER=1`: student acts,
+   teacher labels) into `results/demos/<teacher>[_<field>|_dagger]/`.
+   Recorder is resume-safe (appends round IDs).
+2. **BC pretrain** (`pretrain_reaper.py`): cross-entropy from Q/τ
+   softmax to demo actions, 8× dihedral augmentation, ~5 epochs →
+   `my-saved-model.pt` + resumable `checkpoints/bc_last.pt` payload.
+   Smoke on 30k warden samples: val_acc 0.65 after 50 steps (vs 0.41
+   before the feature redesign).
+3. **RL fine-tune** (`train_reaper.sh`, resumable via `STAGE_*_N=0`,
+   run-isolated via `REAPER_RUN_DIR`/`REAPER_TAG`/`SKIP_GATES`):
+   C1 150 solo classic → C2 200 vs peaceful+collector → C3 500 vs
+   rb+warden+sentinel → C4 150 vs 3×rb. N=8, γ=0.99, PER (numpy ring,
+   no replace=False bottleneck) + Huber δ=1, clip 1, tuned Adam
+   (eps/decay 1e-4), ε re-warm 0.10, 25% demo-replay mix, 8× symmetry
+   augmentation, reward = exact engine score (+1/+5, deaths −8/−6,
+   invalid −0.6, wait −0.05, survived +1) + potential shaping
+   γΦ(s′)−Φ(s) over (PHI_kill, coin closeness, mobility), logged
+   separately as `rew_engine`/`rew_shaping`. Fixed along the way:
+   duplicate terminal push for survivors, 2× feature recompute (cache),
+   `REAPER_DEVICE=cpu` silently ignored (wrong key passed to the kit).
+4. **Sweep** (`sweep_reaper.sh`): 8 parallel curriculum jobs (base ×2
+   seeds, kill-heavy shaping, low heuristic weight, low LR, short/long
+   horizon, no-shaping ablation) on isolated run dirs sharing the GPU.
+5. **Frozen gates** (`bakeoff_reaper.sh` per candidate; `eval_reaper.sh`
+   for the ship): rb 100×2, random 40×2, warden-mix 60×2, collector
+   40×2 (sentinel-mix excluded per protocol), Q_WEIGHT=0 ablation
+   (ML-compliance: learned Q must add ≥0.5).
+
+### Env flags
+
+`REAPER_DEVICE/_AMP/_UTD/_BATCH/_EOR_UPDATES/_OPT/_LR/_SCHEDULE/_TUNED/
+_SAVE_EVERY/_EPS_START/_EPS_DECAY/_Q_WEIGHT/_DEMOS/_DEMO_RATIO/_BC_W/
+_HID1-3/_GAMMA/_N_STEP/_W_PHI_KILL/_W_PHI_COIN/_W_PHI_MOB/_Q_CLIP/
+_HEUR_WEIGHT/_HEUR_MAX/_G_FLEE(_LOCK)/_TRAP_BONUS/_TIME_BUDGET/_HORIZON/
+_SEARCH/_SEED/_RUN_DIR/_TAG/_BC_INIT`; teacher recorder:
+`TEACHER=warden|sentinel|overlord`, `REAPER_DEMO_DIR`,
+`REAPER_DAGGER`, `REAPER_STUDENT_PT`.
+
+### Ship protocol
+
+Argmax-frozen bake-off (E30 rule — EMA never ships), archive-on-decision
+(`results/archive/reaper_*`), ship bar = pooled > 3.79; the tournament
+zip contains only `agent_code/reaper/` (demos/checkpoints/runs are
+git-ignored and must stay out; `my-saved-model.pt` is explicitly
+included).
+
+---
+
+## Arbiter — no curriculum (pointer, not a dossier)
+
+Arbiter has no curriculum stages (no online RL was ever run — the P2
+premise was falsified, E66–E67), so there is no stage table to keep.
+The training that exists, with configs, bars, and evidence locations:
+
+- **P0 offline warm start (E65):** `scripts/arbiter_extract.py` builds
+  `results/arbiter_p0_cache.npz` (339,826 pi + 123,212 V rows from
+  `results/{apex_demos,demos}/`, see `docs/demo_manifest.md`) →
+  `scripts/pretrain_arbiter.py` (CE + margin regression, 8× dihedral
+  aug, Adam 1e-3, batch 1024, 5 epochs, CUDA) → gate `val_acc >= 0.5`
+  (got 0.757) → `agent_code/arbiter/my-saved-model.pt` (+ `.meta.json`).
+  Env: `ARBITER_PI_TEACHERS` (default {warden,sentinel,overlord}),
+  `ARBITER_V_TEACHERS` (+collector), `ARBITER_V_W`, `--epochs/--batch/--lr/--seed`.
+- **P1 search (E66, inference-only):** no training; `sim.py` + `search.py`
+  wired as `ARBITER_SEARCH=search` (budget 0.30 s). Knobs:
+  `ARBITER_SEARCH_H/K/R/PLANS`, `ARBITER_V_BLEND`, `ARBITER_BOMB_MARGIN`,
+  `ARBITER_W_{CRATE,COIN_TILE,OPP_TILE,DEATH}`, `ARBITER_ESC_DIST`,
+  `ARBITER_TRAP_HARD/_P`, `ARBITER_{PI,V}_OFF` (ablations).
+- **Gates:** G1 rb 100×2 (3.95 ship) · G2 warden-mix 60×2 (3.67) ·
+  G3 collectors 40×2 (2.85) · G4 random 40×2 (6.13) · S0 / V0 / pi0
+  ablations; tables in `results/arbiter_summary.csv`
+  (`scripts/aggregate_arbiter.py`), figures in `results/figures/`
+  (`scripts/plot_arbiter.py`).
+- **Ship protocol:** same E30 rule; ship bar pooled > 3.79 (G1 3.95);
+  current ship with zero-env defaults (`SEARCH=search`, `ESC_DIST=3.0`).
+  Zip: `agent_code/arbiter/` only (E68 audit).
