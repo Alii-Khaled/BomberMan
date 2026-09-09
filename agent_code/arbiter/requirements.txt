@@ -1,0 +1,8 @@
+# Reaper tournament requirements (Docker CPU image).
+# Training runs on CUDA; inference stays CPU.
+torch>=2.4.1
+numpy>=2.5.2
+pygame>=2.6.1
+scikit-learn>=1.9.0
+scipy>=1.18.1
+tqdm>=4.70.0
