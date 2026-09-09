@@ -55,10 +55,69 @@ Overlord lineage (validation run, L40S path — second model for report §4):
 |---|---|---|---|---|---|
 | O1s-best (nav) | `results/archive/overlord_val_best_O1s.pt` | 200 | +53.84 | 40.5 | O2s resume base (see E22) |
 | O2s-best | `results/archive/overlord_val_best_O2s.pt` | 293 | +13.79 | ~41 | O3s resume base (see E23) |
+| SHIPPED combo | o3sbest weights + Q_WEIGHT 1.0 (see E30) | 741 | — (frozen pooled 3.79) | ~43 | ✅ Current `overlord/`: installed + smoke-tested |
+
+Reaper lineage (third model — distilled feature-MLP, see E33):
+
+| Tag | Checkpoint | Ep | EMA | \|w\| | Status |
+|---|---|---|---|---|---|
+| RE-BC pretrain | `agent_code/reaper/checkpoints/bc_last.pt` (+ `my-saved-model.pt`) | — | — | ~16 | ✅ BC converged: val_acc 0.82 on 257K 3-teacher samples (5 epochs, τ=1.0, 8× aug); frozen 20rd vs 3×rb 3.25/1.75/k.30/s.40 |
+| RE-C1–C4 curriculum | `results/sweeps/<job>/checkpoints/{last,best}` (8 parallel arms) | 1000 | — | 23–25 | ✅ All 8 finished C1–C4, no divergence (E35) |
+| RE frozen ship | `results/sweeps/sw01_base/checkpoints/ep_000400.pt` | 400 | — | — | ❌ Best validated 3.31 pooled (E36) < 3.79 ship — NOT shipped; Q0 ablation proves Q adds +3.17 |
+
+Reaper notes: demos live in `results/demos/{warden,sentinel,overlord}/`
+(training-time only, git-ignored — never in the tournament zip); ship
+follows the E30 rule (argmax frozen, EMA never ships); every gate runs
+the Q_WEIGHT=0 ablation for the ML-compliance evidence.
+
+Apex lineage (fourth model — synthesis CNN, see E48-E60):
+
+| Tag | Checkpoint | Ep | EMA | \|w\| | Status |
+|---|---|---|---|---|---|
+| A1-best | `results/archive/apex_A1_best_20260908_1427.pt` | 368 | +30.67 | — | Heaven warmup best (E53) |
+| A1-last | `results/archive/apex_A1_last_20260908_1427.pt` | 400 | +29.24 | 122.6 | A2 resume base (E54 handoff, eps re-warm 0.30) |
+| A2-best | `results/archive/apex_A2_best_20260908_1930.pt` | 401 | −0.91 | 122.6 | ❌ INVALID — warmup latch ep401, not a best (E62/E60; attribution corrected from E55 "stuck"); live `checkpoints/best.pt` is the ep1901 latch, also invalid |
+| A2-last | `results/archive/apex_A2_last_20260908_1930.pt` (+ live `checkpoints/last.pt`) | 1900 | −29.62 | 253.3 | Drifted solo exit (E55); `ep_1000/1200/1400/1600/1800.pt` ring kept |
+| A2-frozen | `results/archive/apex_A2_frozen_my-saved-model_20260908_1930.pt` (== live `my-saved-model.pt` sha256 `af37bb39…0df76f8`) | 1900 | — (frozen heaven 50.0 / solo 0.35) | — | Gate weights (E56) |
+| A3-last | `results/archive/apex_A2Hf_last_20260908_2149.pt` (+ live `checkpoints/last.pt` → ep2650) | 2650 | −10.47 | 294.6 | Task-3 exit (E59): tied collector, kills .64; `apex_a3.json` |
+| A3-frozen | live `my-saved-model.pt` sha `c97b936c…` at gate time | 2650 | — (frozen combat 3.42, top-of-lobby; Q-delta −0.02 nil) | — | Gate weights (E59); `gate_apex_a3_combat[_Q0]_{s0,s1}.json` |
+| A4-live | live `checkpoints/last.pt` (ep3193+, E60 interim) | 2650+ | −8.2 | 322 | DQfD on (111,935 pairs); `apex_A3_*_20260909_0109.pt` archived, EMA kept |
+| A4-last | `results/archive/apex_A4_last_20260909_0351.pt` (== live `checkpoints/last.pt`) | 3400 | −5.94 | 331.5 | DQfD exit (E61): kills .70, Q-delta −0.42 — NOT shipped; `apex_a4.json`; S1 archive |
+| A4-frozen | `results/archive/apex_A4_frozen_my-saved-model_20260909_0351.pt` (== live `my-saved-model.pt` sha `de8c26d4…`) | 3400 | — (frozen combat Q1.0 3.34 / Q0 3.76) | — | Gate weights (E61); `gate_apex_a4_combat[_Q0]_{s0,s1}.json`; S2 sweep base |
+| BC | — (no `*.meta.json`/`bc_last.pt`; `apex_bc*.log 0B`) | — | — | — | ❌ NOT RUN (E52) — A1–A3 cold-start; A4 uses DQfD instead |
+
+Apex notes: demos `results/apex_demos/` — E51 collected 400 npz, wiped
+2026-09-09 (disk cleanup; A4 unaffected — buffer loaded 01:13
+pre-deletion); S3 restored 500 npz (+collector 4th teacher, widened
+fields; see `docs/demo_manifest.md`, backup in `__shared/`) + flat
+symlink farm `results/apex_demos_all/` (absolute targets — `train.py`
+globs non-recursive); BC gate `val_acc>=0.5` (`scripts/pretrain_apex.py`); ship rule =
+argmax-frozen (E30), archive-on-decision (E29); combat/Q0 measured
+Phase 0 (E58); Q-delta −0.12/−0.02/−0.42 (`E58`/`E59`/`E61`);
+`best.pt` eligibility now warmup-guarded (`train.py`, E62); S2 sweep
+(E63): Q0 fidelity +0.55 → 3.68 best, bounded-Q dead, placement unmoved
+— arm3 is ARBITER's fallback skeleton.
 
 `best.pt` semantics: argmax-EMA tracker. Cross-regime EMA is incomparable
 (Stage-1 +52 vs classic negative), so `best_ema` is reset at each stage start
-with the prior best archived (E04 setup, E10/E12 surgery notes).
+with the prior best archived (E04 setup, E10/E12 surgery notes). Since E62,
+`best.pt` is additionally warmup-guarded: no latch while `len(buffer) <
+MIN_REPLAY` (a first-round transient otherwise survives forever — 3 occurrences).
+
+Arbiter lineage (fifth model — search-based policy iteration, see E62-E65):
+
+| Tag | Checkpoint | Ep | Frozen | Status |
+|---|---|---|---|---|
+| AR-P0 | `agent_code/arbiter/my-saved-model.pt` (+ `.meta.json`: val_acc 0.757, V-MSE 0.060) | — (offline, 5 epochs) | S0 3.44 pooled (100×2); pi0 0.14 (pi-delta +3.30) | ✅ Fallback + Sep-17 zip; ship stays overlord 3.79; P1 must add +1.6 (E65) |
+| AR-P1 | same weights + `search.py`/`sim.py` (`ARBITER_SEARCH=search`, H6/K8/W2/E3; no retrain) | — | G1 3.95 (100×2); V0 3.60 (V null); G2 3.67 / G3 2.85 / G4 6.13 | ✅ Co-lead (~3.6–4.0); NO dethrone; P2 redesigned (E66) |
+| AR-SHIP | same P0 weights; ship = zero-env defaults (`SEARCH=search`, `ESC_DIST=3.0`, rest default) | — | Default-env verified 4.05 (20rd s0); G1 3.95 (100×2) | ✅ **Current ship** (E67–E69 decision; +0.16 over 3.79 bar); `__shared/arbiter_ship.zip` leads, `overlord_ship.zip` backup |
+
+Arbiter notes: `agent_code/arbiter/` self-contained (vendored reaper
+features+safety, header-noted, probe parity exact — `scripts/probe_arbiter.py`
+17/17); `ArbiterNet` shared 98→256³ trunk, pi + V heads, zero-init;
+corpus `results/arbiter_p0_cache.npz` (339,826 pi + 123,212 V rows; demos
+per `docs/demo_manifest.md`); design rule — net never votes on root
+actions (E62: apex double-count → Q-delta −0.42).
 
 ## §3 Experiment entries
 
@@ -651,6 +710,76 @@ Metrics cross-check (eps 501–800): coins 1.70, kills 0.70, sui 0.22,
   sparring). **Report:** §6 centerpiece (frozen gate table above) + §5
   (validation → gate → refocus narrative).
 
+
+### E40 — W0 crate-light launch 🚀 (last training card)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Does a survivable-punishment regime (sparse crates, classic
+  coins) teach crate→coin conversion where classic-only training failed?
+- **Setup:** new training-only scenario `crate-light` (`settings.py`:
+  density 0.4, 9 coins; classic untouched at 0.75/9; documented as
+  non-shipping training infra). Base `overlord_val_best_O3s.pt` (ep 741,
+  O3s-era momentum) → `last.pt`, EMA cleared, ε 0.15 (env-step units);
+  champ-end ep1540 backed up. `train_overlord_cratelight.sh`: W0 200
+  solo crate-light → 30rd quick screen (stop if <2.5) → frozen 100 rb
+  (seeds 0+1) + 60 warden-mix. Guard-only watcher re-armed.
+  Launch verified: resumed ep=741/steps=485286, ε 0.15 decaying
+  on-schedule, wnorm 43.0, duty 93%.
+- **Continue-gates (pre-registered):** coins lift vs O2s 1.34 with NO
+  frozen regression vs 3.79 ship; anything else → stop, ledger, report.
+- **Verdict:** RUNNING (E41 on gates). **Report:** §5 (curriculum-regime
+  design as the remaining data-distribution lever).
+
+### E41 — W0 close-out ❌ +200% in-regime, zero transfer (Goodhart on regimes)
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Did the crate-light regime teach transferable conversion
+  skill (pre-registered gates: classic coins lift vs O2s 1.34, no frozen
+  regression vs 3.79)?
+- **Setup:** W0 200 solo crate-light (0.4/9) from o3sbest → 30rd screen
+  (3.63, above the 2.5 stop line) → frozen 100 rb ×2 + 60 warden-mix.
+- **Results — training:** coins **4.02** (+200%), 0 kills / 0 suicides,
+  first-50 3.58 → last-50 3.90 (real in-regime slope). **Frozen:**
+  classic coins 1.33/1.24 (≈ baseline — NO lift), pooled score **3.26**
+  (−0.53, gate lost); warden-lobby kills collapsed to 0.23 (was
+  0.35–0.38), overlord 2.30 vs warden 6.58. Frozen motor behavior
+  byte-identical class: bombs 16.5 vs 17.1, crates 11.6 vs 11.7,
+  invalids 2.9 vs 2.8 — the policy *acts* the same, classic pays less.
+- **Causal account:** (1) the regime doubled coin-per-crate rate, so the
+  agent sharpened proximity-bombing, not placement — frozen crate rate
+  proves it (11.6, unchanged); (2) sparse-board spatial features don't
+  transfer to dense boards while motor outputs freeze — generalization
+  failure, not learning failure; escape survived only because the mask
+  (not the net) owns it; (3) 200 opponent-free rounds forgot the hunt
+  head (shared trunk kept updating, hunt got zero gradient + ε noise) —
+  the *solo format*, not the density, dulled combat (fourth drift
+  occurrence: S6/E13/E29/W0). Process vindicated: the gates caught a
+  +200% "triumph" for ~1.5 h of compute.
+- **Verdict:** STOP — both gate legs failed. Ship restored to live dir
+  and re-verified byte-identical to the pin. Crate-light retired as a
+  lever (kept as infra). §7 lessons: mixed-density coverage (not
+  shift), mid-stage transfer probes, opponent-preserving economy.
+  **Report:** §6 (transfer-failure table) + §7 (regime-Goodhart).
+
+### E42 — Vetoed-volume audit ✅ ZERO vetoed: mask exonerated, intent guilty
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Does the safety mask veto productive bombs (the unmeasured
+  side of E27)?
+- **Setup:** observer `overlord_e42` (ship weights+Q1.0, intent log on
+  top-total+valid BOMB with verdict; dir removed after) + temporary
+  gated engine plant hook (reverted, `git diff environment.py` empty).
+  60 frozen rounds (30 × seeds 0,1) vs 3×rb, order-zip round join (E27
+  method). Audit scores swung 2.23/4.03 (30rd E09 noise, ±0.9).
+- **Results (915 intents, 100% verdict-joined):** planted 915,
+  **VETOED 0 (0.00/round)**, safe-unplanted 0. Intent crates: 0→624
+  (68%), 1→78, 2→105, 3→76, 4+→32. Intent dist_hyp: all ≤3.0.
+- **Verdict:** MASK EXONERATED — every bomb the agent wants, it plants.
+  The bottleneck is INTENT GENERATION (heuristic+Q never rank crate
+  bombs first), so Phase B relaxation is CANCELLED per the
+  pre-registered rule and mask work stops permanently. The 68%
+  zero-crate intent rate is the E27 plant finding viewed from inside
+  the decision. Next: Phase C collector classroom (intent must be
+  *learned*, it cannot be *freed*). **Report:** §6 (intent-vs-plant
+  table: the dog that didn't bark).
+
 ### E26 — Overlord death attribution (frozen audit) ✅ 69% own-bomb → branch 2a
 - **Author:** Ali Mahbob · **Date:** 2026-09-07
 - **Question:** What kills the frozen overlord — own bombs or enemy bombs?
@@ -719,6 +848,1229 @@ Metrics cross-check (eps 501–800): coins 1.70, kills 0.70, sui 0.22,
   thresholds. **Report:** §6 audit table (P(death\|plant) by dist_hyp,
   sentinel-vs-overlord side-by-side).
 
+### E28 — Crate-approach pull + focused W-curriculum launch 🚀 (INTERIM)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Does a dense crate-approach reward convert W1 bombing into
+  crates/coins (the E21 missing piece)?
+- **Setup:** `CRATE_APPROACH`/`CRATE_RETREAT` ±0.05 in
+  `agent_code/overlord/train.py` (`_custom` + `reward_from_events`),
+  modeled on the coin pull: nearest-crate Manhattan distance, old-state
+  arena both sides, movement actions only. Below coin magnitude (±0.06)
+  so coin priority wins conflicts (probed net −0.01). Symmetric by
+  construction — approach+retreat nets 0, equal-distance/blocked moves
+  and BOMB emit nothing, no-crates emits nothing (coin-heaven safe).
+  Probe `scripts/probe_crate_pull.py` **7/7 PASS** (E21 rule: no shaping
+  ships without a probe). W1 300 solo classic from the ep_1400 base
+  (`scripts/train_overlord_focused.sh`: W1 300 → W2 300 vs `warden_v1` +
+  2×rb → W3 300 vs 3×rb → frozen 100 rb + 60 warden-mix; guard-only
+  `watch_overlord_focused.sh`, no auto-launch). Launch verified: resumed
+  ep=1400, ε 0.40, updates flowing, wnorm 46.4.
+- **Pre-registered rollback trigger:** if W1 crates/round and coins/round
+  stay flat vs O2s (18.1 / 1.34), the pull is REVERTED, not lingered
+  (E17/E21 lesson) — sparring alone continues.
+- **Verdict:** LAUNCHED, results pending (E29). **Report:** §5 (shaping
+  design + probe discipline as methods example).
+
+### E29 — Focused program close-out ❌ drift −0.52, pull REJECTED
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Did 900 focused rounds (pull + warden + consolidation) beat
+  the 3.70 validation policy?
+- **Setup:** W1 300 solo → W2 300 vs `warden_v1`+2×rb → W3 300 vs 3×rb
+  (eps 1401–2300) + frozen 100 rb + 60 warden-mix →
+  `results/overlord_focused_{w1,w2,w3,eval_rb,eval_warden}.json`.
+- **Results — training-time:** W1 coins 1.09, sui 0.00 (pull CONVERTED
+  NOTHING vs O2s 1.34 → **trigger fired, pull REVERTED**, probe now
+  asserts absence 4/4); W2 1.14 / 0.33 kills / 0.69 sui (0.31 own /
+  0.38 enemy — warden kills us); W3 1.28 / 0.34 / 0.55. Loss floored
+  throughout (0.00027), `|w|` 46.4 → 49.2.
+- **Results — frozen:** vs 3×rb, **3.18** / 1.28 / 0.38 / 0.35 vs best rb
+  3.41 (**−0.52 vs validation 3.70 — gate LOST**). Vs warden-mix:
+  overlord 2.95 / 0.35 / 0.28 vs **warden 5.35** / 0.48 / 0.42 vs rb
+  ~2.7–3.0 — competitive with peers, nowhere near warden (ceiling demo
+  stands; placement + greed discipline gap, not escape).
+- **Process loss:** `ep_001200.pt` (eval-regime fallback, E26 audit base)
+  was eaten by the 5-snapshot prune window during W1–W3. New rule:
+  **archive-on-decision** — any weights an entry depends on are copied to
+  `results/archive/` the day they matter (checkpoints/ is a ring buffer,
+  not an archive).
+- **Verdict:** NEGATIVE RESULT, kept. Same-regime volume diffuses frozen
+  policy (third occurrence: E12/E13 pattern); confounded block (pull ×
+  re-warm × opponent × drift) is unattributable by design — single-change
+  discipline from here on (project rule). Handoff to E30 (bake-off).
+  **Report:** §6 (drift table + prune-lesson methods note).
+
+### E30 — Snapshot bake-off + Q-sweep ✅ NEW SHIP: o3sbest × Q1.0 (3.79 pooled)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Which surviving weights are actually best frozen — and does
+  the calibrated Q want more authority (E13 hypothesis on clean Q)?
+- **Setup:** isolated bake dirs (E05 pattern, `q_net` extracted, strict
+  load verified — no silent re-init), 100 rounds seed 0 (paired arenas)
+  vs 3×rb → `results/bake_*_s0.json`; winner confirmed seed 1; Q-sweep
+  {0.2, 0.5, 1.0} same protocol (dirs removed after).
+
+| Candidate (ep) | s0 score | Coins | Kills | Sui | s0 best-rb |
+|---|---|---|---|---|---|
+| o3sbest (741) | **3.86** | 1.51 | 0.47 | 0.35 | 3.40 |
+| w1best (1596) | 3.57 | 1.57 | 0.40 | 0.31 | 3.61 |
+| last2300 (2300) | 3.43 | 1.23 | 0.44 | 0.28 | 3.83 |
+| w2best (1947) | 3.23 | 1.38 | 0.37 | 0.39 | 3.34 |
+| best2001 (2001) | 3.10 | 1.10 | 0.40 | 0.33 | 3.43 |
+| ep1400 (1400) | 2.97 | 1.22 | 0.35 | 0.30 | 3.92 |
+
+- **Results:** o3sbest wins s0 (3.86 — best frozen number ever, above the
+  3.70); confirmation s1 3.32 vs rb 3.75 (E09 swing both ways), **pooled
+  3.59** vs pooled-rb 3.58. ep1400 collapse (2.97) proves the 100
+  coin-heaven rounds actively hurt — navigation re-do on a combat policy
+  is poison, not refreshment. Q-sweep (paired s0): 0.2 → 3.86, 0.5 →
+  3.25, 1.0 → **3.99**; q1.0 validation s1 3.58 vs rb 3.86, **pooled
+  3.79** (consistent +0.13/+0.26 both seeds — not a flash).
+- **Verdict:** SHIP **o3sbest weights × Q_WEIGHT 1.0** (pooled 3.79, kills
+  ~0.48, sui ~0.36): installed to `agent_code/overlord/my-saved-model.pt`
+  (W3-exit backed up to `results/archive/`), `Q_WEIGHT = 1.0` in
+  `callbacks.py`, 5-round smoke exit 0. The E13 hypothesis is confirmed
+  on clean Q — calibrated small-Q wants authority; diverged-Q wanted
+  none. Standing rule installed: **ship = argmax frozen** (snapshot every
+  100 + quick-screen cadence; EMA never ships again). **Report:** §6
+  (selection table + Q-authority figure) + §4 methods (bake-off
+  protocol).
+
+
+### E31 — Heuristic grid + C2 fix: all screens FALSIFIED ❌ (methods win)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Does any single heuristic change beat the 3.79 ship frozen?
+- **Setup:** ship pinned byte-identical to
+  `results/archive/overlord_SHIP_379/` first (weights + code — training
+  re-exports `my-saved-model.pt` every round, so this pin is the
+  fallback). 11 env-gated knobs added to `callbacks.py` (defaults =
+  shipped values, verified identical on clean-env import + stale-literal
+  grep). Screen: 11 variants × 40 rounds seed 0 (paired) vs 3×rb CPU →
+  `results/grid_*.json`; top-3 (exact tie at 4.10) to 100×2 validation
+  → `results/gridval_*_{s0,s1}.json`.
+- **Results:** screen top wait045 4.25 / bombopp15 = corridor25 4.10 vs
+  base 3.88; validation pooled: wait045 **3.04**, bombopp15 3.57,
+  corridor25 3.32 vs ship 3.79 — ALL REJECTED (even seed-matched s0
+  reruns swung ±1.0: wait045 4.25 → 3.17 same seed — unseeded agent RNG
+  per E09 makes 40-round screens nearly worthless; noise-law upgrade for
+  the report). Losers also informative: crate-bonus+ 2.92 and flee-boost
+  2.98 (more bombing without placement, and passivity, both punished).
+- **C2 fix (same change window):** `epsilon_steps` now counts env steps
+  in `game_events_occurred`/`end_of_round`, removed from `_update`
+  (old code burned 100k decay in ~125 rounds via ~800 updates/round;
+  verified by source-probe + schedule math). Applies to all future runs.
+- **Verdict:** NO HEURISTIC SHIP — grid harness kept for future screens,
+  defaults untouched. **Report:** §4 methods (screen-then-falsify
+  pipeline + upgraded noise law) + §6 (grid table as negative result).
+
+### E32 — CHAMP retune launch 🚀 (single-change, o3sbest lineage)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Can opponent-schedule + low re-warm alone (no shaping, no
+  arch change) push past 3.79?
+- **Setup:** `results/archive/overlord_val_best_O3s.pt` (full payload,
+  O3s-era momentum kept) → `last.pt`, EMA cleared, ε re-warm 0.20
+  (env-step units, C5 sparring-light); W3-exit checkpoints backed up.
+  `scripts/train_overlord_champ.sh`: R1 400 gate-matchup 3×rb → R2a 200
+  `warden_v1`+2×rb → R2b 200 `sentinel`+2×rb (`--train 1`, only overlord
+  learns) → frozen 100 rb + 60 warden-mix + 60 sentinel-mix. Guard-only
+  watcher re-armed (patched to match champ runs), no auto-launch.
+- **Launch verified:** resumed ep=741 (O3s steps=485286), ε 0.20 →
+  decaying on C2 schedule (0.137 at +27 rounds, matches env-step math),
+  wnorm 43.1 stable, duty 90%.
+- **Verdict:** RUNNING (CHAMP gates → close-out entry E34; E33 is taken
+  by the reaper creation entry below). **Report:** §5 (single-change
+  retune design).
+
+### E38 — TTA symmetry ensemble ❌ REJECTED (orientation dilution)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Does act-time Q-averaging over board rotations (Project
+  Description §7 symmetries hint) beat the single-view ship frozen?
+- **Setup:** probes first (`scripts/probe_tta.py` — remap algebra, marker
+  direction, equivariance gap, timing; caught 2 real bugs pre-eval: wrong
+  un-rotation direction, reversed numpy axis). Variant `overlord_tta/`
+  (ship weights, Q1.0, TTA in Q block, `OVERLORD_TTA_VIEWS` 1/2/4; dir
+  removed after): 40 rounds seed 0 (paired) vs 3×rb CPU.
+- **Results:** VIEWS=1 → **3.70** (A/B pure — dir reproduces ship class,
+  not broken); VIEWS=2 → 2.55; VIEWS=4 → 2.95 vs ship 3.88. Any
+  averaging hurts, monotonically-ish.
+- **Mechanism:** equivariance gap median 3.6 on ±4 Q — the CNN learned
+  orientation-*specific* features (overlord never had rotation
+  augmentation); averaging rotated views dilutes the trained
+  orientation. Lesson: train-time augmentation (reaper's approach) ≠
+  test-time averaging for non-equivariant nets. Timing was fine
+  (10 ms/step, 50× under budget) — rejected on quality, not cost.
+- **Verdict:** REJECT, no validation (screen −0.93+ outside even E09
+  noise, mechanism-backed). **Report:** §7 (negative symmetry result +
+  probe forensics).
+
+
+### E39 — Late-hunt veto ❌ REJECTED (starves without saving, E08 replay)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Does the untested E16 leg (veto crates==0 AND opps≥1
+  AND step>250) pay on the CNN?
+- **Setup:** `OVERLORD_G_LATEHUNT_VETO` knob in `callbacks.py` act
+  selection (both loops; default 0 = ship). Probe
+  `scripts/probe_latehunt_veto.py` passes both directions (plants
+  without veto, refuses with it). Screen 40 seed-0 (paired) vs 3×rb.
+- **Results:** veto **2.95** / 0.28 kills / 0.38 sui vs ship 3.88 /
+  0.50 / 0.40 — offense starved (−44% kills), defense unmoved.
+- **Verdict:** REJECT, no validation — exact replay of sentinel's
+  threat-veto (E08: 1.43/k.125, "starves without saving"). Late
+  opp-bombs are low-P(kill) each but are *where kills come from*;
+  deaths come from mid-game escapes (E26: mean step 143), not late
+  plants, so the veto removes offense without touching defense. Knob
+  kept (default 0) for the record. **Report:** §6 (veto forensics
+  pair: E08 × E39).
+
+
+### E43 — Collector classroom + multi-crate bonus launch 🚀
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Does crate-race pressure (with hunt kept warm) plus a
+  per-extra-crate bonus lift crates/round in classic?
+- **Setup:** `CRATE_EXTRA` +0.15 × (crates_hit−1, cap 3) in the BOMB
+  branch + reward map (`probe_multicrate.py` 5/5: values, cap,
+  move-safety). Stated Huber caveat — the stage's main lever is the
+  collector distribution. C1 300 vs 3× `coin_collector_agent`, classic,
+  from o3sbest (EMA cleared, ε 0.15); W0-exit ep941 backed up; guard
+  re-armed, no auto-launch. Launch verified: resumed ep=741
+  (O3s steps), ε decaying, wnorm 43.0, GPU active.
+- **Pre-registered gates:** crates/round 11.6 → 16+ with NO frozen
+  regression vs 3.79 ship (100 rb ×2 + 60 collector-matrix); miss
+  either → revert bonus, stop, ledger E44.
+- **Verdict:** RUNNING (E44 on gates). **Report:** §5 (classroom design
+  + density-over-magnitude shaping argument).
+
+### E44 — Collector classroom close-out ❌ volume without efficiency
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Did crate-race pressure + multi-crate bonus lift crates
+  (11.6 → 16+) without frozen regression (3.79)?
+- **Setup:** C1 300 vs 3× collectors + frozen 100 rb ×2 + 60
+  collector-matrix → `results/overlord_collector_*.json`.
+- **Results — training:** crates 11.0 (DOWN), bombs 22.1/round (UP) —
+  the bonus bought volume, not placement. **Frozen rb pooled: 3.765**
+  (−0.03, borderline hold) with coins +12% (1.52) and kills held
+  (0.45); crates frozen 12.8/12.0 (nowhere near 16+). Collector-matrix:
+  3.12, sweeping all three collectors head-to-head. **Gate leg 1
+  FAILED → bonus REVERTED** (absence probed 3/3, BOMB_GOOD intact).
+- **Verdict:** REJECT the bonus; bank the collector-matrix sweep as a
+  minor positive. Training-side economy levers now 0-for-5. **Report:**
+  §6 (volume-vs-efficiency table).
+
+### E45 — Openness bonus ❌ REJECTED (crates at fixed efficiency + deaths)
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Do open-4-neighbourhood bombs (max blast tiles, short
+  escapes) beat pocket preference frozen?
+- **Setup:** `OVERLORD_G_OPENNESS` additive knob (default 0.0; C1-safe),
+  differential probe exact (+0.750 shift). Screen k=0.25, 40 seed-0
+  (paired) vs 3×rb, run post-C1 on a quiet box.
+- **Results:** open0.25 **2.92** / 1.30 / 0.33 / 0.55 vs ship 3.88 /
+  1.38 / 0.50 / 0.40. Mechanism: bombs 20.4 (up), crates 13.9 (up) —
+  but crates/bomb **0.68, identical**; kills down, suicide up.
+- **Verdict:** REJECT, no validation — openness buys *volume at fixed
+  efficiency* while costing kills and safety; E16 adjacency wins.
+  Knob kept (default 0). **Report:** §6 (efficiency-invariant volume
+  finding).
+
+
+### E46 — Hybrid program spec (overlord × reaper × warden) 📋 QUEUED
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Can mixing the three designs beat the 3.79 ship?
+- **H1 — warden-discipline diff (frozen, immediate when queued):**
+  diff warden's rules (strict escape+payoff, loop avoidance, 6-step
+  horizon) against overlord's mask knob-by-knob; any missing rule
+  becomes a grid candidate under the standard screen-then-validate
+  protocol. Most discipline is already shared lineage — expect small
+  or null result, cheap to check.
+- **H2 — reaper opponent-features → overlord scalars (needs retrain):**
+  reaper's edge features (nearest-opp dead-end, trap signal via
+  `opp_can_escape`, good-bomb-spot BFS, max-crates-over-adjacent)
+  extend overlord's 8-dim scalar head (~14-dim). Conv trunk transfers
+  from o3sbest, head re-inits, short tune. Cost: breaks strict
+  weight reuse + needs full retrain — gated behind H1/H3 outcomes or
+  post-deadline work.
+- **H3 — cross-sparring vs trained reaper (queued on E36):** new
+  distribution, same classic regime — the one training mechanism not
+  yet tried. `train_overlord_hybspar.sh` staged (S1 250 reaper+2rb →
+  S2 250 warden+2rb → 100 rb + 60 reaper-mix + 60 warden-mix gates);
+  base o3sbest + EMA clear + ε 0.15; launches only on E36-confirmed
+  reaper weights + explicit go.
+- **Verdict:** SPEC ONLY — no launches. H1/H3 queued, H2 spec'd.
+  **Report:** §7 (hybrid outlook with this spec attached).
+
+### E47 — Warden-discipline transplants ❌ both REJECTED (vetoes starve)
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Do warden's two strictness edges (tiered payoff, must-flee
+  bomb gate) transfer to the CNN mask?
+- **Setup:** default-off knobs in `safety.py` (`OVERLORD_G_PAYOFF_TIER`:
+  non-opp bombs need crates≥2 or dist≤2; `OVERLORD_G_MUSTFLEE1`: refuse
+  BOMB while own tile lethal next step). Probe
+  (`probe_warden_tiers.py`, 205 states): determinism ✓, never-adds-
+  permission ✓, liveness tier 3 / mustflee 3 vetoes (union 6,
+  additive). Probe forensics: first run showed 0 vetoes — the runner
+  never set the knob envs (harness bug, not code bug); second, tier
+  vetoes only ~1.5% of decisions (narrow rule, small expected effect).
+  Screens 40 seed-0 (paired) vs 3×rb on a quiet box.
+- **Results:** tier **3.12** (kills 0.33 vs 0.50, sui 0.28 — starves
+  again) · mustflee **3.38** (kills 0.40, sui 0.38 — no suicide signal
+  where the rule must show one) vs ship 3.88.
+- **Verdict:** REJECT both, no validation — every veto-shaped idea in
+  this program (threat-veto E08/E39, payoff E21, corridor-strict,
+  late-hunt, tier, must-flee) converges to the same exchange: fewer
+  kills for unmoved suicides. Mask work is now closed a third time
+  (E27-validated, E42-exonerated, E47-falsified). **Report:** §6 (veto
+  saga summary table).
+
+### E48 — Apex (4th agent, best-of-worlds) design 📋 APPROVED
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Can a synthesis of all three designs beat 3.79?
+- **Architecture:** overlord ResNet trunk (base-96, GAP+GMP) + scalar
+  head extended 8→~16 with reaper's opponent-model edges (nearest-opp
+  dead-end, trap via `opp_can_escape`, good-bomb-spot BFS,
+  max-crates-over-adjacent, score margin, hunt flag) + dueling + aux
+  danger. Conv trunk transfers from o3sbest, head re-inits.
+- **Decisions:** warden target priority (coins → crate-adj → late hunt)
+  with BFS first-steps everywhere (Manhattan retired); strict payoff
+  tiers + must-flee as *training-time* mask from round one (E47
+  falsified them post-hoc — here Q grows up inside them; first frozen
+  gate is the kill-gate); loop avoidance; Q_WEIGHT 1.0.
+- **Training:** demo-format VERIFIED first (finding: npz holds
+  reaper-98 + actions only, no raw states — and 12-channel CNN inputs
+  are exactly {0,.25,.5,.75,1}, so uint8 ×4 storage is LOSSLESS at
+  ~3.9KB/step incl. both scalar sets; 400 rounds ≈ 550MB, fits quota).
+  Delegating recorder (`apex_teacher` wraps warden/sentinel/overlord-ship,
+  E14b-observer pattern) collects warden 200 + sentinel 100 + overlord
+  100 → BC pretrain (CE over Q) → curriculum ~1000 (solo → hunt →
+  mixed rb/warden/sentinel/reaper → gate) with 8× train-time aug
+  (reaper-proven), 25% demo mix, ε ≤0.2 sparring, C2 counting.
+- **Self-containment rule (submission-critical):** tournament copies
+  `agent_code/apex/` alone — NO cross-agent imports. All shared code
+  vendored in (overlord safety/features/model, reaper extras adapted).
+- **Verdict:** DESIGN ONLY (scaffold next). **Report:** §4 fourth-model
+  arc (MLP → CNN → distilled-MLP → synthesis).
+
+### E49 — Apex scaffold ✅ static parts probed (callbacks/train next)
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Does the hybrid scaffold hold together (shapes, mask
+  parity, transfer) before callbacks/train are written?
+- **Setup:** `agent_code/apex/` self-contained (vendored overlord
+  safety+features_cnn, reaper safety copy, local `features_extra.py`
+  with rotation-invariant aggregate-only 8-dim extras, `ApexNet`
+  16-scalar head). Probe `scripts/probe_apex.py`, 6 groups.
+- **Results: 12/12 PASS** — shapes (Q(1,6)+aux), zero-init |Q|max,
+  extras determinism/finiteness/bounds, **rotation-invariance 30/30
+  exact** (aggregate-only design vindicated — no permutation code
+  needed, the E33 bug class excluded structurally), **mask parity
+  apex==overlord 30/30**, **trunk transfer: 36 tensors clean, only 8
+  head keys re-init**. Design correction during probing: `strict=False`
+  skips missing keys but NOT shape mismatches — transfer must exclude
+  head keys explicitly (methods note).
+- **Verdict:** SCAFFOLD SOUND — remaining: callbacks (warden priority
+  + BFS + Q1.0), train loop (extended scalars, 8× aug, demo mix),
+  delegating recorder, BC, curriculum. **Report:** §4 (scaffold +
+  probe table).
+
+### E50 — Apex callbacks + train loop ✅ (B1/B2 probed, C2 live)
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Do the behavior and learning cores work before the
+  overnight build continues?
+- **Setup:** `callbacks.py` (warden target priority coins→crate-adj→
+  hunt with BFS first-steps, tiered bomb tiers + must-flee as
+  training-time mask, warden move scoring, Q1.0 on 16 scalars,
+  masked ε-greedy; one documented deviation: BOMB additionally
+  requires mask-safe, belt-and-suspenders) + `train.py` (16-dim
+  `_encode`, init chain last.pt > my-saved-model > o3sbest-trunk
+  (head re-init) > fresh, per-update random CCW augmentation with
+  action remap, DQfD margin 0.8 over demo pairs, C2 env-step epsilon,
+  demo buffer loaded on every start).
+- **Results:** game smoke exit 0 (0.00 s/step); determinism True;
+  1.5 ms/act (300× under budget); B2 unit suite green (TD+aux+aug+demo
+  on/off, perm/rot90 algebra); 2-round CUDA train smoke — metrics
+  flow, coins 19/24, ε 1.0→0.9924 matching env-step math (C2 live on a
+  real loop), zero errors.
+- **Verdict:** BEHAVIOR + LEARNING CORES SHIP to the next build stage
+  (recorder → demos → BC → curriculum). **Report:** §4 (decision and
+  training design as built).
+
+### E51 — Apex demos collected (400 npz, 111K steps) ✅
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Is the 3-teacher demo set (E48 spec) on disk in B3 format?
+- **Setup:** `agent_code/apex_teacher/` delegating recorder (E14b-observer
+  pattern, wraps warden/sentinel/overlord-ship) → `results/apex_demos/`
+  (`img(12,17,17) uint8 x4 + sc(16) + act`; e.g.
+  `overlord/round_000011.npz: img(159,12,17,17) sc(159,16) act(159,)`,
+  values `{0,4}` lossless) → `logs/apex_collect.log COLLECTION DONE`.
+- **Results:** `warden_v1/ 200 + sentinel/ 100 + overlord/ 100 = 400 npz`
+  (`8.6M + 4.0M + 4.3M`); teacher rounds
+  (`results/apex_demos_{warden,warden_topup,sentinel,sentinel_topup,overlord,overlord_topup}.json`,
+  `by_agent.apex_teacher`): warden `150rd 5.07/2.81/k.45/s.28/crates34.3/bombs29.5`
+  + topup `51rd 4.25/2.59/k.33`; sentinel `75rd 3.33/1.47/k.37` + topup
+  `26rd 2.19/1.42/k.15`; overlord `75rd 3.31/1.51/k.36` + topup `26rd
+  4.15/1.46/k.54`. Note: `150+75+75+51+26+26=403` logged rounds vs
+  `400` npz files (3-round shortfall, immaterial).
+- **Verdict:** READY for BC (E52). **Report:** §5 (demo distribution).
+
+### E52 — Apex BC pretrain: NOT RUN ❌ (gate unmeasured)
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Does the CNN absorb the teacher mix (E35 `0.82` ref)?
+- **Setup:** `scripts/pretrain_apex.py` (`CE-over-Q + 0.1 aux-alive`,
+  `--init trunk|fresh`, per-batch CCW + remap, gate `val_acc>=0.5`)
+  default `results/apex_demos/*/*.npz`, `--epochs 5`.
+- **Results:** evidence of absence — `logs/apex_bc.log`,
+  `apex_bc_trunk.log`, `apex_bc_fresh.log` all `0B`; no `*.meta.json`
+  or `bc_last.pt` anywhere; `metrics.csv ep1 wnorm 41.3 == o3sbest
+  trunk (~43)`, not BC output; `train.py:68 APEX_DEMO=''` so
+  `self.demo=[]` and `DEMO_W/MARGIN` dead code — A1 started
+  trunk/fresh via `train.py:544` init chain, E48 `25% demo mix,
+  eps<=0.2` promise unmet.
+- **Verdict:** BLOCKED — run B1 before claiming E48 curriculum;
+  A1/A2 below are cold-start, not BC-start. **Report:** §5 methods-note.
+
+### E53 — Apex A1 close-out: coin-heaven vs 3× collector (400rd) ✅ nav, ❌ race
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Does trunk-start + strict mask learn heaven navigation?
+- **Setup:** `scripts/train_apex.sh A1=400`
+  (`apex + 3× coin_collector --scenario coin-heaven --train 1
+  → results/apex_a1.json`; deviation: E48 said solo, actual
+  competitive) `BUFFER100k/B256/UTD1/EOR2/EPS_DECAY100k` CUDA.
+- **Results (`results/apex_a1.json by_agent`):** apex `400rd: 3804
+  score (9.51/rd) / 2994 coins (7.49/rd) / k.405 / s.05 /
+  35.3 bombs/rd / 313 moves/rd / 382 steps/rd / invalid .33`
+  vs collectors `13.97/14.03/14.26 coins/rd` (trails ~2×).
+  `metrics.csv eps1-400: coins 7.49/kills .398/sui .05/rr 20.10/
+  ema 1.02→29.24/wnorm 41.3→122.61/loss_tail .00225/eps 1.0→.05`.
+  Checkpoints: `results/archive/apex_A1_best_20260908_1427.pt
+  (ep368, ema 30.668, eps_steps 141060, total 136413)` +
+  `apex_A1_last_20260908_1427.pt (ep400, ema 29.241, best 30.668,
+  eps_steps 153170, total 148555)`.
+- **Verdict:** NAV OK, crate-race lost 2× even at 35 bombs/rd —
+  placement signal weak from birth. **Report:** §6.
+
+### E54 — A1→A2 handoff reset ✅ clean stage-reset
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Is cross-regime EMA cleared with ε re-warm (S5/S6 rule)?
+- **Setup:** `scripts/apex_archive_A1_for_A2.sh` (copy best/last with
+  TS, clear `best_ema/ema=None`, `epsilon_steps=73684 → eps 0.30`
+  on 100k decay; `q_net/target/optim/total_steps` kept).
+- **Results:** executed `20260908_1427`; `metrics.csv 400→401`:
+  `ep400 eps.05/buf100000/ema29.241/w122.61/steps148555 (held)` →
+  `ep401 eps.2962/buf401/loss0/rew-.91/ema-.91/w122.61(held)`.
+  Buffer `100000→401` is expected PER restart (cf E23).
+- **Verdict:** CLEAN (E23 pattern). **Report:** §5 resume-discipline.
+
+### E55 — Apex A2 close-out: solo classic 1500rd (eps401-1900) ❌ drift
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Does strict-mask solo learn crate→coin conversion?
+- **Setup:** `STAGE_A2_N=1500 bash scripts/train_apex.sh`
+  (`--agents apex --train 1 --scenario classic
+  → results/apex_a2.json`), container-safe
+  `BUFFER100k/B256/UTD1/EOR2`, CUDA; `logs/apex_A2.log
+  1500/1500 [3:13:40] Done`, PID dead, no traceback.
+- **Results — training (`results/apex_a2.json by_agent.apex,
+  1500rd`):** `991 score (.661/rd) / 991 coins (.661) / 5774 bombs
+  (3.85) / 13771 crates (9.18) / 57701 moves (38.5) / 600000 steps
+  (400.0)` — kills/suicides absent (0). Halves O2s bar (E23:
+  `1.34 coins / 8.3 bombs / 18.1 crates / sui 0.000 / wnorm 41`).
+  `metrics.csv 1900 rows`: `401-900 coins.69/kill0/sui0/rr-29.46/
+  ema-30.71/w122→177`; `901-1400 coins.62/ema-30.15/w→219`;
+  `1401-1900 coins.68/ema-29.62/w219→253/loss.00037`;
+  `tail e.g. ep1900 rew-26.76/ema-29.617/w253.29/duty91.5/eps.05`.
+  `best.pt stuck ep401 ema-.91` (never advanced;
+  `results/archive/apex_A2_best_20260908_1930.pt` identical);
+  `last.pt ep1900 ema-29.617/best-.91/eps_steps675184/total746540`.
+  Archives: `apex_A2_last_20260908_1930.pt (19M)` +
+  `apex_A2_frozen_my-saved-model_20260908_1930.pt (4.7M q_net)` +
+  `apex_A2_diag_20260908_2002/ (best+last+frozen+callbacks+model+train,
+  43M)`. Checkpoints ring: `ep_1000/1200/1400/1600/1800.pt (19M ea)`.
+- **Verdict:** NEGATIVE, kept — 5th same-regime drift (S6/E13/E29/
+  CHAMP/W0): loss floored (.0003) + `wnorm 122→253` linear + `ema
+  -30` flat + `38 moves/rd (~90% WAIT)`. Single-change discipline
+  from here (E29 lesson). **Report:** §6 drift table.
+
+### E56 — A2 frozen gates: heaven ceiling, solo collapsed ✅ measured
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** What is the A2 policy worth frozen (judge frozen, E10)?
+- **Setup:** `agent_code/apex/my-saved-model.pt (4.7M, 17:41,
+  sha256 af37bb39…0df76f8 == apex_A2_frozen_* — gate weights pinned)`
+  frozen CPU `40rd × seeds 0,1` → `results/gate_apex_a2_{heaven,
+  solo}_{s0,s1}.json`.
+- **Results:** heaven `s0 2000/50.0 (moves126.5/steps126.9) +
+  s1 2000/50.0` pooled `50.0` ✅ (nav held, ~127 steps);
+  solo `s0 12/.30/b1.9/crates4.75/moves8.05/steps400.0 +
+  s1 16/.40/b2.1/crates5.27/moves9.15` pooled `0.35 coins /
+  2.0 bombs / 5.01 crates / 8.6 moves` (~98% WAIT) vs overlord
+  frozen (E25) `1.35/17.1/11.7` (~4× coins, ~8× volume gap).
+- **Verdict:** NAV HELD, ECONOMY FAILED — bottleneck is intent
+  generation under strict tiers, not navigation. Combat (`vs 3×rb`)
+  + Q0 + intent/attribution still unmeasured (Phase 0). **Report:** §6.
+
+### E57 — Terminal-safe launch (tqdm → plain logs + detached traps) ✅ tooling
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** Why did the terminal tab die at random points on apex runs?
+- **Setup:** `main.py:_progress_iter` (plain `[progress]` log every
+  `APEX_LOG_EVERY=25` for `--no-gui`; `APEX_TQDM=1` = throttled bar;
+  GUI unchanged) + `scripts/train_apex.sh` (`APEX_TQDM=0`,
+  `PYTHONUNBUFFERED/FAULTHANDLER=1`, EXIT/HUP traps, quota/GPU
+  preflight). Launch: `tmux new -d -s apex 'bash
+  scripts/train_apex.sh > logs/apex_A2.log 2>&1'`; reattach via
+  `tmux attach -t apex`.
+- **Results:** root cause = tqdm per-round `\r` rewrites (~100KB single
+  line over 1500rd) killing Jupyter xterm.js, not OOM (1TiB host,
+  `BUFFER100k/B256` already safe). Verified: syntax OK ×2, 3 progress
+  modes OK, 2rd `--no-gui` exit 0, 2rd apex coin-heaven exit 0,
+  preflight exit 0. Smoke-test side effects reverted
+  (`metrics.csv` back to 1900 rows; `my-saved-model.pt` bit-identical
+  to `last.pt`, sha `af37bb39…0df76f8` still == frozen archive).
+- **Verdict:** SHIP (tooling, no methodology change — E55/E56 numbers
+  unaffected). **Report:** §5 resume-discipline.
+
+### E58 — Phase-0 frozen gates: combat vs 3×rb + Q0 ablation ✅ measured
+- **Author:** Ali Mahbob · **Date:** 2026-09-08
+- **Question:** What is the A2 policy worth in combat, and how much does
+  the learned Q add over the heuristic (judge frozen, E10)?
+- **Setup:** `my-saved-model.pt (sha af37bb39…0df76f8)` frozen CPU
+  `apex vs 3×rule_based --train 0 --scenario classic`, `40rd × seeds
+  0,1` → `results/gate_apex_a2_combat_{s0,s1}.json` (Q1.0) +
+  `results/gate_apex_a2_combatQ0_{s0,s1}.json` (`APEX_Q_WEIGHT=0`).
+- **Results (pooled 80rd):** Q1.0 apex `3.12/rd (coins 1.69 / kills
+  .29 / sui .31 / bombs 18.2 / crates 15.0 / moves 133.6)` vs rb
+  `3.56/3.04/3.40` (mid-pack, not crushed); Q0 apex `3.24/rd (coins
+  1.86 / kills .28 / sui .24 / bombs 17.8 / crates 15.9 / moves
+  130.0)` vs rb `3.44/3.31/2.90`. Q-delta ≈ **−0.12/rd (nil)** —
+  fails the ≥0.5 ML-compliance bar: the net adds nothing over the
+  heuristic in combat. Combat dynamics alone (vs solo E56: moves 8.6,
+  bombs 2.0, coins .35) elicit 15× movement, 9× bombs, 5× coins —
+  competition cures WAIT without any mask change.
+- **Verdict:** BASELINE PINNED (3.12) + Q-VALUE EXPOSED (nil) — A3
+  must move the Q-delta, not just activity; sui .31 is the risk to
+  watch. **Report:** §6 (frozen table + ablation).
+
+### E59 — Apex A3 close-out: Task-3 hunting 750rd (eps1901-2650) ✅ activity, ❌ Q-delta
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** Does Task-3 sparring (the skipped rung) cure WAIT-passivity
+  and make the Q net add value?
+- **Setup:** `STAGE_A1_N=0 STAGE_A2_N=0 STAGE_A3_N=750 bash
+  scripts/train_apex.sh` (`apex vs peaceful+collector --train 1
+  --scenario classic → results/apex_a3.json`), resume `last.pt`
+  ep1900 after `apex_archive_A2_for_A3.sh` surgery (archived
+  `apex_A2Hf_*`, EMA cleared, eps re-warm 0.30); container-safe
+  `BUFFER100k/B256/UTD1/EOR2`, CUDA; `logs/apex_A3.log 750/750
+  [1:33:37] Done`, rc=0. `train_apex.sh` gained `STAGE_A3_N`.
+- **Results — training (`apex_a3.json`, 750rd):** apex `5.50/rd /
+  coins 2.30 / kills .64 (479) / sui .14 (108, 4.4:1 ratio) / bombs
+  12.7 / crates 20.9 / moves 111.7` vs collector `5.59 / coins 3.94 /
+  kills .33 / sui .59` vs peaceful `0.03` — tied the collector on
+  score, kills 2× theirs, far safer; economy still trails (2.30 vs
+  3.94). `metrics.csv 750 rows`: eps re-warm decayed to .05, buffer
+  refilled to 100k, loss healthy .001–.004, `wnorm 253→295`
+  (+.056/rd — slower than A2's +.087 but still monotonic).
+  Honesty note: `best.pt ep1901 ema+15.73` is a first-round EMA-reset
+  artifact, never beaten; exit EMA −10.47 (real signal, far above
+  A2's −29.6).
+- **Results — frozen re-gate (`gate_apex_a3_combat[_Q0]_{s0,s1}.json`,
+  same E58 protocol, `my-saved-model.pt sha c97b936c…`):** Q1.0 apex
+  `3.42/rd (coins 1.80 / kills .33 / sui .35)` beats all rb
+  `3.10/3.05/2.95` (was mid-pack 3.12); Q0 apex `3.44/rd` —
+  Q-delta ≈ **−0.02, still nil**. Caveat: +0.30 sits inside the
+  pooled-noise band (~±0.4), so the lobby win is directional, not
+  proven; and Q0's own +0.20 (3.24→3.44, same frozen heuristic)
+  confirms noise dominates at 80rd.
+- **Verdict:** ACTIVITY CURED (moves 38→112, kills 0→.64, tied
+  collector), Q STILL A PASSENGER — A3 moved behavior, not Q-value.
+  Next single change attacks the nil Q-delta at its root: **A4 =
+  DQfD demos ON** (`APEX_DEMO` + margin loss already in
+  `train.py:68-72,763-789`; 400 teacher npz from E51; E52 never ran)
+  to inject teacher intent into Q; `RELAX_TIER=1` held as A5
+  (bombing is already 20/rd in combat — mask no longer looks
+  binding). Sui .31→.35 creep is the guardrail metric. **Report:**
+  §6 (training + frozen tables).
+
+### E60 — Apex A4 launch: DQfD demos ON 🚀 (INTERIM, ~72%)
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** Does teacher intent (DQfD margin loss) finally make Q add
+  value (nil Q-delta in E58/E59)?
+- **Setup:** `APEX_DEMO=results/apex_demos_all STAGE_A4_N=750`
+  (A1–A3 = 0; same Task-3 opponents/scenario as A3 — only the demo
+  loss is new). Preflight verified: 400 npz (200 warden_v1 / 100
+  sentinel / 100 overlord, 17M), B3 format exact, recorder
+  `ORDER == ACTION_LIST` byte-identical (`apex_teacher/callbacks.py:35`
+  vs `apex/model.py:9`); `_load_demos` trial-loads 111,935 pairs
+  (BOMB idx5 ≈ 9% — the intent signal Q lacks). Flat symlink farm:
+  `train.py` globs non-recursive. Surgery
+  (`scripts/apex_archive_A3_for_A4.sh`, new pattern): archived
+  `apex_A3_*`, **EMA kept** (same regime/rewards — comparable),
+  eps re-warm 0.30. `train_apex.sh` gained `STAGE_A4_N` + `APEX_DEMO`.
+- **Incident (report §5):** first launch trained 30 rounds pure-TD —
+  `demo buffer: 0 pairs`: the backend chdirs into `agent_code/apex/`
+  per callback, so the relative demo path resolved nowhere. Killed,
+  restored `last.pt` from the pre-A4 archive, truncated `metrics.csv`
+  to ep2650, re-warmed eps. Two fixes so it cannot recur:
+  `train_apex.sh` absolutizes relative `APEX_DEMO` at repo root;
+  `train.py:_load_demos` warns loudly on configured-but-empty demo
+  dir. Relaunch confirmed `demo buffer: 111935 pairs`.
+- **Interim (ep3193, 543/750, ~10s/rd):** loss 0.6 → ~0.05 settling
+  (demo term absorbing, not diverging); kills landing from the start;
+  EMA ≈ −8.2 (from kept −10.47); guardrails: sui episodic, `wnorm
+  253→322 (+.13/rd — FASTER than A2's +.087)` — #1 close-out watch
+  item alongside the Q-delta re-gate.
+- **Verdict:** PENDING — close-out + frozen re-gate (E58 protocol) as
+  E61 on `750/750 Done`. **Report:** §5 (incident/surgery) + §6.
+
+### E61 — Apex A4 close-out: DQfD 750rd (eps2651-3400) ❌ Q-delta negative
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** Did teacher demos make Q add value?
+- **Setup:** A4 per E60 (same Task-3 opponents/scenario, `APEX_DEMO`
+  111,935 pairs, W=1.0; 30-round pure-TD incident excluded via
+  restore). `logs/apex_A4.log 750/750 [2:07:15] Done`, rc=0 →
+  `results/apex_a4.json`.
+- **Results — training (`apex_a4.json`, 750rd):** apex `5.83/rd /
+  coins 2.32 / kills .70 (523) / sui .14 (108 held) / bombs 13.4 /
+  moves 116.6` vs collector `5.92 / coins 4.22` — score +0.33 and
+  kills +0.06 over A3, economy still flat (2.32 vs 2.30) and trailing.
+  `metrics.csv 750 rows`: loss 0.6 → ~0.06 absorbed, exit EMA −5.94
+  (real gain from kept −10.47), `best.pt` still the ep1901 artifact
+  (never beaten — EMA ceiling noted). `wnorm 253→331 (+.104/rd)` —
+  the E60 watch item materialized: fastest growth yet.
+- **Results — frozen re-gate (`gate_apex_a4_combat[_Q0]_{s0,s1}.json`,
+  E58 protocol, `my-saved-model.pt sha de8c26d4…`):** Q1.0 apex
+  `3.34/rd (coins 1.59 / kills .35 / sui .35)` mid-pack vs rb
+  `3.44/2.85/3.20` (flat vs A3's 3.42, −0.08 noise); Q0 apex
+  **`3.76/rd` (coins 2.01 / kills .35)** top-of-lobby — Q-delta ≈
+  **−0.42, WRONG SIGN**. Two consecutive nil/negative deltas
+  (−0.12, −0.02, −0.42): the net is not learning combat value —
+  demo-margin pulls Q toward teacher actions that don't transfer to
+  this lobby, while the heuristic+mask sits near this architecture's
+  ceiling. Noise caveat stands (Q0's own +0.32 with frozen policy),
+  but difference-in-deltas (−0.40) points the wrong way.
+- **Verdict:** REJECTED (objective failed) but HIGH-VALUE negative —
+  6th drift-pattern datapoint (S6/E13/E29/CHAMP/W0/A4): activity and
+  EMA improve while Q-value doesn't. A4 weights NOT shipped; live
+  `my-saved-model.pt` stays a heuristic-led policy. Next: one cheap
+  mask-side attempt (**A5 = `RELAX_TIER=1`**, queued since E59) OR
+  freeze apex and pivot to tournament prep (docker submission test
+  due 17.09, agent zip due 21.09). **Report:** §6 (ablation table +
+  drift table).
+
+### E62 — A4 close-out hygiene + `best.pt` warmup-latch root fix ✅ shipped (code)
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** Is `best.pt` corruption a warmup latch (fixable by an
+  eligibility guard) rather than a stuck tracker?
+- **Setup:** S1 close-out on the A4 exit — `last.pt` (ep3400) +
+  `my-saved-model.pt` archived to
+  `results/archive/apex_A4_{last,frozen_my-saved-model}_20260909_0351.pt`
+  (shas match live files); overlord 3.79 pin verified `d6327006…`
+  intact. Guard added to `agent_code/apex/train.py` `end_of_round`
+  (lines ~910-916): `warmup = len(self.buffer) < MIN_REPLAY` (5000 —
+  the exact threshold `_update()` no-ops below) → `improved`
+  requires `not warmup`; `maybe_save(..., improved)` inherits it, so
+  `best.pt` cannot latch before learning starts. Probe: AST-extracted
+  the shipped `warmup`/`improved` statements and replayed them over
+  `metrics.csv` epochs.
+- **Results — mechanism proven (historical replay):**
+
+| Ep | buffer | best_ema before | ema | Decision |
+|---|---|---|---|---|
+| 401 (A2 start, E55) | 401 | None | −0.91 | SUPPRESSED |
+| 1901 (A3 start) | 401 | None | +15.73 | SUPPRESSED |
+| 2651 (A4 start) | 401 | 15.73 | −9.28 | SUPPRESSED |
+| 2000 / 2100 / 3400 | 35k–100k | various | −7.9…−5.9 | normal latch semantics |
+
+  `best_ema = 15.73` was latched on a **zero-gradient round with a
+  1-sample EMA** during PER refill (buffer 100000→401 is expected per
+  restart, E23) — a first-round spike that 1499 later rounds could
+  never beat. A4 escaped the same trap only by luck (its ep-2651
+  transient `rr +13.38` landed on an already-negative EMA). E55's
+  "tracker stuck" is **corrected**: the tracker works; the *first
+  sample* is garbage. All four A4 gate numbers are VALID —
+  `my-saved-model.pt` verified tensor-identical to `last.pt`
+  (ep3400).
+- **Verdict:** FIX SHIPPED — apex best-tracking is now warmup-safe;
+  `checkpoints/best.pt` (ep1901) + `results/archive/apex_A2_best_*`
+  + `apex_A3_best_*` marked INVALID in §1; ARBITER's trainer inherits
+  the guard (every curriculum boundary resets PER the same way, and
+  the transient recurs at each one). **Report:** §5
+  (resume-discipline methods) + §6 (tracker-bug table).
+
+### E63 — S2 apex skeleton sweep: Q0 fidelity +0.55, 4.8 rule FAILED ❌ (re-diagnose → ARBITER)
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** How much of warden's 5.07 is recoverable by act()-path
+  fidelity (mask-always, WAIT), given the learned Q is net-negative?
+- **Setup:** two new default-off knobs in
+  `agent_code/apex/callbacks.py` (`APEX_MASK_ALWAYS` default 1,
+  `APEX_Q_CLIP` default 4.0; ship path bit-identical) +
+  `scripts/sweep_apex_skeleton.sh`: 5 arms × 40rd × seeds 0,1
+  (paired), frozen CPU, `apex vs 3×rule_based classic`, pinned A4
+  weights (`my-saved-model.pt` sha `de8c26d4…`, verified before AND
+  after — E34 hygiene). `APEX_RELAX_TIER` excluded: E42 exonerated
+  the mask (zero vetoed) and E59 holds it non-binding in combat.
+- **Results (pooled 80rd; anchors E61 A4-Q1 3.34 / A4-Q0 3.76 / ship
+  3.79 / warden 5.07):**
+
+| Arm | Config | Pooled | s0 / s1 |
+|---|---|---|---|
+| arm0 | Q0/mask1/wait.30 (anchor) | **3.13** | 2.88 / 3.38 |
+| arm1 | Q0/**mask0**/wait.30 | **3.56** | 3.42 / 3.70 |
+| arm2 | Q0/mask1/**wait0** | **3.62** | 3.90 / 3.33 |
+| arm3 | Q0/**mask0**/**wait0** (full warden) | **3.68** | 3.98 / 3.38 |
+| arm4 | Q1/CLIP**0.5** | **3.23** | 3.67 / 2.80 |
+
+  Fidelity helps (+0.43 mask, +0.49 wait, +0.55 combined) but leaves
+  ~1.4 unexplained — **4.8 rule FAILED, no arm ships.** arm3 pays the
+  E47 exchange (sui 0.25→0.43 for kills 0.32→0.38). Bounded-Q is also
+  dead (3.23 vs 3.13–3.68 Q0 range — action-space Q-blending falsified
+  at *every* authority, not just ±4). Placement unmoved by all 5 arms
+  (crates 15–17, c/b 0.78–0.94 — 8th failed attempt). Caution: arm0
+  missed its E61 anchor (3.13 vs 3.76; s1 replicates 3.38≈3.40, s0
+  off by 1.24) — `rule_based` tie-breaks on unseeded `random.shuffle`
+  and agent RNG is per-process (E09), so the field itself is
+  stochastic at fixed `--seed`; 80-round intervals are wider than
+  E09's ±0.8. A4-Q0 true strength is ~3.1–3.8, at-or-below ship.
+- **Verdict:** NEGATIVE on the ship question, HIGH-VALUE on design —
+  the residual localizes to the **oracle/verdict layer** (overlord's
+  `action_safety` escape sets + corridor-disciplined BOMB verdict vs
+  warden's own 6-step oracle + raw counts), which ARBITER bypasses
+  *structurally* (exact sim + yield field + proven escape) rather
+  than tuning. arm3 (3.68) becomes ARBITER's fallback skeleton. P1
+  acceptance criteria set: G1 suicides ≤ 0.30, crates/bomb ≥ 1.5.
+  Queued-if-needed 6th arm (BOMB-verdict relaxation) only if ARBITER
+  S0 lands >1.0 below arm3. **Report:** §6 (sweep table + the
+  blending-falsification + replication-miss methods note).
+
+### E64 — S3 demo re-collection: 1300 npz restored + collector ✅ protected
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** Is the wiped demo corpus restored (plus the collector
+  teacher), protected against recurrence, and gated?
+- **Setup:** `bash scripts/collect_apex_demos.sh` (NEW — apex-format,
+  4 teachers × gate fields + crate-light; `APEX_TEACHER` needed no
+  code change — `importlib` passthrough, 1-round collector smoke
+  green) + `bash scripts/collect_demos.sh` as-is (reaper-format,
+  800rd). E51 stats JSONs preserved first to
+  `results/archive/e51_demos/`. Full manifest:
+  `docs/demo_manifest.md` (counts, fingerprint, commands, gates).
+- **Results:** apex-format **500 npz / 123,212 steps / 0 bad**
+  (warden_v1 200 + sentinel 100 + overlord 100 + collector 100, new);
+  reaper-format **800 npz / 216,614 samples / 0 bad** (warden 400 +
+  sentinel 200 + overlord 200). Symlink farm rebuilt (500 absolute
+  links, **0 dangling**). Byte-identical mirror + resolved copy at
+  `/home/jovyan/work/__shared/demos_backup/` (10 GB volume, separate
+  quota; spot-loaded green). Loader gate landed in two layers:
+  library warns loudly (E60, kept) + launcher **refuses** on 0
+  *readable* npz — probed 3/3 (refuses dangling farm, refuses
+  missing dir, passes real npz).
+- **Verdict:** S3 DONE — P0 unblocked; no training run can ever
+  silently go demo-less again. **Report:** §5 (reproducibility
+  methods: the wipe, the manifest, the two-layer gate).
+
+### E65 — ARBITER P0 close-out: scaffold + pi/V warm start ✅ fallback, ❌ ship
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** Does an offline pi/V warm start on the restored corpus
+  yield a competent search-off fallback (Sep-17-zip grade)?
+- **Setup:** `agent_code/arbiter/` self-contained (E48): vendored
+  `reaper/features.py` + `reaper/safety.py` (header-noted, probe parity
+  exact), new `ArbiterNet` (shared 98→256³ trunk, pi 6-logit + V
+  scalar heads, zero-init), S0 policy (pi ranks, V logged; thin
+  survival skeleton bounded ≤0.5; warden filter semantics per S2 arm1;
+  `ARBITER_PI_OFF`/`ARBITER_V_OFF` ablation switches; time budget
+  0.30). `scripts/probe_arbiter.py` **17/17 PASS** (shapes, zero-init,
+  feature/safety parity on 15 states, act determinism, features
+  1.18 ms + forward 0.046 ms). `scripts/arbiter_extract.py` →
+  `results/arbiter_p0_cache.npz`: **339,826 pi rows** (216K reaper +
+  123K apex) + **123,212 V rows** (apex only, margin-to-go from
+  sc[12]: vlabel = 10·(margin_T − margin_t)). `scripts/pretrain_arbiter.py`
+  (E35 recipe: CE + 1.0·MSE, 8× dihedral aug, Adam 1e-3, batch 1024,
+  5 epochs, CUDA): pi on {warden,sentinel,overlord} (collector's
+  0.59-suicide actions stay OUT of the prior), V on all four
+  (collector states teach high-yield positions).
+- **Results — BC:** **val_acc 0.757 ✅ GATE PASS** (≥0.5; train 0.766,
+  no overfit), V-val MSE 0.060 (RMSE ≈ ±2.4 margin pts) →
+  `agent_code/arbiter/my-saved-model.pt`.
+- **Results — frozen S0 vs 3×rb:** screen 4.01 (s0 3.02 / s1 **5.00**)
+  → **validation 100×2: 3.44 (s0 3.37 / s1 3.51, tight)**
+  (coins 1.52 / kills 0.39 / sui 0.36 / crates 13.2 / bombs 15.9 /
+  moves 201 / **2.6 ms/step**, 0.5% of budget). The s1 5.00 was a
+  lucky draw — the protocol's 100×2 rule just earned its keep.
+- **Results — pi0 ablation (uniform prior + skeleton): 0.14 pooled**
+  (0.10/0.17; wanders safely, achieves nothing) → **pi-delta +3.30**,
+  the strongest ML-compliance evidence in the repo (reaper Q0 +3.17;
+  apex Q −0.42). The thin skeleton *cannot* double-count the teacher —
+  the net carries everything. V is trained but unused in S0 (P1).
+- **Verdict:** P0 DONE as fallback + Sep-17 zip (crash-clean, 2.6 ms);
+  ship stays overlord 3.79 (3.44 < 3.79). Deficit vs warden (−1.63)
+  is exactly the diagnosed placement gap (crates 13.2 vs 34.3) plus
+  suicides (0.36 vs 0.28) — both are P1 search objectives, and BC was
+  never expected to close them. P1 must add +1.6: acceptance G1 sui
+  ≤ 0.30, crates/bomb ≥ 1.5. **Report:** §4 (pi/V design + the
+  no-blending constraint) + §6 (P0 table + pi0 ablation figure).
+
+### E66 — ARBITER P1 close-out: search ships competitively, V null ❌ no dethrone
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** Does bounded exact-dynamics search beat the ship, and
+  does the learned V steer it?
+- **Setup:** `agent_code/arbiter/{sim,search}.py` (new): exact `do_step`
+  replica (blast/movement/timers/scoring) + plan search (BFS bomb-tile
+  candidates from the vectorized yield field, proven-escape gate,
+  flee-aware continuation, certified kills, settle-to-detonation,
+  bomb-vs-move arbitration by BOMB_MARGIN). `scripts/probe_arbiter_sim.py`
+  **ALL PASS** (blast == engine 2000/2000; full-step parity 300/300;
+  A1 confined to contested tile; hidden-coin rest exact + reveal
+  expectation |err| 0.064; sim.step 0.031 ms). Wired as
+  `ARBITER_SEARCH=search` (budget 0.30 s, degrade to S0).
+- **Results — failure then fix:** first screen collapsed (0.15–0.35):
+  coin-greedy continuation walked bomb plans into their own blast
+  (bombs never won) and short horizons scored suicides on garbage
+  pre-blast V. Fixed structurally (flee-aware continuation,
+  settle-to-quiet, dead-leaf V short-circuit) + arbitration redesign
+  (search OWNS bombs, pi owns moves — V RMSE ±2.4 dwarfs 1-step gaps,
+  so V-ranked moves are noise vs pi's sharp policy).
+- **Results — gates (W2/E3 = W_OPP 2 + ESC_DIST 3, H6/K8):** G1 rb
+  100×2 **3.95** (s0 3.82 / s1 4.07; crates 28.6, c/b 1.40, coins
+  2.37, kills 0.32, sui 0.29, ms 24) · G2 warden-mix 60×2 **3.67**
+  (vs warden 4.7; beats both rb) · G3 collectors 40×2 **2.85**
+  (mid-pack) · G4 random 40×2 **6.13** (crates 78.7, 0 deaths —
+  placement machinery feasts on weak fields).
+- **Results — V ablation (the honest null):** an early V0 gate used
+  `ARBITER_V_OFF`, which only zeroed the logged S0 value while search
+  kept evaluating — caught, fixed (search now honors V_OFF), invalid
+  files removed. Correct V0 (`V_BLEND=0`): 40×2 **4.36** (s0 **4.83**)
+  vs V 40×2 4.21 → apparent V-delta −0.41; but 100×2 says V 3.95 vs
+  V0 3.60 (V-delta +0.35). **Verdict on V: NULL — unresolvable at
+  ±0.3 draw noise; the s0 4.83 was luck.** The "complementarity"
+  story is WITHDRAWN before publication. ML-compliance rests on pi
+  alone (+3.30, E65) — decisive and sufficient.
+- **Results — ship decision:** ARBITER-V 3.95 (+0.16) and ARBITER-V0
+  3.60 (−0.19) both sit within noise of the 3.79 bar → **NO
+  DETHRONE; ship stays overlord.** ARBITER joins it as co-lead
+  (~3.6–4.0 class). Warden gap −1.1 stands (kills 0.32 vs 0.45).
+- **Methods finding:** 40×2 is insufficient for ship decisions with
+  unseeded agent RNG — identical config/seeds swung s0 4.78→3.82
+  (−0.96) across draws. The s0 4.83 would have shipped a 3.6 agent.
+  E09's ±0.8 understates draw variance; 100×2 is a floor, not a
+  luxury. K/H refinement SKIPPED as noise-limited (tuning in ±0.5
+  is how projects burn weeks).
+- **Verdict:** P1 DONE — search adds +0.51 over S0 (3.44→3.95) via
+  exact dynamics (placement 13.2→28.6 crates); V contributes ~0.
+  P2 premise (V improvement) is FALSIFIED — P2 must be redesigned
+  around pi (DAgger on search arbitrations) or rescoped. **Report:**
+  §6 (P1 matrix + V-null + the invalid-V0 incident as methods).
+
+### E67 — Trap cycle: fractional credit fails gate ❌ score push STOPS
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** Can opportunistic-trap credit (hard escapes pay
+  fractionally) buy the kill volume warden gets opportunistically?
+- **Setup:** two findings first. (1) Suspected certifier bug
+  (opp_can_escape called with default bomb_timer=4 instead of actual
+  remaining) FALSIFIED on real states: 25 opps-in-blast cases, 0.0%
+  verdict change — genuine forced traps are just rare vs competent
+  flight. (2) Per-bomb kill rates are IDENTICAL (arbiter 1.5–1.6% vs
+  warden 1.5%) — the gap is pure VOLUME (20.4 vs 29.5 bombs/rd).
+  Implemented `ARBITER_TRAP_HARD`/`ARBITER_TRAP_P` (escape dist ≥ N
+  with detonation ≤ 2 pays P, capped once per opp, sim keeps them
+  alive) + `ARBITER_BOMB_MARGIN` volume lever. Screen 20rd s0:
+  M0/T0 3.15 (kills 0.15 — margin filters well, removing it admits
+  junk) · M0.2/T3 **4.20** (sui 0.20!) · M0/T3 3.30.
+- **Results — gate 40×2 (M0.2/T3): 3.94** (s0 4.58/k0.42 vs s1
+  3.30/k0.17 — kills are the unstable component) vs gate bar 4.15
+  (+0.2 over ship-200 3.95) → **FAIL. Score push STOPS per the
+  pre-registered rule.** Fractional credit changes composition, not
+  level. TRAP_HARD stays default 0 (ship = exactly the validated
+  config, no unvalidated knobs).
+- **Results — ship lock:** the validated ship needs `SEARCH=search`
+  + `ESC_DIST=3`, but tournament runs zero-env — so both are now
+  DEFAULTS (`callbacks.py`, `search.py`); all other ship values were
+  already defaults. Default-env verification 20rd s0: **4.05**
+  (crates 29.1, ms/step 24, search active, zero env vars). The zip
+  plays the validated policy out of the box.
+- **Verdict:** STOP score work; pivot to robustness/report
+  (pre-authorized): G3 collector diagnostic (light), Docker +
+  containment audit, both zips (arbiter leads, overlord backup),
+  report figures. pi-DAgger shelved — E34/E36 drift priors plus a
+  failed gate argue against more   training. **Report:** §6 (trap
+  table + the timer-falsification + gate discipline).
+
+### E68 — Submission readiness ✅ + G3 diagnostic (structural, wontfix)
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** Is the ship submittable as-is, and is the G3
+  collector-mid-pack a defect or a field effect?
+- **Setup:** static audits + artifact builds (no Docker on this box —
+  closest-equivalent verification); G3 JSON re-analysis (no new games).
+- **Results — containment:** zero cross-agent imports, zero absolute
+  paths, all intra-package relative imports in `agent_code/arbiter/`
+  (E48 rule); no CUDA calls / `multiprocessing` / unpinned threads
+  in inference (`torch.set_num_threads(1)`); requirements are all
+  official-repo packages (torch/numpy/pygame/sklearn/scipy/tqdm —
+  all in the tournament Dockerfile).
+- **Results — artifacts:** `/tmp/arbiter_ship.zip` (0.62 MB: callbacks,
+  features, model, meta.json, weights, requirements, safety, search,
+  sim, train — no pycache/logs/runs/checkpoints) leads;
+  `/tmp/overlord_ship.zip` (4.54 MB) is the backup. Zip
+  self-sufficiency test: extracted to a bare tree, `import
+  agent_code.arbiter.callbacks` + setup (158,727 params loaded) +
+  act → valid action, no repo files touched. G4 (random field, 80rd)
+  crash-free + default-env gate 4.05 cover the §8 pre-run risks
+  (imports, missing files, timeouts, weird opponents).
+- **Results — G3 diagnostic:** structural field effect, WONTFIX.
+  Three collectors clear ~33 crates each at ~3.0/bomb (≈100/round —
+  the whole board by ~step 150); arbiter's yield field finds scraps
+  (22–23 crates at 1.0) and holds mid-pack (2.85) on kills
+  (0.15–0.28) + scraps. Beating this field needs out-clearing
+  3.0-efficiency specialists (arbiter's best: 1.54) or a
+  hunt-collectors regime — both out of scope: the tournament field
+  is mixed student agents, not 3×collectors, and tuning here is
+  noise-limited by the same ±0.5 that killed K/H refinement. The
+  yield field degrades gracefully (no pathology: 1.0 c/b on scraps).
+- **Verdict:** READY to upload subject to the real Docker +
+  MaMPF pre-run (due 17.09 — `docker build .` then the §8
+  single-game protocol). Rebuild zips from `agent_code/<name>/` if
+  any file changes after this point (never ship a stale zip).
+  **Report:** §5 (submission methods + G3 field-effect note).
+
+### E69 — search+tactical combined mode ❌ REJECT (margin bypass buys nothing)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does firing the exact tactical proven-kill overlay
+  BEFORE the search (bypassing BOMB_MARGIN arbitration for a
+  certified +5) raise the primary gate?
+- **Setup:** AR-P1 weights (frozen `my-saved-model.pt`, val_acc
+  0.757) + `callbacks.py` substring mode flags (`ARBITER_SEARCH=
+  search+tactical` runs overlay-then-search; default `'search'`
+  unchanged so S0/P1 ablations stay intact). Gate 100×2 vs 3×
+  rule_based, same seeds as G1 →
+  `results/gate_arbiter_e69_s{0,1}.json`.
+- **Results: 3.80 pooled** (s0 3.61/k0.24/sui0.41 · s1 3.99/k0.34/
+  sui0.35) vs G1 3.945 (k0.315/sui0.29) → Δ −0.145 (inside ±0.3
+  noise but wrong-signed, both seeds down) + suicides +0.09.
+  Rationale for the null: the search's own arbitration already
+  prices a certified kill at ~full value (a real +5 beats any move
+  plan by more than BOMB_MARGIN 0.2), so the overlay adds no wins;
+  firing turn-early appears to add turn-order-race deaths (A1
+  approximation: engine resolves contested tiles in random seating
+  order, sim self-first). Genuine forced traps are rare vs competent
+  flight anyway (E67) — reachable effect is small either way.
+- **Verdict:** REJECT promotion to default; mode string kept for
+  future ablations, ship default stays `search`. No scoreboard
+  change. **Report:** none (§6 unchanged).
+
+### E70 — Search widening (K16/R6/CAP96) ❌ REJECT (optimizer's curse)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does generating 2× bomb candidates over a wider
+  radius raise bomb volume and score (the E67-identified gap)?
+- **Setup:** env-only, no code change: `ARBITER_SEARCH_K=16
+  ARBITER_SEARCH_R=6 ARBITER_SEARCH_PLANS=96` + `ARBITER_TIME_BUDGET=
+  0.40` as compute enabler. Gate 100×2 vs 3× rule_based →
+  `results/gate_arbiter_e70_s{0,1}.json`.
+- **Results: 3.76 pooled** (s0 3.37 · s1 4.15) vs G1 3.945 → Δ
+  −0.185, bar was ≥4.25. Composition moved the WRONG way on both
+  seeds: bombs 17.5 vs 20.4, crates 25.7 vs 28.6, sui 0.365 vs
+  0.29. Latency fine (36.8 ms/step, no exhaustion).
+- **Mechanism (two suspects):** (M1) optimizer's curse — the
+  arbitration max-selects over V-noisy leaves (V RMSE ±2.4 dwarfs
+  plan gaps, E66); more candidates inflate best_move and veto more
+  bombs; (M2) path danger — R6 admits far bomb tiles whose path
+  prefixes walk toward blasts (gen_plans certifies the bomb tile,
+  NOT the path), raising suicides. E70b screen separates them.
+- **Verdict:** REJECT promotion; defaults unchanged. **Report:**
+  none (§6 unchanged).
+
+### E71 — Program status: thread closures + ship record 📋
+- **Author:** Ali Mahbob · **Date:** 2026-09-09
+- **Question:** Which open threads survive the pivot to robustness/report?
+- **Setup:** ledger review of all QUEUED / INTERIM / un-run items against
+  the E67 stop rule (score work stops; +0.2-gated exceptions only).
+  (Numbering note: filed as E71 because E69 was taken by the
+  concurrent search+tactical experiment and E70 by K-widening —
+  both recorded while this entry was drafted.)
+- **Results — closures (no further work):**
+  - E52 (apex BC pretrain): SUPERSEDED, not merely unrun — Q-delta
+    worsens with teacher signal (−0.12→−0.02→−0.42), so BC cannot
+    rescue apex; the machinery served ARBITER P0 instead (val_acc
+    0.757, E65).
+  - A5 (`RELAX_TIER=1`, E59/E61): SUPERSEDED by S2 design — excluded
+    with E42 (mask exonerated, zero vetoed) + E59 (non-binding)
+    rationale; falsification-adjacent, never launched.
+  - E46 H1/H3: H1 DONE via E47+S2 (tier transplants rejected;
+    fidelity grid +0.55, residual localized); H3 (cross-sparring vs
+    reaper) DECLINED — new-regime training with drift priors and no
+    gate behind it.
+  - E63 conditional 6th arm (BOMB-verdict relaxation): condition NOT
+    met (S0 3.44 vs arm3 3.68 = 0.24, not >1.0) → DECLINED.
+- **Results — ship record:** ARBITER-V 3.95 pooled (G1 100×2) >
+  3.79 bar (+0.16, thin but protocol-passing) → **ARBITER leads,
+  overlord 3.79 backup**; both zips built + self-sufficiency-tested
+  (E68); §1 AR-SHIP row + §5 status line are the authoritative
+  record. E69 (tactical bypass, REJECT) and E70 (K-widening, REJECT)
+  both corroborate the tuning-in-noise discipline behind these
+  closures — and both leave ship defaults untouched.
+- **Results — code note:** `callbacks.py` substring mode flags
+  (`search+tactical`, E69) verified behavior-preserving on all
+  pre-existing modes by inspection (default `'search'` path
+  identical); stale `E74` forward-refs in comments corrected to E69.
+  Ship-default re-verification smoke queued behind the running e70c
+  gate (box-sequential rule); zips rebuild after it.
+- **Results — deferred optionals (report phase or later):** CNN
+  trunk ablation (§4 arc) · pi-DAgger (shelved per E67 gate) ·
+  arbiter avatar/bomb sprites (fallback covers) · G3
+  collector-field behavior (structural, E68).
+- **Verdict:** LEDGER CLEAN except the running K-widening series
+  (E70 + e70b/e70c gates, box-busy at time of writing); remaining
+  work is submission (Docker + MaMPF, due 17.09) and report (due
+  28.09). **Report:** §4 (program narrative) + §7 (outlook).
+- **Addendum (parallel session, same day):** E70c landed (breadth at
+  R4, neutral — line closed); `ARBITER_SEEDS` opponent-marginalization
+  added to `search.py` (default 1 = validated P1 behavior, same seed
+  formula — reviewed, behavior-preserving) with e71 gate in flight;
+  `callbacks.py` substring flags verified behavior-preserving on all
+  pre-existing modes. Both code changes postdate the built zips →
+  zips rebuild after e71 + a default-path re-verification smoke
+  (box-sequential rule). E69/E70 entries + e70c line all theirs;
+  numbering collision on E69 resolved by filing this entry as E71.
+
+### E70c — Breadth at R4 (K16/CAP96) full gate: neutral ❌ line closed
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does candidate breadth help once the R6 path-danger
+  confound is removed?
+- **Setup:** `ARBITER_SEARCH_K=16 ARBITER_SEARCH_R=4
+  ARBITER_SEARCH_PLANS=96 ARBITER_TIME_BUDGET=0.40`, 100×2 vs 3×
+  rule_based → `results/gate_arbiter_e70c_s{0,1}.json`
+  (plus 20rd s0 screen E70b: 4.65/k0.45/sui0.40 — noise, ±0.8).
+- **Results: 3.955 pooled** (s0 4.01/k0.35/sui0.35 · s1 3.90/
+  k0.28/sui0.26) vs G1 3.945 (k0.315/sui0.29) → Δ +0.01. Volume
+  back to baseline (bombs 19.8, crates 26.9), confirming the E70
+  volume drop was the R6 confound, but breadth buys NOTHING over
+  K8/CAP48 for +12 ms/step.
+- **Verdict:** breadth line CLOSED — R6 wontfix (uncertified path
+  prefixes), K16/CAP96 rejected (neutral at a latency cost;
+  smaller candidate sets also minimize the max-noise surface for
+  E71). Defaults unchanged (K8/R4/CAP48). **Report:** none.
+
+### E71 — Multi-seed plan averaging (SEEDS=3) ➖ neutral + sui cost ❌
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does averaging each plan's exact payoff over 3
+  opponent-policy rollouts (variance reduction on arbitration)
+  raise volume/score?
+- **Setup:** `search.py` `ARBITER_SEEDS` knob (default 1 = bitwise
+  identical to P1 — same seed formula, probes green); V prices the
+  primary rollout's leaf only (leaf features 1.18 ms). Gate with
+  `ARBITER_SEEDS=3 ARBITER_TIME_BUDGET=0.40` →
+  `results/gate_arbiter_e71_s{0,1}.json`.
+- **Results: 3.975 pooled** (s0 4.11 · s1 3.84) vs G1 3.945 → Δ
+  +0.03 (neutral). Coins 2.50 vs 2.37 (best yet — stabler move
+  arbitration helps coin pickup), but suicides 0.355 vs 0.29:
+  averaging dilutes the single-seed −8 death veto (a 1/3-death
+  plan loses only ~2.7), so marginal bombs win arbitration. Kills
+  flat (0.295) — kill arbitration is NOT noise-limited
+  (certification is near-deterministic exact BFS).
+- **Verdict:** no promotion (bar ≥4.25, plus sui cost + 17 ms).
+  Parked follow-up: seeds for MOVE plans only (where the coin
+  signal lives), single-seed for bombs (keeps W_DEATH
+  calibration). **Report:** none.
+
+### E71b — Any-seed death veto ❌ REJECT (vetoes the kill margin)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does restoring the veto (any-seed death → full
+  −8, SEEDS=1-equivalent by construction) fix E71's suicides
+  without losing the coins?
+- **Setup:** same gate, `ARBITER_SEEDS=3` + veto →
+  `results/gate_arbiter_e71b_s{0,1}.json`.
+- **Results: 3.675 pooled** (s0 3.66/sui0.29 · s1 3.69/sui0.34)
+  vs E71 3.975 → Δ −0.30. Suicides restored (0.315) but kills
+  fell 0.295→0.24: the veto selectively removes CONTESTED
+  (kill-carrying) bombs — sim-random opponents cause our death
+  exactly where real opponents contest. Second independent
+  confirmation (after E67) that strictness on the kill margin
+  costs kills without buying score.
+- **Verdict:** seeds line CLOSED — plain averaging neutral-harmful,
+  veto harmful, both cost latency. Default stays SEEDS=1 (code kept,
+  env-gated for ablation). Lesson for §6: death handling must stay
+  single-seed-calibrated; W_DEATH=8 is a veto tuned to one rollout,
+  and neither averaging nor any-veto preserves its calibration.
+  **Report:** §6 (arbitration-noise null + veto lesson).
+
+### E72 — Chain-bomb priority (prepend) ❌ REJECT (RNG confound + junk)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does forcing own-tile + 4 neighbours into bomb
+  candidacy (bypassing rank + K cap, escape gate kept) raise bomb
+  volume and score?
+- **Setup:** `search.py` `ARBITER_CHAIN` knob (default 0 =
+  validated flow; CHAIN=1 path probe-smoked), prepend variant,
+  gate 100×2 → `results/gate_arbiter_e72_s{0,1}.json`.
+- **Results: 3.565 pooled** (s0 3.71 · s1 3.42) vs G1 3.945 → Δ
+  −0.38, ALL five composition metrics down (bombs 19.1, crates
+  27.3, coins 2.22, kills 0.27). Two harms: (1) prepending shifts
+  every ranked plan's rollout-seed index (pure RNG perturbation);
+  (2) chain bombs that win arbitration are low-yield — each junk
+  bomb locks `bombs_left` for 6 steps, displacing good bombs.
+- **Verdict:** prepend rejected; E72b (append) separates the harms.
+
+### E72b — Chain-bomb priority (append, pure max-addition) ❌ line closed
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does the chain set help when ranked plans keep
+  their seed indices (chain appended, K cap covers ranked only)?
+- **Setup:** same gate → `results/gate_arbiter_e72b_s{0,1}.json`.
+- **Results: 3.755 pooled** (s0 3.74/sui0.29 · s1 3.77/sui0.26)
+  vs G1 3.945 → Δ −0.19. Volume flat (bombs 20.3), coins +0.06,
+  kills −0.05: chain tiles add nothing but junk wins (6-step
+  lockout displaces kill-carrying bombs).
+- **Verdict:** chain line CLOSED — local re-bombing without a
+  yield guard fires junk (E16's opps_hit=0 waste, mechanized).
+  Guarded chaining (E73+E72) stays a parked follow-up; next is
+  E73 yield-margin alone. **Report:** §6 (junk-displacement).
+
+### E73 — Yield-scaled bomb margin (γ=0.5) ➖ neutral/negative ❌
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does making junk tiles clear a higher arbitration
+  bar (margin_eff = 0.2 + γ·max(0, 2−yield), soft not veto) raise
+  efficiency without losing score?
+- **Setup:** `search.py` `ARBITER_YIELD_GAMMA` (default 0 =
+  identical); tile_yield = crates + 2·opps in pre-rollout blast.
+  Gate 100×2 primary + 40×2 collectors →
+  `results/gate_arbiter_e73{,_co}_s{0,1}.json`.
+- **Results — primary: 3.945 pooled** (s0 3.91 · s1 3.98) vs G1
+  3.945 → Δ 0.00. Efficiency up (c/b 1.49 vs 1.40, bombs −1.2),
+  coins +0.05, kills flat, sui +0.045. **Collectors: 2.59**
+  (s0 2.95 · s1 2.23) vs G3 2.85 → Δ −0.26, c/b 0.93 vs 0.97
+  (UNMOVED — the margin fires in the wrong phase: early the
+  field is all ≥2-yield, late everything is 0-yield scramble).
+- **Verdict:** REJECT promotion — a correct-efficiency,
+  zero-score micro-trade on primary that fails where it was
+  designed to help. Default stays γ=0. Lesson for §6: junk bombs
+  are score-NEUTRAL volume (filtering them buys efficiency, not
+  points) — the disease is intent generation, not filtering.
+  **Report:** §6 (efficiency/score decoupling).
+
+### E74 — Dihedral TTA for pi ✅ INTERIM-ACCEPT (best config on every battery)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does averaging the prior over the 8 exact board
+  symmetries (features are probe-verified equivariant, unlike
+  sentinel's E38 failure) sharpen navigation enough to move
+  score?
+- **Setup:** `callbacks.py` `ARBITER_TTA` (default 0 = single
+  forward); TTA branch recomputes safety per transform, one
+  batched forward, unpermutes via `map_action` (pi[a] =
+  mean_s fwd(T_s(gs))[T_s(a)]), V averaged. Gated at DEFAULT
+  0.30 budget (ship conditions): `ARBITER_TTA=1` → primary
+  100×2 (`e74`), warden-mix 60×2 (`e74wm`), collectors 40×2
+  (`e74co`).
+- **Results — primary: 4.005 pooled** (s0 3.98 · s1 4.03,
+  tightest seed spread yet) vs G1 3.945 → +0.06; coins **2.605**
+  vs 2.37 (+0.235, both seeds, best in repo); c/b 1.46; sui
+  +0.055 (harder racing price). **Warden-mix: 3.88** (s0 3.93 ·
+  s1 3.83) vs G2 3.67 → +0.21, ties warden 3.99 (was 4.73).
+  **Collectors: 3.40** (s0 3.83/k0.425 · s1 2.98) vs G3 2.85 →
+  **+0.55, beats all three collectors** — gain via KILLS (+0.11:
+  sharper positioning converts opportunistic traps). Latency
+  51 ms/step (10× margin, zero exhaustion at 0.30 budget).
+- **Verdict:** INTERIM-ACCEPT — best config on all three
+  batteries simultaneously (first time any variant leads primary
+  + wm + collectors at once). Bar note: the pre-registered ≥4.25
+  primary bar (set for the volume track) is missed, but the
+  override rationale is cross-battery dominance + zero-risk
+  profile (no weights touched, probes green, latency-safe).
+  Default stays 0 until the E75-interaction + final ship battery
+  decide promotion. **Report:** §6 (TTA table + E38 contrast:
+  exact-equivariance is the precondition).
+
+### E75 — Coin-race move plans ❌ REJECT (commitment walks into danger)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does an explicit committed BFS path to the nearest
+  visible coin (scored exactly, competing as a move plan) improve
+  coin arbitration over 1-step plans + coin-greedy continuation?
+- **Setup:** `search.py` `ARBITER_COINRUN` (default 0); gate
+  COINRUN=1 (TTA=0, single-change) →
+  `results/gate_arbiter_e75_s{0,1}.json`.
+- **Results: 3.715 pooled** (s0 3.29/sui0.45 · s1 4.14/sui0.32)
+  vs G1 3.945 → Δ −0.23. Coins DOWN (2.29 vs 2.37), suicides UP
+  (+0.095, both seeds): committing a ≤12-step prefix walks into
+  detonating blasts that 1-step ranking avoids, and early death
+  ends coin collection. The existing 1-step + coin-greedy-
+  continuation already prices coin runs; commitment adds only
+  path-danger exposure.
+- **Verdict:** REJECT. E75b (TTA×COINRUN interaction) SKIPPED by
+  design: TTA touches only the S0 fallback ranking, not plan
+  commitment, so it cannot repair this harm — and gating a
+  combination with a clearly-harmful component violates
+  single-change discipline. Lesson for §6: in a 4-agent
+  simultaneous-move game, multi-step own-prefix commitment is
+  fragile (opponents + timers change the board mid-prefix);
+  replan-every-step with 1-step prefixes dominates. **Report:**
+  §6 (commitment null).
+
+### E76 — Ship battery: TTA-defaulteds PROMOTED ✅ NEW SHIP
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does the TTA config hold as zero-env default across
+  the full battery (primary + wm + co + rn + probes + latency)?
+- **Setup:** `ARBITER_TTA` default 0→1 (`callbacks.py`); all
+  batteries with ZERO env vars → `results/gate_arbiter_e76{,
+  wm,co,rn}_s{0,1}.json`. Same code path as E74 (default-on =
+  env-on, verified by construction + probes).
+- **Results — primary: 3.895 pooled** (s0 4.09 · s1 3.70) vs E74
+  4.005: same config, −0.11 = draw noise (E66 law). TTA primary
+  pooled over 400rd (E74+E76): **3.95 vs G1 3.945 → NULL**; the
+  E74 +0.06 was a lucky draw. **wm: 3.708** (s0 3.73/sui0.53 ·
+  s1 3.68) vs E74wm 3.88: TTA-wm pooled over 240rd = **3.80 vs
+  G2 3.67 → +0.13**. **co: 3.225** (s0 3.20 · s1 3.25) vs E74co
+  3.40: TTA-co pooled over 160rd = **3.31 vs G3 2.85 → +0.46**,
+  beats every collector in BOTH samples. **rn: 6.6** (40rd s0,
+  0 deaths, crash-free). Latency 51 ms/step ship-wide (10×
+  margin, zero exhaustion at 0.30 budget). Probes green.
+- **Full TTA account (160–400rd per battery):** positive-or-
+  neutral EVERYWHERE (primary +0.005, wm +0.13, co +0.46, rn
+  +0.46) with a small consistent sui tax (+0.04 primary/co —
+  harder racing). Mechanism read: symmetry-averaging smooths
+  travel jitter (coins up) but blunts argmax decisiveness
+  (kills flat/down vs disciplined foes, escapes a tick later) —
+  net ~0 vs rule_based/warden, positive vs racers whose flight
+  converts our committed positioning passively. (E38 contrast
+  for §6: equivariance-correctness was NOT the binding
+  constraint — decisiveness-dilution operates even with exact
+  features.)
+- **Verdict:** PROMOTE — TTA-defaulteds SHIP. Override of the
+  ≥4.25 volume-track bar, rationale: (1) best-or-tied config on
+  all four batteries simultaneously (unprecedented in repo);
+  (2) tournament field is mixed student agents (E68) — racer
+  class is the likely bulk, exactly where TTA wins; (3)
+  zero-risk profile (weights untouched, probes green, 10×
+  latency margin, crash-free vs weird opponents). E74's
+  INTERIM-ACCEPT confirmed with the primary-null honestly
+  recorded. Sui tax (+0.04) is the watch item for any future
+  work. **Lineage/scoreboard:** §5 Arbiter line extended (see
+  below). **Report:** §6 (TTA table + dilution hypothesis +
+  bar-override rationale).
+
+### E81 — Parallel-session deconfliction + combined-tree verification 📋✅
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** The user's "Go" was sent twice — are two sessions
+  sharing this workspace, and do both code sets + all gates still
+  stand?
+- **Findings:** YES — one workspace, two sessions, colliding E76
+  numbering (theirs = P1.1 exception armor, mine = TTA-ship
+  battery; their E79 already filed the collision note). Their
+  additions since my campaign started: armor wrapper
+  (`act()`→`_act_impl`, behavior-identical success path),
+  `chain_guard_ok` + `_try_bomb_plan` two-loop flow (E77 impl),
+  `ARBITER_MOVE_SEEDS` per-plan seeds (E78 impl), three new
+  probes, `agent_code/arbiter_dagger/` + collect script (E80).
+- **Verification (this entry):** both code sets present and
+  coherent — `_try_bomb_plan` is a verbatim extraction of the
+  validated gate (same order/cap → same rollout-seed indices);
+  defaults-off everywhere pending (CHAIN_GUARD=0, MOVE_SEEDS=1,
+  CHAIN=0, COINRUN=0, γ=0, SEEDS=1) so the default path is
+  construction-identical to the E76-gated tree. All FIVE probe
+  suites green on the combined tree (arbiter, sim, fault 16/16,
+  chain 13/13, moveseeds 7/7). Fresh 20rd zero-env smoke
+  (`e81smoke`): 4.20/k0.35/sui0.35/ms47 — ship class, no
+  pathology. **Ruling:** E69–E76 gates STAND (their knobs were
+  inert during my runs); their E76–E80 entries stand
+  independently. Mutual acknowledgment with their E79.
+- **API note:** `ARBITER_SEEDS` is superseded by
+  `ARBITER_MOVE_SEEDS` (parsed + dbg-logged but no longer read —
+  dead knob, default 1, tournament-harmless). E71/E71b ledger
+  stays true for the tree state at gate time. Post-deadline
+  cleanup item, NOT touched now (their E78 owns that region).
+- **Coordination:** my campaign is CLOSED (ship battery complete,
+  TTA ships — E76). Box is FREE for their E77/E78 gates + E80
+  collection. My future entries, if any, continue at E82+.
+  Ship zip rebuilt from the combined tree: `/tmp/arbiter_ship.zip`
+  (0.62 MB, same 10-file set as E68) + self-sufficiency PASS
+  (bare-tree import, 158,727 params loaded, act → legal action in
+  39 ms, no repo files touched).
+  **Report:** §5 methods (deconfliction footnote if needed).
+
 ## §4 Append template (copy from here)
 
 ```markdown
@@ -745,7 +2097,462 @@ Metrics cross-check (eps 501–800): coins 1.70, kills 0.70, sui 0.22,
 | m7 vs overlord | 1.41 | 1.92 | 1.92 | 3.25 (overlord 1.48) | — |
 | m8 vs warden | 1.76 | 2.19 | 2.19 | 2.74 (warden 5.25) | — |
 
+Overlord best frozen gate (vs 3× rule_based): validation O4s **3.70** (s .33,
+E25) → focused program 3.18 ❌ (E29, drift) → **o3sbest × Q1.0 3.79 pooled**
+(E30 ✅ SHIP) → CHAMP retune 3.29 ❌ rejected (E34).
+Reaper: best validated 3.31 pooled < 3.79 (E36, no ship); Q0 ablation +3.17
+(ML-compliance proven); ship bar = pooled > 3.79, stretch = beat warden
+in warden-mix (5.35 reference, E29).
+Apex best frozen gate (E56): heaven **50.0 pooled** (nav ceiling held) ·
+solo-train 0.66 (A2, E55) → solo-frozen **0.35 pooled** (0.30/0.40,
+bombs 2.0, crates 5.01, ~98% WAIT) vs overlord-frozen 1.35/17.1/11.7;
+A1-train 7.49 coins but trails collectors 2× (E53); combat/Q0/intent
+unmeasured (Phase 0 queued); BC not run (E52).
+Arbiter best frozen gate (E65): S0 **3.44 pooled** (100×2, s0 3.37 /
+s1 3.51; screen 4.01 with lucky s1 5.00) · pi0 ablation **0.14**
+(pi-delta **+3.30**, strongest ML-compliance in repo) · 2.6 ms/step ·
+deficit vs warden is placement (crates 13.2 vs 34.3) + sui (0.36 vs
+0.28) — both P1 search objectives.
+Arbiter P1 (E66): search+V **3.95 pooled** (G1 100×2) · search+V0
+**3.60** (V null — unresolvable at ±0.3 noise) · G2 warden-mix **3.67**
+· G3 collectors **2.85** · G4 random **6.13** (crates 78.7) · search
+adds +0.51 over S0 via exact placement (13.2→28.6 crates) · ms 24 ·
+NO dethrone (both configs within noise of 3.79).
+Arbiter trap cycle (E67): fractional credit 40×2 **3.94** vs gate 4.15
+→ FAIL, score push STOPS · per-bomb kill rates identical to warden
+(1.5–1.6%), gap is volume · timer-bug falsified (0%) · SHIP LOCKED:
+SEARCH=search + ESC_DIST=3 now defaults, default-env verified 4.05 —
+**ARBITER leads, overlord backup** (decision record: E66–E69; zips in
+`__shared/`; E70 K-widening independently corroborates the bar).
+Arbiter TTA (E74): G1 pooled **4.005** (+0.06, neutral) · G2 warden-mix
+**3.88** (+0.21, first warden-beating slice s0 3.93 vs 3.92) ·
+PROMOTE-APPROVED under amended rule, default flip deferred past E75.
+
 Task-4 gate (frozen score > best rule_based ≈ 3.8, suicide ≤ 0.4): OPEN.
 Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
 (6 figures + `captions.md`), `results/frozen_*.json` (gates),
-`agent_code/sentinel/runs/metrics.csv` (curves, 4 stages).
+`agent_code/sentinel/runs/metrics.csv` (curves, 4 stages),
+`results/apex_a*.json`, `results/gate_apex_a2_*.json`,
+`results/archive/apex_A*_*.pt`, `agent_code/apex/runs/metrics.csv` (1900 rows).
+
+---
+
+### E33 — Reaper agent created (cheap-to-train third model) 🚀 (INTERIM)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Can a small feature-engineered MLP + teacher distillation
+  beat the 2M-param CNN (3.79) at a fraction of the training cost — and
+  surpass warden (5.3+) via the opponent-model features warden lacks?
+- **Setup (all code + probes landed; NO training runs yet — waiting on
+  the go signal):**
+  `agent_code/reaper/` — dueling MLP (68-dim features, 512-256-256,
+  ~230K params, CPU <2 ms/step) + overlord's proven safety mask (parity-
+  probed) + thin heuristic (flee/loop/WAIT only) + Q_WEIGHT 1.0.
+  Features = sentinel's 46-dim base (BFS dist+dir to coin/crate-adj/opp)
+  extended with: good-bomb-spot BFS, safe-move mask, own-bomb state
+  (exact single-bomb tracking), opponent model (nearest-opp dead-end,
+  trap signal via `opp_can_escape` escape-BFS for the opponent), max
+  crates-hit over adjacent spots, score margin + hunt flag.
+  Training: N=5 PER Huber DQN, 8x dihedral symmetry augmentation
+  (probe-verified equivariance: permutation == recompute on transformed
+  state), BC pretrain (`scripts/pretrain_reaper.py`) from teacher demos
+  (`agent_code/reaper_teacher/` records warden/sentinel/overlord
+  (state→features, action) pairs; 25% demo-replay mix during RL),
+  placement-outcome shaping (own-bomb crates/coins bonus, TRAP_LAID).
+  Curriculum `scripts/train_reaper.sh`: C1 150 solo → C2 200 hunt →
+  C3 500 mixed (rb+warden+sentinel) → C4 150 vs 3xrb → frozen gates
+  (`scripts/eval_reaper.sh`: rb/warden/sentinel/collector/random fields
+  + Q_WEIGHT=0 ablation for ML-compliance).
+- **Probe forensics (E21 rule applied — probes caught 4 real bugs before
+  any game was played):**
+  1. Augmentation permutation built in the wrong direction (original-dir
+     → transformed-dir instead of transformed→original) — caught by the
+     equivariance probe on rot90, values swapped between dirs.
+  2. BFS first-step tie-breaking is NOT rotation-covariant (queue order
+     doesn't commute with the symmetry) — fixed structurally: four
+     per-direction BFS distance maps (`_bfs_dist4`) + a dir-mask over
+     all min-distance directions (union). Canonical BFS distances are
+     order-independent, so the masks are exactly equivariant — and
+     richer for the net than one-hot dirs.
+  3. Target == start tile (agent standing on a crate-adjacent tile) fell
+     into the blocked-target fallback and reported distance 2 instead of
+     0 — asymmetric under rotation. Fixed: explicit distance-0/zero-mask
+     case.
+  4. Reachability test used only direction 0 (`dist4[0,...]`), so a free
+     tile reachable only via another first step went through the
+     neighbour fallback. Fixed: any-direction test.
+  5. (Hardening) copied `escape_bfs` indexed `visited` before the bounds
+     check — harmless on real arenas (border walls guarantee interior
+     tiles) but crash-prone on degenerate states; reordered in reaper's
+     copy. Overlord's copy left untouched (tournament-frozen behavior).
+  Final probe suite (`scripts/probe_reaper_features.py`): **6/6 groups
+  passed** — shape/dtype/finiteness/determinism (20 states), permutation
+  bijections, symmetry equivariance (15 states × 8 syms, incl. action
+  mapping), reaper↔overlord safety parity (15 states), `opp_can_escape`
+  trapped=False/open=True, model zero-init heads.
+- **Results (smoke only, no training):**
+  * Untrained agent (heuristic+mask, Q=0): 5 rounds vs rb/random/peaceful
+    — 0 suicides, 1747 steps, 2 coins, 13 bombs, **~1.5 ms/step** (limit
+    500 ms); behavior = pure survival (placement/hunt waits for the Q).
+  * Submission-style test (1 round vs 3× random, `--train 0`): pass.
+  * Demo recorder: warden teacher → 401 samples/round npz
+    (`results/demos_smoke/`), features (68,) + actions (uint8).
+  * BC pipeline: loss 1.79 → 1.62 after 30 steps on 1.2K samples
+    (val_acc 0.41 ≫ 1/6 random) — converges toward warden's policy at
+    scale; saves `my-saved-model.pt` + resumable `bc_last.pt` payload.
+  * RL path: 2-round train run resumes the BC payload (ε re-warm 0.10
+    honored), buffer fills; `_update` + demo-mix + augmentation
+    exercised via direct unit test (td loss + bc loss both flow).
+  All smoke artifacts removed after verification — agent dir clean.
+- **Launch commands (on go signal):**
+  ```bash
+  bash scripts/collect_demos.sh                       # warden 400 + sentinel 200 + overlord 200 rounds
+  python3 scripts/pretrain_reaper.py --demos results/demos/warden/round_*.npz results/demos/sentinel/round_*.npz results/demos/overlord/round_*.npz --epochs 5
+  bash scripts/train_reaper.sh                        # C1-C4 + frozen gates
+  ```
+- **Verdict:** READY for training (waiting on go signal). Ship bar:
+  argmax-frozen > 3.79 baseline; stretch: beat warden in warden-mix.
+  Follow-ups pre-registered: E35 (BC + C1–C4 training-time), E36
+  (frozen gates + bake-off + Q0 ablation).
+- **Report:** §4 second-model story → now three-model comparison
+  (feature-MLP vs spatial-CNN vs distilled-MLP) + §5/§6; the probe
+  forensics above are §6 methods material.
+
+### E34 — CHAMP gate close-out ❌ drift again, REJECTED (kept)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question (E32):** Did the single-change retune (R1 400 rb → R2a 200
+  warden-mix → R2b 200 sentinel-mix, ε re-warm 0.20, o3sbest lineage)
+  beat the 3.79 pinned ship frozen?
+- **Setup:** frozen CPU gates from `scripts/train_overlord_champ.sh`
+  (100 rb + 60 warden-mix + 60 sentinel-mix, paired seeds) vs the
+  `results/archive/overlord_SHIP_379/` pin.
+- **Results — training-time:** R1 3.35 / 1.34 / k .40 / s .39; R2a 2.77
+  / 1.17 / k .32 / s .32 (warden 4.36); R2b 2.98 / 1.33 / k .33 / s .32.
+  Loss floored (~0.0001–0.0004), `|w|` 43→47 stable — healthy
+  optimization, same as E12/E23/E29.
+- **Results — frozen (CPU):** vs 3×rb **3.29** (best rb 3.76) · warden-mix
+  **3.17** (warden 4.13) · sentinel-mix **3.12** (rb 3.48, sentinel 3.05).
+  All legs below the 3.79 ship — the same-regime volume diffused the
+  policy (E29 pattern, now the fourth occurrence after S6/E13/E29).
+- **Hygiene:** the running job re-exported `my-saved-model.pt` every
+  round, so the live file held drifted R2b weights — the 3.79 pin was
+  restored into `agent_code/overlord/` and smoke-verified (5 CPU rounds,
+  3.8/rd, 2.78 ms/step).
+- **Verdict:** REJECT — CHAMP weights never ship. Single-change design
+  vindicated (the failure is attributable: more same-regime rounds);
+  consolidation of a converged policy by retraining is DEAD as a
+  strategy. All upside now rides on reaper (E35/E36).
+- **Report:** §6 (fourth drift data point + the re-pin hygiene lesson).
+
+### E35 — Reaper BC pretrain ✅ + C1–C4 sweep launch 🚀 (E37)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07
+- **Question:** Does the distilled-MLP fine-tune learn further over the
+  teacher policy without diverging?
+- **BC pretrain results:** 908 demo rounds validated (257,370 samples,
+  0 bad files; action mix UP .19/RIGHT .18/DOWN .19/LEFT .18/WAIT .18/
+  BOMB .08 — healthy), 5 epochs τ=1.0 8×-aug → train loss 0.36,
+  **val_acc 0.82** on the 3-teacher mix (warden+sentinel+overlord
+  disagree, so 1.0 is unreachable — 0.82 is strong absorption).
+  Frozen 20rd vs 3×rb: **3.25** / 1.75 / k .30 / s .40 — the sweep
+  starts from ~3, not from 0.
+- **Sweep launched (E37/P4a, `scripts/sweep_reaper.sh`):** 8 arms × 1000
+  rounds on the shared L40S (tiny MLP, 128 rollout cores), isolated
+  `results/sweeps/<job>/` run dirs (RUN_DIR), BC init copied in,
+  ε re-warm 0.10, 25% demo mix, SKIP_GATES=1 (bake-off later via
+  `scripts/bakeoff_reaper.sh` → E36): sw01 base · sw02 seed1 ·
+  sw03 kill-heavy shaping · sw04 heur 0.25 · sw05 lr 3e-4 ·
+  sw06 γ .985/N6 · sw07 γ .995/N10 · sw08 no-shaping.
+  Launch verified: all 8 in C1 solo, GPU 99%, BC init staged in every
+  run dir.
+- **Robustness fixes landed pre-launch:** sweep cwd-export race removed
+  (parallel jobs no longer touch repo-root `my-saved-model.pt`),
+  `REAPER_SEED` seeding (sw02 meaningful), demo default widened to all
+  `results/demos/*/` variants (908 rounds, was 400), overlord 3.79
+  ship re-pinned + smoke-verified (E34).
+- **Incident + fix (methods note):** the first launch wrote checkpoints/
+  metrics under `agent_code/reaper/results/sweeps/` instead of
+  `results/sweeps/`: `REAPER_RUN_DIR` was relative, and
+  `SequentialAgentBackend` chdirs into the agent dir around every
+  callback, so `setup_training` resolved it against the agent dir
+  (the demo loader was already hardened against this; the run-dir path
+  was not). Worse, resume silently missed the BC `last.pt`. Caught at
+  ep ~70 by the missing run-dir metrics; all 8 jobs killed, root-fixed
+  in `train.py` (relative run dirs absolutized against the repo root
+  from `__file__`) + absolute dirs in `sweep_reaper.sh`, misplaced tree
+  removed, relaunched cleanly (~10 min of C1 lost). Lesson for the
+  report: never trust a relative path inside agent callbacks — resolve
+  from `__file__`, and gate every launch on run-dir metrics appearing.
+- **Results (training-time):** TBD — sweep running (relaunched clean:
+  CUDA, BC-resumed, demo mix active, ε 0.10→decaying).
+- **Verdict:** TBD (E36 on gates).
+
+### E36 — Reaper bake-off + validation + Q0 ablation ❌ no ship (kept)
+- **Author:** Ali Mahbob · **Date:** 2026-09-07/08
+- **Question:** Which sweep arm (and which snapshot) is actually best
+  frozen — and does the learned Q carry the policy (ML-compliance)?
+- **Setup:** `scripts/bakeoff_reaper.sh` (8 arms × best.pt, CPU gates
+  G1 rb 100×2 / G2 random 40×2 / G3 warden-mix 60×2 / G4 collectors
+  40×2) → `scripts/bakeoff_reaper_snaps.sh` (top-4 arms × 6 snapshots,
+  rb 40 seed-0 screen) → `scripts/validate_reaper.sh` (top-3 at 100×2)
+  → Q0 ablation (winner weights × Q_WEIGHT=0, rb 100×2).
+- **Results — best.pt bake-off (pooled rb):** sw01/sw08 3.355, sw07
+  3.315, sw04 3.175, sw05 3.105, sw02/sw03 3.095, sw06 2.560. All below
+  the 3.79 ship. warden-mix best: sw04 3.233 (warden ~4+); collectors
+  best: sw01 3.80.
+- **Results — snapshot screen (rb 40 s0):** sw01_ep400 **4.05** (k .55 /
+  s .18), sw01_ep200/ep1000 3.825, sw01_ep800 3.80, sw07_ep400 3.775 —
+  the E13/E30 pattern (EMA-best ≠ frozen-best; policy peaked early,
+  drifted after).
+- **Results — validation (100×2, the verdict):** sw01_ep400 **3.31**
+  (s0 3.32 / s1 3.30 — consistent, not variance: the 4.05 was a lucky
+  screen inside ±0.8 noise, E09 law holds) · sw07_ep400 2.91 (s0 3.23 /
+  s1 2.59) · sw01_ep1000 3.17. BC init itself was 3.25/20rd — **RL
+  fine-tuning added ~0 over BC** across all 8 arms; the placement gap
+  (crates 11–14 vs rb 35 at equal bomb volume) persists everywhere.
+- **Results — Q0 ablation (sw01_ep400 weights, rb 100×2):** heuristic-
+  only **0.145** (k .005, s .65) vs 3.31 with Q → learned Q contributes
+  **+3.17**. The network genuinely learned the policy (thin heuristic
+  alone is helpless) — ML-compliance decisively evidenced, and the
+  strongest "model learns from features" proof in the project.
+- **Verdict:** NO SHIP — best validated reaper (3.31) < 3.79 ship.
+  Overlord o3sbest × Q1.0 stays the tournament agent; reaper is the
+  report's third model (distillation + ablation narrative). Open lever
+  for a future cycle: placement conversion (anneal demo ratio late,
+  stronger bomb-outcome shaping) — the Q learns, but RL so far only
+  defends the teacher policy instead of improving it.
+- **Report:** §6 centerpiece candidate (bake-off table + falsified
+  4.05 flash as methods example + Q-ablation figure).
+
+### E74 — Dihedral TTA prior (ARBITER_TTA=1) ➖ G1 neutral, G2 +0.21 ✅ PROMOTE-APPROVED (flip deferred)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does symmetry-averaging the pi prior over the 8 exact
+  board symmetries (plus V averaging) beat single-view ship frozen?
+- **Setup:** `agent_code/arbiter/callbacks.py` TTA block (`ARBITER_TTA`
+  env, default 0): per-view features via exact `transform_state`,
+  batched forward, pi[a] = mean over views of remapped logits
+  (`map_action`), V = mean; budget-gated (views stop at 0.9×budget,
+  uniform-pi fallback). P0 weights frozen. Gates: G1 100×2 vs 3×rb
+  (`results/gate_arbiter_e74_s0/s1.json`) + G2 warden-mix 60×2
+  (`results/gate_arbiter_e74wm_s0/s1.json`), same protocol as G1/G2.
+- **Results — G1 pooled 4.005** (s0 3.98 / s1 4.03; coins 2.60/2.58,
+  kills 0.28, sui 0.345, crates 28.6/28.5, bombs 19.5/19.6) vs ship
+  3.945 → **+0.06, neutral** (under the 4.15 bar). Coins lift to the
+  best-yet class (E71's 2.50 mechanism: stabler move arbitration),
+  kills dip slightly (0.28 vs 0.315 — averaging may dilute
+  orientation-specific kill cues), sui +0.05.
+- **Results — G2 pooled 3.88** (s0 3.93 / s1 3.83; coins 2.27/2.33,
+  kills 0.333/0.300, sui 0.433/0.400) vs ship 3.67 → **+0.21**; s0
+  3.93 beats warden_v1 itself (3.92) — first warden-beating slice.
+  Latency cost trivial (batched views, ms/step class unchanged).
+- **Verdict:** PROMOTE-APPROVED under the amended rule (G1
+  non-regression 4.005 ≥ 3.945 AND G2 +0.21 ≥ +0.2 — tournament
+  fields are mixed, not 3×rb). **Default flip DEFERRED until the E75
+  series closes**: E75-s0 runs on pre-promotion defaults and its s1
+  must share that baseline; the flip + `shipdefault` smoke + zip
+  rebuild land between series (box-sequential rule). TTA stays
+  available now via `ARBITER_TTA=1`.
+- **Report:** §6 (TTA table + amended-rule methods note).
+
+### E76 — P1.1 exception armor + fault probe ✅ SHIP (code, behavior-identical)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Can act()/setup() be made crash-proof without changing
+  the validated success path? (Tournament engine has NO fallback
+  agent — an unguarded act exception kills the whole game, or
+  benches us for the round under --silence-errors.)
+- **Setup:** `agent_code/arbiter/callbacks.py` — safe defaults FIRST in
+  `setup()` (`model=None`, empty histories; None is a supported
+  degradation: pi uniform, V skipped via existing guards); `act()`
+  split into an armored wrapper (any exception → logged WAIT
+  fallback) + `_act_impl` (old body, untouched). New
+  `scripts/probe_arbiter_fault.py`: 15 malformed-state cases
+  (missing/None keys, NaN explosion map, bogus step, list field,
+  walled-in ± bomb, None/empty-dict states) must each return a legal
+  action, never raise.
+- **Results:** fault probe **16/16 PASS** (incl. None/empty-dict →
+  WAIT); armor proven load-bearing (4/4 garbage classes raise inside
+  `_act_impl`, convert to WAIT); `probe_arbiter.py` 17/17 +
+  `probe_arbiter_sim.py` ALL PASS post-edit; 20rd default-env smoke
+  (`results/shipdefault_p11_s0.json`) **3.40** (sui .30, bombs 24.5,
+  crates 33.1, ms 18.9 — armor adds no latency) — inside ±0.8 noise
+  of the E67 4.05 class, no pathology, no benching.
+- **Verdict:** SHIP (code hardening, zero behavior change on the
+  success path). **Report:** §5 methods (robustness).
+
+### E77 — Guarded chain-bombing (CHAIN_GUARD) 🚀 IMPL + PROBED, gate pending
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does warden-guarded admission of own-tile + neighbours
+  (opps_hit>0 | crates≥2 & dist≤3 | crates==1 & dist≤2) buy warden's
+  kill volume without E72's junk displacement?
+- **Setup:** `agent_code/arbiter/search.py` — new `chain_guard_ok`
+  pure predicate + `_try_bomb_plan` shared gate (E14b: one gate
+  authority for ranked and chain tiles) + two-loop candidate flow:
+  ranked walk strictly cap-K (ship-identical when guard off), then
+  chain extras as pure max-addition (cap K+len). Default 0 =
+  validated flow. Probe `scripts/probe_arbiter_chain.py` (13 checks:
+  predicate unit tests U1–U7 incl. pocket-trap escape-coupling +
+  K=1 end-to-end admission proofs E1–E3 + append-only E4).
+- **Results — probe forensics (pre-gate save):** first draft inflated
+  the ranked cap (`cap = K + len(chain)` let ranked #K+1.. in before
+  chain tiles were ever reached — E72b semantics violated); the
+  probe's K=1 slices exposed it (extras were ranked admissions, not
+  guard admissions). Restructured to two loops; **13/13 PASS**:
+  guard admits exactly the warden-legitimate tiles (opp/crates legs
+  proven, junk/pocket/blocked rejected), ranked order preserved
+  (append-only), default off. `probe_arbiter.py` 17/17 +
+  `probe_arbiter_sim.py` ALL PASS post-edit.
+- **Pre-registered gate:** `ARBITER_CHAIN_GUARD=1` screen 40×2
+  (`results/gate_arbiter_e77_s{0,1}.json`); validate 100×2 iff
+  screen ≥ +0.2 over ship class with sui ≤ 0.40 and kills ≥ ship.
+  Bar: pooled ≥ 4.15. Box-sequential: runs when E75 series frees
+  the box.
+- **Baseline update (19:30):** e76 TTA-ship pooled s0 4.09 + s1 3.70
+  = **3.895** (non-regression vs 3.945 holds, Δ −0.05 inside noise).
+  E77/E78 screens now need ≥ ~4.1 (ship class +0.2) to trigger
+  validation; promotion still needs pooled ≥ 4.15 absolute.
+- **Verdict:** PENDING (gate). **Report:** §6 (probe-forensics
+  methods + gate table).
+
+### E78 — Move-plan seed averaging (MOVE_SEEDS) 🚀 IMPL + PROBED, gate pending
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does seed-averaging MOVE plans only (bombs
+  single-seed) keep E71's coin lift (2.50) without its suicide cost
+  (+0.065 from diluted bomb-death veto)?
+- **Setup:** `agent_code/arbiter/search.py` `ARBITER_MOVE_SEEDS`
+  knob (default 1 = P1 flow): `n_seeds = MOVE_SEEDS` for
+  `bomb_at is None` else 1; same `base_seed + 7919*j + pi_` formula
+  (j=0 identical → bomb scores bit-identical to validated);
+  any-seed full W_DEATH veto kept (E71b); V on primary leaf only.
+  Probe `scripts/probe_arbiter_moveseeds.py` (7 checks on a
+  constructed mid-game state, model=None): default-1,
+  determinism, bomb-invariance, plan-count parity, exhaustion path.
+- **Results:** **7/7 PASS** — determinism exact; `best_bomb`
+  bit-identical under 1 vs 3 move seeds (veto calibration preserved
+  by construction, not by luck); exhaustion degrades to S0
+  gracefully. `probe_arbiter.py` 17/17 post-edit.
+- **Pre-registered gate:** `ARBITER_MOVE_SEEDS=3` screen 40×2;
+  validate 100×2 iff screen ≥ +0.2 over ship class with sui ≤ ship
+  (0.29). Bar: pooled ≥ 4.15. Queued behind E75 series / E77.
+- **Verdict:** PENDING (gate). **Report:** §6.
+
+### E79 — Numbering note + TTA flip acknowledgment + gate-baseline update 📋
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Collision:** ledger **E76** below is this session's P1.1
+  hardening entry; gate files `results/gate_arbiter_e76_*` are the
+  parallel session's TTA-ship validation series (same number, two
+  meanings — filed here per the E71 precedent; entry numbers stay
+  append-only).
+- **TTA flip:** the parallel session promoted TTA to ship default
+  (`ARBITER_TTA` default `0`→`1`, `callbacks.py:78`) at ~18:45,
+  citing G1+G2 **and** the new e74co collector data (pooled
+  **3.40** vs ship G3 2.85 → +0.55; s0 3.83 top-of-lobby / s1 2.98,
+  ±0.85 seed spread consistent with the noise law). The running
+  `e76_s0` (no env, 100rd seed 0) is the promotion-validation gate.
+- **Validity check on e76:** it imported `search.py`/`callbacks.py`
+  at 18:51 mid-way through this session's edits — all intermediate
+  states are behavior-identical on the default path (every P2 knob
+  defaults off: CHAIN_GUARD=0 skips its block, MOVE_SEEDS=1 keeps
+  the single-seed loop; armor verified inert by 17/17 probes +
+  in-class smoke), so e76 is a valid TTA-ship gate whichever
+  intermediate it holds. This session's E77/E78 screens now run on
+  TTA-on defaults; their bars update: promotion still needs pooled
+  **≥ 4.15** (absolute, above the TTA-on incumbent per the E30
+  ship rule), with the e76 pooled number as the new reference
+  baseline (replacing 3.945).
+- **E75 close-out (parallel session, numbers only):** COINRUN
+  pooled s0 3.29 + s1 4.14 = **3.715** (−0.23 vs 3.945) — the s0/s1
+  ±0.85 split is the noise law at full display; no promotion.
+- **Verdict:** NOTE ONLY. E75/E76 close-outs belong to the parallel
+  session. **Report:** none.
+
+### E80 — Pi self-distillation (P2-C) 🚀 RECORDER LANDED, collection queued
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Does retraining pi on the ship's OWN visitation
+  (search first-steps included, mixed with the teacher corpus)
+  sharpen move arbitration beyond BC-on-teachers (val_acc 0.757)?
+- **Setup (landed, no games yet):** `agent_code/arbiter_dagger/`
+  (observer recorder, E14b pattern — delegates act() to ship
+  arbiter on the shared self, buffers (98-dim feats, executed
+  action); records in act() so death steps are captured;
+  action encoding verified identical to
+  `arbiter.model.ACTION_LIST`; static smoke green) +
+  `scripts/collect_arbiter_self.sh` (DAGGER_N=200 across gate
+  fields rb .50 / wm .25 / rn .125 / cl .125) +
+  `arbiter_extract.py` teacher id 4 (`arbiter_self`).
+- **Pipeline (queued, box-sequential):** collect (~200rd) →
+  extract → `ARBITER_PI_TEACHERS="0 1 2 4" pretrain_arbiter.py
+  --out results/dagger_candidate.pt` (NEVER overwrites ship
+  weights) → gate val_acc ≥ 0.757 (echo-guard: a drop rejects the
+  mix) → isolated-dir 100×2 G1 + field-proxy. Bar: pooled ≥ 4.15.
+  V rows untouched (self rows pi-only; E66 null stands).
+- **Why it may work where RL failed:** offline BC has no TD
+  divergence (E04/E12 mechanism absent); self-labels are
+  self-consistent (single policy vs 3 disagreeing teachers);
+  8× aug is proven. Risk: distilling current blind spots —
+  mitigated by the teacher mix + val gate + frozen gate.
+- **Verdict:** SPEC + RECORDER (collection on box-free window).
+  **Report:** §5/§6.
+
+### E77 — Guarded chain-bombing ❌ REJECTED (kills collapse, volume flat)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** (E77 setup entry) Does warden-guarded chain admission
+  buy kill volume without junk displacement?
+- **Setup:** `ARBITER_CHAIN_GUARD=1` (TTA-on defaults), screen 40×2
+  vs 3×rb → `results/gate_arbiter_e77_s{0,1}.json` (box-exclusive).
+- **Results — pooled 3.235** (s0 **2.70**/2.20/k.100/s.425 ·
+  s1 3.77/2.40/k.275/s.375) vs TTA-ship class ~3.9 → **−0.67**.
+  Bombs 20.4 (flat) · crates 27.7 (flat) · kills 0.19 (−0.11) ·
+  sui 0.40 (+0.07). Both seeds below ship — not noise (s0 −1.2
+  clears even ±0.8).
+- **Mechanism:** volume flat means guard admissions rarely WIN
+  arbitration (chain tiles are usually already-ranked — the probe
+  forensics predicted this); the few that win worsen composition.
+  Extra candidates perturb max-arbitration (E70 optimizer's curse)
+  and displace kill-carrying bombs via 6-step lockout (E72b replay)
+  — the E72 failure survives guarding. W1 (kill volume) is NOT
+  closable via candidacy; the binding constraint is
+  arbitration/intent, third confirmation after E67 (certification)
+  and E73 (filtering).
+- **Verdict:** REJECT, no validation. Knob stays default 0 (code
+  kept, env-gated for ablation). **Report:** §6 (rejection table +
+  the intent-generation lesson).
+
+### E78 — Move-plan seed averaging ❌ REJECTED (no coin lift, −0.36)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Setup:** `ARBITER_MOVE_SEEDS=3` (TTA-on defaults), screen 40×2
+  → `results/gate_arbiter_e78_s{0,1}.json` (box-exclusive).
+- **Results — pooled 3.54** (s0 3.73/2.23/k.30/s.30 · s1
+  3.35/2.35/k.20/s.25) vs ~3.9 → **−0.36**. Coins 2.29 pooled —
+  E71's 2.50 lift did NOT reproduce under move-only averaging
+  (E71 averaged bombs too, and its sui cost showed where the
+  extra seeds bite; alternatively E71's coins were a mild flash).
+  Kills 0.25, sui 0.275 (fine), ms 47 (budget-safe).
+- **Verdict:** REJECT, no validation. Default stays 1. **Report:**
+  §6 (null pair with E71: arbitration-side tweaks don't move the
+  needle — the E66–E78 line now has 10 consecutive
+  reject/neutral outcomes on arbitration/candidacy).
+
+### E81 — Field-proxy matrix ✅ BASELINE (arbiter #1 w/o warden, #2 with)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** Where does the TTA ship stand vs field archetypes
+  proxying the unseen tournament field (no Discord downloads)?
+- **Setup:** `scripts/run_fieldproxy.sh` (4 lobbies × 40 rounds ×
+  seeds 0,1, frozen CPU, box-exclusive) → `results/fieldproxy_*`.
+- **Results (pooled score/round):**
+
+| Lobby | arbiter | Field |
+|---|---|---|
+| STRONG (warden/overlord/sentinel) | **4.71** (4.67/4.75) | warden 4.85 · overlord 1.79 · sentinel 2.50 |
+| RACER (2×collector + overlord) | **3.98** (4.20/3.75, top) | collectors ~3.1 · overlord 3.14 |
+| WEAK (peaceful/random/overlord) | **5.19** (5.58/4.80, top) | overlord 2.23 · peaceful ~0 · random 0 |
+| TRAINED (apex/reaper/sentinel) | **4.98** (5.45/4.50, top) | apex 0.84 · reaper 1.39 · sentinel 0.93 |
+
+- **Reads:** arbiter is #1 in every lobby without warden (notably
+  RACER 3.98 beats the G3-mid-pack fear — 2 collectors + a weak
+  third is winnable; 3×collector specialists remain the worst
+  field); #2 behind warden in STRONG (4.71 vs 4.85, coins 3.2 vs
+  2.8 — economy actually leads, kills trail 0.30 vs 0.41).
+  DQN-class teammates are farm (0.8–1.4 — other teams' trained
+  agents near this level are free points, not threats).
+- **Verdict:** BASELINE PINNED — every future ship change must not
+  regress any row (promotion gate gains a field-proxy leg).
+  Tournament read: competitive for the win unless the field holds
+  multiple warden-class hunters. **Report:** §6 (field table).
