@@ -6,9 +6,12 @@ CUDA with AMP (Google Colab ready).
 
 Current ship: **arbiter** — learned policy prior over 98-dim engineered
 features + exact-dynamics lookahead search for bomb placement
-(G1 vs 3× rule_based **4.35 pooled**, 100 rounds × 2 seeds, E80
-self-distilled pi — field-proxy: #1 in every lobby without warden,
-STRONG 4.54 / RACER 4.62 / WEAK 7.45 / TRAINED 4.54).
+(G1 vs 3× rule_based **4.775 pooled**, 100 rounds × 2 seeds, E88:
+corrected escape solver + score margin 0.6 + paired (CRN) opponent
+rollouts, E80 weights unchanged — field-proxy 4-seed means all above
+the E80 baseline: STRONG 4.94 / RACER 5.29 / WEAK 8.54 / TRAINED 5.52
+(E80: 4.54/4.62/7.45/4.54); win-rate G1 0.41 vs 0.32, STRONG 0.40 vs
+0.37 over 5 seeds).
 Backup ship: **overlord** (CNN agent, 3.79 pooled). Report models:
 **sentinel** (MLP Dueling-DQN curriculum), **reaper** (distilled feature-MLP),
 **apex** (synthesis CNN — unshipped: learned Q net-negative, see `docs/experiments.md` E61).
@@ -55,9 +58,10 @@ git-ignored, ~10 MB each):
 Sentinel resumes from `agent_code/sentinel/checkpoints/best.pt`, which *is*
 committed — no extra files needed.
 
-Demo corpora (`results/apex_demos/` 500 rounds, `results/demos/` 800 rounds)
-are training-time only, git-ignored; a byte-identical mirror lives outside the
-repo (see `docs/demo_manifest.md` for fingerprint + restore procedure).
+Demo corpora (`results/apex_demos/` 500 rounds; `results/demos/` 1,312 npz
+incl. the E80/E86/E88 arbiter self-distillation sets) are training-time
+only, git-ignored; byte-identical mirrors live outside the repo (see
+`docs/demo_manifest.md` for fingerprints + restore procedure).
 
 ## Training
 
@@ -68,6 +72,18 @@ bash scripts/collect_apex_demos.sh     # teacher demos (warden/sentinel/overlord
 bash scripts/collect_demos.sh          # reaper-format demos (98-dim features)
 python3 scripts/arbiter_extract.py     # joint pi/V cache (results/arbiter_p0_cache.npz)
 python3 scripts/pretrain_arbiter.py    # CE + margin regression, gate val_acc >= 0.5
+```
+
+E88 corrected-feature refresh (after the escape-solver fix; candidate-only —
+the ship weights remain the E80 export, see E88 in `docs/experiments.md`):
+
+```bash
+DEMO_PREFIX=arbiter_self_e88 DAGGER_N=200 ARBITER_BOMB_SCORE_MARGIN=0.6 \
+  bash scripts/collect_arbiter_self.sh
+python3 scripts/arbiter_extract.py --out results/arbiter_e88_cache.npz \
+  --reaper-include=arbiter_self_e88
+ARBITER_PI_TEACHERS="0 1 2 4" python3 scripts/pretrain_arbiter.py \
+  --cache results/arbiter_e88_cache.npz --out results/arbiter_e88_candidate.pt
 ```
 
 Legacy curricula:
@@ -98,10 +114,15 @@ improvement, `ep_NNNNNN.pt` snapshots); per-round metrics append to
 | `ARBITER_SEARCH` | `search` (= ship) | `off` = pi-only fallback (S0); `tactical` = proven-kill overlay |
 | `ARBITER_TIME_BUDGET` | `0.30` | wall-clock search budget per step (0.5 s tournament limit) |
 | `ARBITER_V_BLEND` | `1.0` | leaf-value weight (V null per E66 — 0 also ships) |
-| `ARBITER_BOMB_MARGIN` | `0.2` | bomb plan must beat best move by this to execute |
+| `ARBITER_BOMB_MARGIN` | `0.6` | bomb plan must beat best move by this to execute (legacy alias for `ARBITER_BOMB_SCORE_MARGIN`) |
+| `ARBITER_BOMB_SCORE_MARGIN` | `0.6` | E88 de-conflicted search bomb-vs-move score margin (was 0.2) |
+| `ARBITER_BOMB_ESC_MARGIN` | `1` | E87/E88 post-plant first-step escape-direction count required for the mask's BOMB certificate |
 | `ARBITER_ESC_DIST` | `3.0` | proven-escape distance gate for bomb tiles |
-| `ARBITER_SEEDS` | `1` | opponent-policy rollouts averaged per plan (E71; >1 needs more budget) |
+| `ARBITER_SEEDS` | `1` | legacy E71 knob (post-E78 no-op: moves use `ARBITER_MOVE_SEEDS`, bombs 1; logged in search debug only) |
+| `ARBITER_CRN` | `1` | common random numbers: all plans share per-tick opponent draws (E88 ship; `0` restores unpaired) |
+| `ARBITER_PLANT_ESC` | `1` | min post-plant escape directions for the search bomb gate (E88; clean E87 redo) |
 | `ARBITER_PI_OFF` / `ARBITER_V_OFF` | `0` | `1` forces uniform prior / zero value (ablations) |
+| `ARBITER_MODEL` | unset | eval-only candidate weights path (gating; tournament default = `my-saved-model.pt`) |
 | `SENTINEL_DEVICE` / `OVERLORD_DEVICE` | `auto` (CUDA if available, else CPU) | `cpu` forces CPU (tournament condition) |
 | `SENTINEL_AMP` / `OVERLORD_AMP` | `1` | `0` disables AMP autocast + GradScaler (fp32) |
 | `SENTINEL_OPT` / `OVERLORD_OPT` | `adam` | `lion` selects the Lion optimizer |
@@ -124,6 +145,11 @@ Arbiter frozen gates (all CPU, `--train 0 --continue-without-training`):
 # S0 pi-only / V0 zero-value / pi0 uniform-prior ablations (see E65-E66)
 python3 scripts/aggregate_arbiter.py   # results/arbiter_summary.csv (pooled tables)
 python3 scripts/plot_arbiter.py        # results/figures/arbiter_*.png + captions
+
+# per-round win rate / mean rank (tournament objective, E88/P1.3):
+python3 scripts/tournament_eval.py --agents arbiter rule_based_agent \
+  rule_based_agent rule_based_agent --n-rounds 40 --seed 0
+python3 scripts/diag_arbiter_deaths.py  # death/missed-kill attribution from ARBITER_DIAG jsonl
 ```
 
 Legacy (sentinel matrix):
@@ -136,7 +162,9 @@ python3 scripts/plot_eval.py                 # figures
 
 Ship rule (E30): nothing ships without ≥100 rounds × 2 seeds; bar = pooled
 score/round vs 3× rule_based above the incumbent ship. Current standing:
-arbiter 3.95 > overlord 3.79 (E66–E69). Full ledger: `docs/experiments.md`.
+arbiter **4.775** (E88) > E80 arbiter 4.345 > overlord 3.79.
+Field-proxy + win-rate gates (E88) also on file. Full ledger:
+`docs/experiments.md`.
 
 ## Health checks
 
@@ -146,8 +174,10 @@ python3 test_cuda.py                # sentinel MLP fwd/bwd + checkpoint round-tr
 python3 scripts/check_optimizer.py  # optimizer parity / determinism / factory gates
 python3 scripts/verify_dml_optimizer.py  # full CUDA training-path verification
 python3 test.py                     # 1-round game smoke test
-python3 scripts/probe_arbiter.py    # arbiter static gates (17/17: shapes, parity, latency)
+python3 scripts/probe_arbiter.py    # arbiter static gates (shapes, parity, escape correctness, latency)
 python3 scripts/probe_arbiter_sim.py  # sim-vs-engine parity (blast/step/A1/expectation)
+python3 scripts/probe_arbiter_crn.py  # CRN rollout-seed wiring + determinism (E88)
+python3 scripts/probe_reaper_features.py  # reaper feature/escape parity gates (9/9)
 ```
 
 ## Repo layout
@@ -166,8 +196,10 @@ python3 scripts/probe_arbiter_sim.py  # sim-vs-engine parity (blast/step/A1/expe
 - `dml_optimizer.py` — optimizer factory (stock Adam/AdamW on CUDA/CPU, Lion;
   legacy DML-safe variants kept for old-checkpoint resume) + LR schedule
 - `scripts/` — arbiter pipeline (`collect_apex_demos`, `arbiter_extract`,
-  `pretrain_arbiter`, `probe_arbiter[_sim]`, `aggregate/plot_arbiter`),
-  curricula, eval matrix, optimizer benchmarks and gates
+  `pretrain_arbiter`, `probe_arbiter[_sim|_crn]`, `aggregate/plot_arbiter`),
+  win-rate harness (`tournament_eval`), death attribution
+  (`diag_arbiter_deaths`), curricula, eval matrix, optimizer benchmarks
+  and gates
 - `docs/` — `training_stages.md` (stage dossier), `experiments.md` (log),
   `demo_manifest.md` (corpus fingerprint + restore)
 - `results/`, `logs/`, `agent_code/*/runs/`, heavy checkpoints, demo corpora —

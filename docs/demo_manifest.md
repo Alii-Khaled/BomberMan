@@ -30,6 +30,35 @@ Backup (byte-identical, fingerprint-verified):
 Restore: `cp -r /home/jovyan/work/__shared/demos_backup/arbiter_self/<dir>
 results/demos/` then re-verify the fingerprint.
 
+## Arbiter E88 corrected-feature corpus (2026-09-10; `results/demos/arbiter_self_e88[_<field>]/`)
+
+Recorder: `agent_code/arbiter_dagger/` running the promoted E88 act
+config (corrected escape solver + score margin 0.6). Command:
+`DEMO_PREFIX=arbiter_self_e88 DAGGER_N=200 ARBITER_BOMB_SCORE_MARGIN=0.6
+bash scripts/collect_arbiter_self.sh`. The rb dir holds 112 rounds: a
+first launch was killed after 12 rounds and the detached rerun resumed
+from the recorder's max round-ID, so both segments share one
+policy/config (the E88 corpus is intentionally separate from the E80
+`arbiter_self` buggy-feature rows).
+
+| Dir | Rounds | Steps |
+|---|---|---|
+| arbiter_self_e88 (rb) | 112 | 26,734 |
+| arbiter_self_e88_wm | 50 | 10,991 |
+| arbiter_self_e88_rn | 25 | 10,000 |
+| arbiter_self_e88_cl | 25 | 7,341 |
+| **Total** | **212** | **55,066, 0 bad** |
+
+Action mix: UP .191 / RIGHT .212 / DOWN .191 / LEFT .209 / WAIT .125 / BOMB .071.
+Fingerprint (sha256 of sorted per-file sha256 list):
+**`df8aad3c9d46b720`** (equals the E88 cache's 55,066 teacher-4 rows).
+Backup (byte-identical, fingerprint-verified):
+`/home/jovyan/work/__shared/demos_backup/arbiter_self_e88/` (same four dirs).
+Usage: the E88 corrected-feature retrain trains on re-extracted
+apex-format rows + these rows only (`python3 scripts/arbiter_extract.py
+--reaper-include=arbiter_self_e88`); the E80 buggy-feature corpus is
+excluded by design (E88 ledger).
+
 ## Apex-format (`results/apex_demos/<teacher>/`, B3: img uint8 T,12,17,17 ×4 + sc T,16 + act T,)
 
 Recorder: `agent_code/apex_teacher/` (`APEX_TEACHER=<t>`, resume-safe round IDs).

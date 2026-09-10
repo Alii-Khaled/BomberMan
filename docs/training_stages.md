@@ -296,16 +296,32 @@ The training that exists, with configs, bars, and evidence locations:
   (got 0.757) → `agent_code/arbiter/my-saved-model.pt` (+ `.meta.json`).
   Env: `ARBITER_PI_TEACHERS` (default {warden,sentinel,overlord}),
   `ARBITER_V_TEACHERS` (+collector), `ARBITER_V_W`, `--epochs/--batch/--lr/--seed`.
+- **P0-E88 corrected-feature variant (E88):** after the escape-solver
+  fix, re-extracting the apex corpus with corrected features plus 212
+  fresh self-demos (`--reaper-include=arbiter_self_e88`; 178,278 pi /
+  123,212 V rows) gives candidate val_acc 0.710 (E80 0.757). The
+  candidate does NOT beat the frozen E80 prior on the corrected solver
+  (G1 4.590 vs 4.775), so the ship keeps the E80 weights; the clean
+  cache + candidate remain as `results/arbiter_e88_cache.npz` /
+  `results/arbiter_e88_candidate.pt` (report ablation).
 - **P1 search (E66, inference-only):** no training; `sim.py` + `search.py`
-  wired as `ARBITER_SEARCH=search` (budget 0.30 s). Knobs:
-  `ARBITER_SEARCH_H/K/R/PLANS`, `ARBITER_V_BLEND`, `ARBITER_BOMB_MARGIN`,
+  wired as `ARBITER_SEARCH=search` (budget 0.30 s). Ship defaults:
+  score margin 0.6, `ARBITER_CRN=1` (E88). Knobs:
+  `ARBITER_SEARCH_H/K/R/PLANS`, `ARBITER_V_BLEND`,
+  `ARBITER_BOMB_SCORE_MARGIN` (legacy alias `ARBITER_BOMB_MARGIN`; E88),
+  `ARBITER_BOMB_ESC_MARGIN` (safety mask, E87/E88),
+  `ARBITER_PLANT_ESC` (search bomb gate, E88), `ARBITER_CRN` (paired
+  rollout draws, E88),
   `ARBITER_W_{CRATE,COIN_TILE,OPP_TILE,DEATH}`, `ARBITER_ESC_DIST`,
   `ARBITER_TRAP_HARD/_P`, `ARBITER_{PI,V}_OFF` (ablations).
-- **Gates:** G1 rb 100×2 (3.95 ship) · G2 warden-mix 60×2 (3.67) ·
-  G3 collectors 40×2 (2.85) · G4 random 40×2 (6.13) · S0 / V0 / pi0
-  ablations; tables in `results/arbiter_summary.csv`
-  (`scripts/aggregate_arbiter.py`), figures in `results/figures/`
-  (`scripts/plot_arbiter.py`).
-- **Ship protocol:** same E30 rule; ship bar pooled > 3.79 (G1 3.95);
-  current ship with zero-env defaults (`SEARCH=search`, `ESC_DIST=3.0`).
+- **Gates:** G1 rb 100×2 **4.775 ship (E88; E80 4.345, E66 3.95)** ·
+  G2 warden-mix 60×2 (3.67) · G3 collectors 40×2 (2.85) · G4 random
+  40×2 (6.13) · S0 / V0 / pi0 ablations; tables in
+  `results/arbiter_summary.csv` (`scripts/aggregate_arbiter.py`),
+  figures in `results/figures/` (`scripts/plot_arbiter.py`).
+- **Tournament gates (E88):** field-proxy 4-seed means all above E80
+  (4.94/5.29/8.54/5.52) and per-round win-rate via
+  `scripts/tournament_eval.py` (G1 0.41 vs 0.32; STRONG 0.40 vs 0.37).
+- **Ship protocol:** same E30 rule; current ship with zero-env defaults
+  (`SEARCH=search`, score margin 0.6, `CRN=1`, `ESC_DIST=3.0`).
   Zip: `agent_code/arbiter/` only (E68 audit).
