@@ -44,7 +44,11 @@ HORIZON = _env_int('REAPER_HORIZON', 8, 4, 12)
 
 # E87: minimum post-plant first-step escape directions for BOMB to be
 # certified safe. 1 == ship behavior (any()); the gate run uses 2.
-BOMB_MARGIN = _env_int('ARBITER_BOMB_MARGIN', 1, 1, 4)
+# E88: de-conflicted from search.py's bomb-vs-move SCORE margin (both used
+# to read ARBITER_BOMB_MARGIN with different types/defaults). This knob is
+# now ARBITER_BOMB_ESC_MARGIN; BOMB_MARGIN kept as an import-compat alias.
+ESC_MARGIN = _env_int('ARBITER_BOMB_ESC_MARGIN', 1, 1, 4)
+BOMB_MARGIN = ESC_MARGIN
 
 
 def true_blast(arena, x, y, power=BOMB_POWER_DEFAULT):
@@ -104,12 +108,26 @@ def with_hypothetical_bomb(danger, arena, x, y, horizon=HORIZON,
 
 def first_lethal(danger, horizon=HORIZON):
     """first_lethal[x, y] = earliest t in 0..horizon that is lethal, else
-    horizon+1 (sentinel). Lets the escape BFS answer "is this tile lethal at
-    some t >= ct?" in O(1) instead of rescanning the whole time axis."""
+    horizon+1 (sentinel). Kept for API compatibility; the escape BFS uses
+    last_lethal below (earliest is insufficient when danger windows are
+    non-contiguous, e.g. a timer-0 bomb at t=0..1 plus another at t=3..4)."""
     d = np.asarray(danger)
     any_d = d.any(axis=0)
     fl = np.where(any_d, d.argmax(axis=0), horizon + 1).astype(np.int32)
     return fl
+
+
+def last_lethal(danger, horizon=HORIZON):
+    """last_lethal[x, y] = latest t in 0..horizon that is lethal, else -1.
+
+    The correct O(1) predicate for "is this tile lethal at some t >= ct"
+    is `last_lethal >= ct`: danger windows may be non-contiguous (a
+    timer-0 bomb marks t=0 and t=1; a farther bomb marks t=3 and t=4), so
+    the earliest lethal time alone can miss a later window."""
+    d = np.asarray(danger)
+    any_d = d.any(axis=0)
+    ll = np.where(any_d, horizon - d[::-1].argmax(axis=0), -1).astype(np.int32)
+    return ll
 
 
 def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
@@ -131,7 +149,11 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
     free_b = (ar == 0).reshape(-1).tobytes()          # 1 == walkable floor
     dng = np.asarray(danger, dtype=bool)
     dang_b = dng.reshape(-1).tobytes()                # (t*W + x)*H + y
-    fl_flat = first_lethal(dng, horizon).reshape(-1).tolist()
+    # E88 fix: "lethal at some t >= ct" needs the LAST lethal time, not the
+    # first (non-contiguous bomb windows), and arrival lethality must be
+    # checked BEFORE a tile is marked safe. Pre-fix, a tile lethal at
+    # t=0..1 (timer-0 bomb) reached at ct=1 was added to found_safe.
+    ll_flat = last_lethal(dng, horizon).reshape(-1).tolist()
     plane = W * H
 
     bomb_cells = set()
@@ -170,9 +192,10 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
     while q:
         cx, cy, ct, fmi = q.popleft()
         ci = cx * H + cy
-        fl = fl_flat[ci]
-        # lethal at some t in [ct, horizon]?  (fl is the earliest lethal t)
-        future_hit = fl <= horizon and fl >= ct
+        if dang_b[ct * plane + ci]:
+            continue                                   # lethal on arrival
+        # lethal at some t in [ct, horizon]?  (ll is the latest lethal t)
+        future_hit = ll_flat[ci] >= ct
         if not future_hit:
             found_safe.add(fmi)
             if ct < dist_to_safe:
@@ -180,8 +203,6 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
         if ct == horizon:
             safe_first.add(fmi)
             continue
-        if dang_b[ct * plane + ci]:
-            continue                                   # died on this tile
         if ct >= 1 and not future_hit:
             safe_first.add(fmi)
         nt = ct + 1
@@ -356,13 +377,13 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
     danger_hyp = with_hypothetical_bomb(danger, arena, x, y, horizon, bomb_timer, power)
     bombs_hyp = list(bombs or []) + [((x, y), bomb_timer)]
     safe_hyp, dist_hyp = escape_bfs((x, y), arena, bombs_hyp, others_xy, danger_hyp, horizon)
-    # E87 (ARBITER_BOMB_MARGIN, default 1 = ship-identical): require at
+    # E87 (ARBITER_BOMB_ESC_MARGIN, default 1 = ship-identical): require at
     # least M post-plant first-step escape DIRECTIONS (not just one).
     # Phase A diagnosis: single-escape plants died 18/39 (46%); esc>=2
     # plants 3/1379 (0.2%). n_esc >= 1 is exactly the legacy any().
     _bomb_dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)]
     n_esc = sum(1 for d in _bomb_dirs if safe_hyp.get(d, False))
-    can_escape = n_esc >= BOMB_MARGIN
+    can_escape = n_esc >= ESC_MARGIN
     # WAIT is not an escape from own bomb (staying dies at t=4/5 if in blast)
     # so exclude (0,0) from can_escape.
     # BOMB is safe iff valid and escape exists and current tile escapable

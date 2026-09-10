@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E87 probe: ARBITER_BOMB_MARGIN gate on BOMB certification.
+"""E87/E88 probe: ARBITER_BOMB_ESC_MARGIN gate on BOMB certification.
 
 Validates (1) default margin=1 is bit-identical to the legacy any()
 semantics, (2) margin=2 vetoes single-escape plants, (3) the veto
@@ -51,7 +51,8 @@ def gs(x=1, y=1, bombs=None, crates=(), others=(), step=10, bombs_left=1):
 def run_agent(game_state, env=None, monkey_agent=None):
     """Full act() through the real callbacks module with env set."""
     import importlib
-    old = {k: os.environ.get(k) for k in ('ARBITER_BOMB_MARGIN',)}
+    old = {k: os.environ.get(k)
+           for k in ('ARBITER_BOMB_ESC_MARGIN', 'ARBITER_BOMB_MARGIN')}
     try:
         for k, v in env.items():
             if v is None:
@@ -107,11 +108,11 @@ def probe_margin_safety():
     g0 = g(fld0)
     res = {}
     for margin in (1, 2, 3):
-        os.environ['ARBITER_BOMB_MARGIN'] = str(margin)
+        os.environ['ARBITER_BOMB_ESC_MARGIN'] = str(margin)
         importlib.reload(saf)
         res[(margin, 'esc2')] = action_safety(g2)['safe']['BOMB']
         res[(margin, 'esc0')] = action_safety(g0)['safe']['BOMB']
-    os.environ.pop('ARBITER_BOMB_MARGIN', None)
+    os.environ.pop('ARBITER_BOMB_ESC_MARGIN', None)
     importlib.reload(saf)
     print('  esc2: m1=%s m2=%s m3=%s | esc0: m1=%s' % (
         res[(1, 'esc2')], res[(2, 'esc2')], res[(3, 'esc2')],
@@ -125,11 +126,12 @@ def probe_margin_safety():
 @group
 def probe_default_bitidentical():
     """No env knob: module constant must be 1 and act path unchanged."""
-    os.environ.pop('ARBITER_BOMB_MARGIN', None)
+    os.environ.pop('ARBITER_BOMB_ESC_MARGIN', None)
     import agent_code.arbiter.safety as saf
     importlib.reload(saf)
+    assert saf.ESC_MARGIN == 1, saf.ESC_MARGIN
     assert saf.BOMB_MARGIN == 1, saf.BOMB_MARGIN
-    print('  default BOMB_MARGIN == 1 (ship-identical)')
+    print('  default ESC_MARGIN == 1 (ship-identical)')
 
 
 @group
@@ -160,7 +162,7 @@ def probe_act_veto():
                       crates=[(2, 1), (1, 4)]), env={})
     a2 = run_agent(gs(x=found[0], y=found[1],
                       crates=[(2, 1), (1, 4)]),
-                   env={'ARBITER_BOMB_MARGIN': '2'})
+                   env={'ARBITER_BOMB_ESC_MARGIN': '2'})
     print('  tile %s: default act=%s margin2 act=%s' % (found, a1, a2))
     # not asserting different actions deterministically (search may pick
     # a move either way); assert no crash + valid output
@@ -172,7 +174,7 @@ def probe_act_veto():
 def probe_smoke_margin2():
     """1 live round with margin=2: no act failures, sane score."""
     import subprocess
-    env = dict(os.environ, ARBITER_BOMB_MARGIN='2')
+    env = dict(os.environ, ARBITER_BOMB_ESC_MARGIN='2')
     r = subprocess.run(
         ['python3', 'main.py', 'play', '--no-gui', '--agents', 'arbiter',
          'rule_based_agent', 'rule_based_agent', 'rule_based_agent',
