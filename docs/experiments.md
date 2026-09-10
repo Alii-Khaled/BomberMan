@@ -3163,3 +3163,124 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   (21.09 21:00), public-repo push. `reaper` received the same
   escape-solver fix (report model only).
 - **Verdict:** CLOSE-OUT. Ship = E88. **Report:** §5/§6.
+
+### E90 — E88 ship death diagnosis v2 + flee-quality arm ❌ REJECTED
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-10
+- **Inspiration:** Phase-2 diagnosis of the promoted E88 ship (60
+  instrumented rounds: 25×2 G1 + 10 warden-mix, `ARBITER_DIAG`,
+  repaired analyzer).
+- **Analyzer fix (v2):** the plant tick is now the START of the
+  CONTIGUOUS snapshot block containing the killer bomb (the first-ever
+  coordinate occurrence belonged to older bombs on re-bombed tiles),
+  and the engine's KILLED_SELF/GOT_KILLED event is authoritative for
+  ownership. Taxonomy moved own_bomb_chain 54% · corner_pin 33% ·
+  enemy_lucky/sim_miss/enemy_trap 4% each; realized trap certificates
+  3/29 (up from 1 pre-fix).
+- **Mechanism found (54% class):** in 13 own-bomb deaths the agent had
+  ≥2 mask-safe moves at the plant tick but picked a route that led into
+  a one-tile pocket; an opponent then stepped into the choke
+  (`n_safe=0`, WAIT into the blast). In 12/13 cases the chosen move was
+  NOT the top open-space/opponent-distance option. This is the
+  interference class E87 named, now quantifiable: static `escape_bfs`
+  cannot see the opponent's next body move.
+- **Arm:** `ARBITER_FLEE_Q` (env, default 0): while fleeing
+  (flee_timer/must_flee), re-rank the mask's valid+safe moves by free
+  neighbours at the destination + 0.25 × min Manhattan opponent
+  distance (pi breaks ties). Certified-only, feature-neutral (no
+  `state_to_features` change); probe `scripts/probe_arbiter_flee.py`.
+- **Results — FLEE_Q=1:** 40rd × 2 seeds pooled **3.775** (suicides
+  0.100/0.100 vs reference 0.200/0.275) and G1 100rd × 2 pooled
+  **3.540** (3.670/3.410) vs the E88 ship's **4.775** (4.710/4.840) →
+  **−1.235**. Composition: suicides −0.185, but kills −0.155 and coins
+  −0.46 — the safer flee routes surrender contested economy. Same
+  lesson as E83/E87: the aggressive calibration is load-bearing.
+- **Verdict:** REJECT. `ARBITER_FLEE_Q` stays default-0 (ablation kept,
+  probe-wired). Death lever closed again; the remaining own-bomb deaths
+  are the price of aggression, not a mask bug. **Report:** §5/§6
+  (interference mechanism + the de-aggression cost).
+
+### E91 — Engine-vs-mask fuzz harness ✅ (methods, no behavior change)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-10
+- **Scope:** Phase-2 robustness workstream, no ship change.
+- **G2c (new in `scripts/probe_arbiter_sim.py`):** long-horizon fuzz
+  parity — single agent, 15 random steps per trial, full-state compare
+  (arena/coins/scores/alive/bombs_left/bombs/explosions) each step.
+  **0 mismatches / 225 steps** after guarding the harness against
+  moving dead agents (first run's 10 diffs were a harness artifact).
+- **G6 (new):** mask-vs-engine survival fuzz — for 60 random
+  single-agent states, every `valid & safe` mask move is executed
+  through the ENGINE's own step functions and must survive.
+  **0 false-safes / 105 safe moves** (the E88 bug class, now
+  regression-guarded under randomized states).
+- **A1/invalid-action audit (2D.3, from the E88 diag ticks):** 224
+  INVALID_ACTION events / 15,948 ticks (~3.7/round, 1.4% of steps),
+  essentially ALL contested-tile races: the target tile was free at the
+  decision tick but an adjacent opponent stepped into the same tile and
+  the engine's random action permutation resolved it against us. No
+  mask bug; the tax is small and symmetric (rule_based agents pay
+  6-7/rd). No behavior change.
+- **Verdict:** PASS (harness + audit). **Report:** §5 (fuzz
+  methodology; contested-tile measurement).
+
+### E92 — Phase-2 screens: kill line re-open + capacity sweep ❌ all REJECTED
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-10
+- **Setup:** pre-registered 40rd × 2 screens vs a same-session control
+  (pooled 4.41), advance iff pooled ≥ 4.61. All arms on the E88 ship
+  (fixed solver + margin 0.6 + CRN).
+- **Screens (40rd × 2 pooled, vs control 4.41):** `HUNT=1` **4.68
+  (+0.26)** · `TRAP_HARD=2/TRAP_P=.5` 4.40 (−0.01) · `CERT_OWN=1`
+  4.35 (−0.06) · `K=16` 3.77 (−0.64) · `R=5` **4.93 (+0.51)** ·
+  `PLANS=96` 4.25 (−0.16) · `H=8` **4.76 (+0.35)** · `MOVE_SEEDS=2`
+  3.70 (−0.71). k16/ms2 reproduce E70/E78 (breadth/averaging hurt).
+- **100rd × 2 validation (vs E88 ship 4.775, same seeds):** `R=5`
+  4.640 (−0.135) · `H=8` 4.195 (−0.580) · `HUNT=1` 4.145 (−0.630,
+  kills 0.39/0.25) → all REJECT. The 40-round lifts did not replicate.
+- **Combination `R=5 H=8`:** 100rd × 2 **4.980** (4.820/5.140,
+  +0.205 over the ship; kills 0.41/0.46) — passed the score bar, so
+  the full battery ran: G1 4 seeds (4.82/5.14/4.36/4.38, mean 4.675
+  vs ship 4.775), field-proxy seeds 0/1 (STRONG 5.65 +0.71 · RACER
+  6.14 +0.84 · **WEAK 7.50 −1.04 (seed 6.42 outlier)** · TRAINED 5.78
+  +0.26), win-rate **G1 0.367 vs ship 0.406**, **STRONG 0.335 vs
+  0.400**.
+- **Verdict:** REJECT r5h8 (fails the win-rate leg and the WEAK
+  non-regression; the paired G1 gain is real but not worth the
+  tournament-metric regression). The E88 ship stands. **Lesson
+  (joins E70/E71/E78):** post-ARBITER tuning knobs are within noise
+  once the escape-solver/CRN retune landed; the G1 40-round screen is
+  too noisy to promote single knobs. **Report:** §6 (screen-vs-
+  validation replication table).
+
+### E93 — Phase-2 close-out: diagnosis, kill line, capacity, fuzz ✅ (ship unchanged)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-10
+- **Scope:** the post-E88 enhancement round. Diagnosis (E90), kill-line
+  re-open (E92), capacity sweep (E92), robustness fuzz + audits (E91),
+  flee-quality policy (E90). **Every performance arm was rejected**;
+  the ship remains E88 (E80 weights sha 72ad6476 + corrected escape
+  solver + score margin 0.6 + CRN).
+- **Why the round closed:** the E88 retune moved G1 4.345→4.775 and
+  every field-proxy row up; all post-E88 single-knob candidates either
+  failed 100×2 replication (R=5, H=8, HUNT) or regressed the
+  tournament metrics (r5h8: win-rate G1 0.367/STRONG 0.335 vs
+  0.406/0.400; WEAK 7.50 vs 8.54) or the economy (FLEE_Q).
+  De-aggression levers (FLEE_Q, CERT_OWN, TRAP credit) consistently
+  lose more score than they save — the aggressive calibration is
+  load-bearing (E83/E87/E90).
+- **Robustness outcome:** no new engine/sim bug found. New permanent
+  regression guards: G2c long-horizon fuzz parity (0/225 mismatches)
+  and G6 mask-vs-engine survival (0 false-safes/105 safe moves); the
+  ~3.7/rd invalid actions are all contested-tile races (symmetric tax).
+- **Hygiene:** 11/11 probe files green; zero-env smoke passes;
+  `agent_code/arbiter/` matches the rebuilt ship zip byte-for-byte
+  (`/home/jovyan/work/__shared/arbiter_ship.zip`, sha256 `fdbf0cab…`;
+  the pre-flee-quality E88 zip archived as
+  `arbiter_ship_e88_pre-fleeq.zip`). Ledger entries E90/E91/E92/E93 +
+  README and training-stage knobs updated.
+- **Pending (user actions):** Docker build + §8 pre-run + MaMpf
+  submission test (deadline 17.09 21:00), final agent-code zip upload
+  (21.09 21:00), public-repo push.
+- **Verdict:** CLOSE-OUT. Ship = E88; Phase-2 null results documented.
+  **Report:** §5 (fuzz) + §6 (screen-vs-validation, tuning plateau).

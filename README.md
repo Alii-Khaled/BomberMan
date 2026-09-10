@@ -123,6 +123,7 @@ improvement, `ep_NNNNNN.pt` snapshots); per-round metrics append to
 | `ARBITER_PLANT_ESC` | `1` | min post-plant escape directions for the search bomb gate (E88; clean E87 redo) |
 | `ARBITER_PI_OFF` / `ARBITER_V_OFF` | `0` | `1` forces uniform prior / zero value (ablations) |
 | `ARBITER_MODEL` | unset | eval-only candidate weights path (gating; tournament default = `my-saved-model.pt`) |
+| `ARBITER_FLEE_Q` | `0` | `1` = post-plant flee moves ranked by open space/opponent distance (E90; rejected, ablation only) |
 | `SENTINEL_DEVICE` / `OVERLORD_DEVICE` | `auto` (CUDA if available, else CPU) | `cpu` forces CPU (tournament condition) |
 | `SENTINEL_AMP` / `OVERLORD_AMP` | `1` | `0` disables AMP autocast + GradScaler (fp32) |
 | `SENTINEL_OPT` / `OVERLORD_OPT` | `adam` | `lion` selects the Lion optimizer |
@@ -175,8 +176,9 @@ python3 scripts/check_optimizer.py  # optimizer parity / determinism / factory g
 python3 scripts/verify_dml_optimizer.py  # full CUDA training-path verification
 python3 test.py                     # 1-round game smoke test
 python3 scripts/probe_arbiter.py    # arbiter static gates (shapes, parity, escape correctness, latency)
-python3 scripts/probe_arbiter_sim.py  # sim-vs-engine parity (blast/step/A1/expectation)
+python3 scripts/probe_arbiter_sim.py  # sim-vs-engine parity + long-horizon/mask-survival fuzz (E90)
 python3 scripts/probe_arbiter_crn.py  # CRN rollout-seed wiring + determinism (E88)
+python3 scripts/probe_arbiter_flee.py  # flee-quality ranking wiring (E90 ablation, default off)
 python3 scripts/probe_reaper_features.py  # reaper feature/escape parity gates (9/9)
 ```
 

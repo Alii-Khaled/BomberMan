@@ -311,7 +311,8 @@ The training that exists, with configs, bars, and evidence locations:
   `ARBITER_BOMB_SCORE_MARGIN` (legacy alias `ARBITER_BOMB_MARGIN`; E88),
   `ARBITER_BOMB_ESC_MARGIN` (safety mask, E87/E88),
   `ARBITER_PLANT_ESC` (search bomb gate, E88), `ARBITER_CRN` (paired
-  rollout draws, E88),
+  rollout draws, E88), `ARBITER_FLEE_Q` (flee re-ranking, E90 REJECTED,
+  default 0),
   `ARBITER_W_{CRATE,COIN_TILE,OPP_TILE,DEATH}`, `ARBITER_ESC_DIST`,
   `ARBITER_TRAP_HARD/_P`, `ARBITER_{PI,V}_OFF` (ablations).
 - **Gates:** G1 rb 100×2 **4.775 ship (E88; E80 4.345, E66 3.95)** ·
@@ -322,6 +323,12 @@ The training that exists, with configs, bars, and evidence locations:
 - **Tournament gates (E88):** field-proxy 4-seed means all above E80
   (4.94/5.29/8.54/5.52) and per-round win-rate via
   `scripts/tournament_eval.py` (G1 0.41 vs 0.32; STRONG 0.40 vs 0.37).
+- **Phase-2 nulls (E90–E92):** post-E88 flee-quality (`ARBITER_FLEE_Q`),
+  hunt/trap/`CERT_OWN` re-tests, and capacity arms (R=5, H=8, K=16,
+  PLANS=96, MOVE_SEEDS=2) were all rejected — G1 40-round screens do
+  not replicate at 100×2 and de-aggression levers cost score; no ship
+  change. Robustness guards (long-horizon + mask-survival fuzz, E91)
+  landed in `probe_arbiter_sim.py`.
 - **Ship protocol:** same E30 rule; current ship with zero-env defaults
   (`SEARCH=search`, score margin 0.6, `CRN=1`, `ESC_DIST=3.0`).
   Zip: `agent_code/arbiter/` only (E68 audit).
