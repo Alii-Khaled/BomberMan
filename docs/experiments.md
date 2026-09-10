@@ -2810,3 +2810,42 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   the E67 precedent (3 consecutive clean rejects); Phase 4
   (re-distillation) is MOOT — the ship policy is unchanged since the
   E80 corpus. **Report:** §6 (noise-is-signal lesson).
+
+### E84 — Numbering note + documentation-completeness audit + session hygiene 📋
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-10
+- **Numbering note (E79 precedent):** **E82 now has three meanings,
+  all filed here per the append-only rule:** (1) the parallel
+  session's P3 submission-status entry (zip rebuild + handoff,
+  line ~2541); (2) this session's hunt-intent setup entry; (3) this
+  session's hunt rejection entry. All three stand. Also: the E80
+  promotion is documented twice (this ledger's close-out entries and
+  the parallel session's own promotion entry + dagship addendum) —
+  same event, identical numbers (G1 4.345; dagship legs 4.537/4.625/
+  7.45/4.537) — append-only duplication tolerated, no conflict.
+- **Audit trigger:** user asked whether every experiment is
+  documented. Cross-check of the ledger vs this session's runs found
+  every experiment covered (E80 close-out, E82 hunt, E83 noise arms
+  — each with pre-registered bars recorded BEFORE the runs); 4 gaps
+  fixed by this entry + the regenerated artifacts:
+  1. E82 collision note (this entry).
+  2. Session hygiene un-ledgered (below).
+  3. `results/arbiter_summary.csv` was stale for the three screens —
+     regenerated (480 rows): e82_pooled **3.675** · e83a_pooled
+     **3.9375** · e83b_pooled **4.1375**.
+  4. `docs/demo_manifest.md` now fingerprints the arbiter_self
+     corpus (200 npz / 51,482 steps / 0 bad, fingerprint
+     `17e2f691acb4a43d`) + byte-identical backup at
+     `__shared/demos_backup/arbiter_self/` (E64 protection pattern).
+- **Session hygiene record:** second `shipdefault` smoke 3.40
+  (`results/shipdefault_e80_s0.json`, 20rd — inside the documented
+  20rd noise class with the parallel session's 4.1 first smoke);
+  ship zip rebuilt twice independently and byte-identical
+  (626,115 B: `/tmp/arbiter_ship.zip` + `__shared/arbiter_ship.zip`,
+  CRC + bare-tree self-sufficiency green per E68); commits
+  `85df966` (E80 ship + hunt knob + probes) and `8d7eb07` (E82/E83
+  rejections + ledger) landed on local master. **Push remains a user
+  action** (no GitHub credentials on this box — E82's item 2 now
+  half-done: commit DONE, push pending; the public-repo requirement
+  from the project brief still needs the authenticated push).
+- **Verdict:** NOTE ONLY (documentation hygiene; no experiments,
+  no gate implications). **Report:** none.

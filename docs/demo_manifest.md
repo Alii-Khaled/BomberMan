@@ -7,6 +7,29 @@ sorted per-file sha256 list): **`e2239e6b1ac463d7`**.
 Backup (byte-identical, verified loadable): `/home/jovyan/work/__shared/demos_backup/`
 (`apex_demos/`, `demos/`, `apex_demos_all/` as symlinks, `apex_demos_all_resolved/`).
 
+## Arbiter self-distillation corpus (E80, 2026-09-09; `results/demos/arbiter_self[_<field>]/`)
+
+Recorder: `agent_code/arbiter_dagger/` (SHIP arbiter acts, every acted
+state saved as (98-dim feats, executed action)). Command:
+`DAGGER_N=200 bash scripts/collect_arbiter_self.sh` (gate-field split
+rb 50% / wm 25% / random 12.5% / collector 12.5%).
+
+| Dir | Rounds | Steps |
+|---|---|---|
+| arbiter_self (rb) | 100 | 22,562 |
+| arbiter_self_wm | 50 | 12,093 |
+| arbiter_self_rn | 25 | 10,000 |
+| arbiter_self_cl | 25 | 6,827 |
+| **Total** | **200** | **51,482, 0 bad** |
+
+Action mix: UP .204 / RIGHT .195 / DOWN .204 / LEFT .193 / WAIT .123 /
+BOMB .081. Fingerprint (sha256 of sorted per-file sha256 list):
+**`17e2f691acb4a43d`** (matches the ledger's 51,482 teacher-4 rows, E80).
+Backup (byte-identical, fingerprint-verified):
+`/home/jovyan/work/__shared/demos_backup/arbiter_self/` (same four dirs).
+Restore: `cp -r /home/jovyan/work/__shared/demos_backup/arbiter_self/<dir>
+results/demos/` then re-verify the fingerprint.
+
 ## Apex-format (`results/apex_demos/<teacher>/`, B3: img uint8 T,12,17,17 ×4 + sc T,16 + act T,)
 
 Recorder: `agent_code/apex_teacher/` (`APEX_TEACHER=<t>`, resume-safe round IDs).
