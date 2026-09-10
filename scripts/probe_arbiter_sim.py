@@ -10,6 +10,11 @@ arbiter.sim.step on the equivalent SimState, compare everything.
       self-first so A1 (movement order) cannot trigger.
   G2b A1 characterization: self-last seating + contested tile ->
       divergence must be confined to the contested outcome.
+  G2c long-horizon fuzz parity (E90): single agent, 15 random steps per
+      trial, full-state comparison each step (timers/restoration/staging).
+  G6 mask-vs-engine survival fuzz (E90): every valid+safe mask move is
+      executed through the ENGINE's own step; the agent must survive.
+      0 false-safes required (the E88 bug class).
   G3 hidden coins (200 trials): everything exact EXCEPT reveals, where
       sim books expectation (approximation A2) -> mean |exp-act| small.
   G4 from/to_game_state round-trip preserves observables (demo states).
@@ -324,6 +329,132 @@ for _ in range(120):
         break
 check('G2b A1 confined to contested tile', confined and seen_contest > 20,
       '%d contests' % seen_contest)
+
+# ---- G2c: long-horizon fuzz parity (single agent, 15 steps) ----
+# Multi-step coverage for timer restoration, explosion staging, coin
+# reveals and scoring. Single agent so A1 (movement order) cannot
+# trigger; hidden=False keeps the comparison exact.
+bad = 0
+steps_run = 0
+for _ in range(max(1, N // 20)):
+    fw, fagents, st, _a0 = build_world(
+        n_agents=1, n_bombs=int(rng.integers(0, 4)),
+        n_exp=int(rng.integers(0, 3)), n_coins=int(rng.integers(0, 6)),
+        hidden=False)
+    for _ in range(15):
+        opts = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT']
+        if fagents[0].bombs_left:
+            opts.append('BOMB')
+        acts = [opts[int(rng.integers(len(opts)))]]
+        # engine step: only ACTIVE agents act (dead agents are removed)
+        if not fagents[0].dead:
+            BombeRLeWorld.perform_agent_action(fw, fagents[0], acts[0])
+        BombeRLeWorld.collect_coins(fw)
+        BombeRLeWorld.update_explosions(fw)
+        BombeRLeWorld.update_bombs(fw)
+        BombeRLeWorld.evaluate_explosions(fw)
+        fw.step += 1
+        SIM.step(st, acts)
+        steps_run += 1
+        d = cmp_snap(snapshot_world(fw, fagents), snapshot_sim(st))
+        if d:
+            bad += 1
+            if bad <= 3:
+                print('   fuzz diff:', d)
+            break
+check('G2c long-horizon fuzz parity', bad == 0,
+      '%d mismatches / %d steps' % (bad, steps_run))
+
+# ---- G6: mask-safe move must survive the engine's own next step ----
+# The E88 bug class: escape_bfs certified moves into live blasts. For a
+# single-agent state, take every move the mask marks valid+safe and run
+# the ENGINE's step with exactly that action; the agent must survive.
+import arbiter.safety as SAF
+
+
+def _exp_map(world):
+    em = np.zeros_like(world.arena, dtype=float)
+    for ex in world.explosions:
+        if ex.is_dangerous():
+            for (x, y) in ex.blast_coords:
+                em[x, y] = max(em[x, y], ex.timer - 1)
+    return em
+
+
+def _spec_state():
+    arena = make_arena()
+    spots = free_tiles(arena)
+    rng.shuffle(spots)
+    (x, y) = spots[0]
+    occ = {(x, y)}
+    bombs = []
+    for _ in range(int(rng.integers(1, 4))):
+        cands = [t for t in free_tiles(arena, occ) if t not in occ]
+        if not cands:
+            break
+        (bx, by) = cands[int(rng.integers(len(cands)))]
+        bombs.append((bx, by, int(rng.integers(0, 5))))
+        occ.add((bx, by))
+    exps = []
+    for _ in range(int(rng.integers(0, 2))):
+        cands = free_tiles(arena, occ)
+        if not cands:
+            break
+        (ex, ey) = cands[int(rng.integers(len(cands)))]
+        exps.append(((ex, ey), int(rng.integers(1, s.EXPLOSION_TIMER + 1))))
+        occ.add((ex, ey))
+    return arena, (x, y), bombs, exps
+
+
+def _spec_world(arena, pos, bombs, exps):
+    a = FakeAgent('a0', pos[0], pos[1], bombs_left=True)
+    fw = FakeWorld()
+    fw.arena = arena.copy()
+    fw.bombs = [Bomb((bx, by), a, t, 3, None) for (bx, by, t) in bombs]
+    fw.explosions = []
+    for ((ex, ey), t) in exps:
+        e = Explosion([(ex, ey)], [], a, s.EXPLOSION_TIMER)
+        e.timer = t
+        fw.explosions.append(e)
+    fw.coins = []
+    fw.active_agents = [a]
+    fw.agents = [a]
+    fw.step = 10
+    fw.running = True
+    fw.logger = _logger
+    return fw, a
+
+
+false_safe = 0
+safe_checked = 0
+g6_states = 0
+for _ in range(max(40, N // 5)):
+    arena, pos, bombs, exps = _spec_state()
+    fw0, a0 = _spec_world(arena, pos, bombs, exps)
+    gs = {'round': 1, 'step': 10, 'field': arena.copy(),
+          'bombs': [((b.x, b.y), int(b.timer)) for b in fw0.bombs],
+          'explosion_map': _exp_map(fw0),
+          'coins': [], 'self': ('a0', 0, True, pos), 'others': []}
+    sa = SAF.action_safety(gs)
+    g6_states += 1
+    for act in ('UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT'):
+        if not (sa['valid'].get(act) and sa['safe'].get(act)):
+            continue
+        fw, a = _spec_world(arena, pos, bombs, exps)
+        BombeRLeWorld.perform_agent_action(fw, a, act)
+        BombeRLeWorld.collect_coins(fw)
+        BombeRLeWorld.update_explosions(fw)
+        BombeRLeWorld.update_bombs(fw)
+        BombeRLeWorld.evaluate_explosions(fw)
+        safe_checked += 1
+        if a.dead:
+            false_safe += 1
+            if false_safe <= 3:
+                print('   false-safe:', act, 'pos', pos,
+                      'bombs', bombs, 'exps', exps)
+check('G6 mask-safe survives engine step', false_safe == 0,
+      '%d false-safe / %d safe moves over %d states' % (
+          false_safe, safe_checked, g6_states))
 
 # ---- G3: hidden coins (expectation, not exactness) ----
 bad = 0
