@@ -122,6 +122,21 @@ CHAIN_GUARD = os.environ.get('ARBITER_CHAIN_GUARD', '0') == '1'
 # bombs/rd), and strict certification vetoes contested bombs.
 TRAP_HARD = _env_float('ARBITER_TRAP_HARD', 0.0)
 TRAP_P = _env_float('ARBITER_TRAP_P', 0.5)
+# E82 hunt-intent (W1): pursuit bomb plans. When the warden hunt
+# trigger holds (opponents present AND [loot <= 6 | step > 200 | opp
+# within Manhattan 3]), each opponent gets ONE bomb plan at the best
+# free tile whose hypothetical blast covers the opponent (BFS path +
+# BOMB prefix), admitted through the SAME _try_bomb_plan gate as every
+# other tile (E14b: one gate, no special cases). Appended after the
+# ranked walk (E72b seed-index discipline: ranked plans keep their
+# rollout-seed indices; the bomb cap extends by len(hunt plans)).
+# Default 0 = validated flow, bit-identical.
+HUNT = os.environ.get('ARBITER_HUNT', '0') == '1'
+HUNT_PLANS = _env_int('ARBITER_HUNT_PLANS', 2, 1, 4)
+# Pursuit distance cap: 4 = the ranked walk's radius — identical
+# path-staleness class (certifies the bomb tile, not the path, E70
+# lesson); receding-horizon re-scoring covers the rest.
+HUNT_DIST = _env_int('ARBITER_HUNT_DIST', 4, 1, 11)
 
 
 def _bfs_path(arena, blocked, start, goal, limit=12):
@@ -263,6 +278,40 @@ def _try_bomb_plan(arena, blocked, bombs, others_xy, danger,
     return True
 
 
+def hunt_trigger_ok(arena, n_coins, others_xy, x, y, step):
+    """Warden hunt predicate (pure, directly probed): opponents present
+    AND (loot <= 6 | step > 200 | opponent within Manhattan 3)."""
+    if not others_xy:
+        return False
+    loot = int((np.asarray(arena) == 1).sum()) + int(n_coins)
+    dmin = min(abs(ox - x) + abs(oy - y) for (ox, oy) in others_xy)
+    return bool(loot <= 6 or step > 200 or dmin <= 3)
+
+
+def hunt_tiles(arena, blocked, ox, oy):
+    """Free tiles whose hypothetical blast covers the opp tile (ox, oy).
+
+    Rays from the opp tile in all 4 directions up to blast power 3:
+    a bomb at tile T covers the opp iff the opp tile is reachable from
+    T through non-wall tiles (crates pass blast but cannot be stood
+    on; bombs/agents block standing but not the ray). Returned
+    ring-first (dist 1, 2, 3), dir order fixed for determinism.
+    """
+    W, Hh = arena.shape[0], arena.shape[1]
+    out = []
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        for i in range(1, 4):
+            tx, ty = ox + dx * i, oy + dy * i
+            if not (0 <= tx < W and 0 <= ty < Hh):
+                break
+            if arena[tx, ty] == -1:
+                break
+            if arena[tx, ty] != 0 or (tx, ty) in blocked:
+                continue
+            out.append((tx, ty))
+    return out
+
+
 def gen_plans(game_state, safety, K=K, radius=RADIUS):
     """Root candidate plans. Each plan: dict(first, prefix, bomb_at)."""
     from .safety import escape_bfs, future_danger, with_hypothetical_bomb
@@ -270,6 +319,7 @@ def gen_plans(game_state, safety, K=K, radius=RADIUS):
     arena = np.asarray(game_state['field'])
     _, _, bombs_left, (x, y) = game_state['self']
     x, y = int(x), int(y)
+    step = int(game_state.get('step', 0))
     bombs = game_state.get('bombs', []) or []
     bomb_set = set((int(bxy[0]), int(bxy[1])) for (bxy, _) in bombs)
     others = game_state.get('others', []) or []
@@ -406,6 +456,42 @@ def gen_plans(game_state, safety, K=K, radius=RADIUS):
                     _try_bomb_plan(arena, blocked, bombs, others_xy,
                                    danger, plans, x, y, _fx, _fy,
                                    tile_yield)
+            # E82 hunt-intent: one pursuit bomb plan per opponent
+            # (max HUNT_PLANS total), nearest opp first. Candidate
+            # tiles ring-first, then by BFS dist from us; ONE gate
+            # authority (_try_bomb_plan). Pure max-addition after the
+            # ranked walk.
+            if HUNT and others_xy and hunt_trigger_ok(
+                    arena, len(coins_xy), others_xy, x, y, step):
+                from .sim import blast_coords as _hblast
+                _n0 = len([p for p in plans if p['bomb_at']])
+                for (ox, oy) in sorted(
+                        others_xy,
+                        key=lambda o: abs(o[0] - x) + abs(o[1] - y)):
+                    if len([p for p in plans if p['bomb_at']]) \
+                            - _n0 >= HUNT_PLANS:
+                        break
+                    _cand = [t for t in hunt_tiles(arena, blocked,
+                                                   ox, oy)
+                             if int(dist[t]) <= HUNT_DIST
+                             and t not in [p['bomb_at'] for p in plans
+                                           if p['bomb_at']]]
+                    _cand.sort(key=lambda t: int(dist[t]))
+                    for (_tx, _ty) in _cand:
+                        try:
+                            _hb = set(_hblast(arena, _tx, _ty))
+                            tile_yield[(_tx, _ty)] = float(sum(
+                                1 for (bx, by) in _hb
+                                if arena[bx, by] == 1)) \
+                                + 2.0 * float(sum(
+                                    1 for o in others_xy if o in _hb))
+                        except Exception:
+                            pass
+                        if _try_bomb_plan(
+                                arena, blocked, bombs, others_xy,
+                                danger, plans, x, y, _tx, _ty,
+                                tile_yield):
+                            break
     return plans
 
 

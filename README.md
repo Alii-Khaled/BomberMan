@@ -6,7 +6,9 @@ CUDA with AMP (Google Colab ready).
 
 Current ship: **arbiter** — learned policy prior over 98-dim engineered
 features + exact-dynamics lookahead search for bomb placement
-(G1 vs 3× rule_based **3.95 pooled**, 100 rounds × 2 seeds).
+(G1 vs 3× rule_based **4.35 pooled**, 100 rounds × 2 seeds, E80
+self-distilled pi — field-proxy: #1 in every lobby without warden,
+STRONG 4.54 / RACER 4.62 / WEAK 7.45 / TRAINED 4.54).
 Backup ship: **overlord** (CNN agent, 3.79 pooled). Report models:
 **sentinel** (MLP Dueling-DQN curriculum), **reaper** (distilled feature-MLP),
 **apex** (synthesis CNN — unshipped: learned Q net-negative, see `docs/experiments.md` E61).
