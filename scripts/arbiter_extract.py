@@ -18,7 +18,15 @@ Teacher ids: 0 warden / 1 sentinel / 2 overlord / 3 collector.
   pi trains on {0,1,2} by default (collector's 0.59-suicide actions must
   not enter the prior); V trains on all four (collector states teach
   high-yield positions). Splits are env-overridable in pretrain.
-Usage: python3 scripts/arbiter_extract.py [--out PATH]
+Usage: python3 scripts/arbiter_extract.py [--out PATH] [--skip-reaper]
+       [--reaper-include=prefix1,prefix2]
+
+--skip-reaper (E88): omit all results/demos/* reaper-format rows.
+--reaper-include (E88): keep only reaper-format dirs whose basename
+starts with one of the comma-separated prefixes, e.g.
+--reaper-include=arbiter_self_e88 keeps the corrected-feature self
+corpus and drops the old buggy-feature warden/sentinel/overlord/
+arbiter_self rows.
 """
 import glob
 import hashlib
@@ -33,9 +41,13 @@ import numpy as np
 import arbiter.features as AF
 
 OUT = os.path.join(REPO, 'results', 'arbiter_p0_cache.npz')
+SKIP_REAPER = '--skip-reaper' in sys.argv
+REAPER_INCLUDE = None
 for a in sys.argv[1:]:
     if a == '--out':
         OUT = sys.argv[sys.argv.index(a) + 1]
+    elif a.startswith('--reaper-include='):
+        REAPER_INCLUDE = [p for p in a.split('=', 1)[1].split(',') if p]
 
 TEACHER_ID = {'warden': 0, 'warden_v1': 0, 'sentinel': 1, 'overlord': 2,
               'coin_collector_agent': 3, 'collector': 3,
@@ -93,7 +105,17 @@ def main():
             print('  apex %d/%d' % (fi + 1, len(apex_files)), flush=True)
     # reaper-format: feats+acts direct, pi-only
     reaper_files = sorted(glob.glob(os.path.join(REPO, 'results/demos/*/*.npz')))
-    print('reaper-format files: %d' % len(reaper_files))
+    if SKIP_REAPER:
+        reaper_files = []
+    if REAPER_INCLUDE:
+        reaper_files = [
+            f for f in reaper_files
+            if any(os.path.basename(os.path.dirname(f)).startswith(p)
+                   for p in REAPER_INCLUDE)]
+    print('reaper-format files: %d%s%s' % (
+        len(reaper_files),
+        ' (skipped)' if SKIP_REAPER else '',
+        ' (include=%s)' % ','.join(REAPER_INCLUDE) if REAPER_INCLUDE else ''))
     for f in reaper_files:
         d = np.load(f)
         feats = d['feats'].astype(np.float32)
