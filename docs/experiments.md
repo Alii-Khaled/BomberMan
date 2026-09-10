@@ -2538,6 +2538,36 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   real regression. Promotion CONFIRMED: **DAGGER-ship is the
   tournament agent** (G1 4.345 + field legs green).
 
+### E82 — P3 submission status: zip rebuilt+verified; 3 user actions left 📋
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-10
+- **Done this session:** `__shared/arbiter_ship.zip` rebuilt from
+  `agent_code/arbiter/` (10 files, 626 KB, DAGGER weights sha
+  `72ad6476…` verified identical to live) + bare-tree
+  self-sufficiency re-test (import + setup + legal act, no repo
+  files touched — E68 method). `arbiter_summary.csv` regenerated
+  (444 rows: e74co/e75/e76/e77/e78/e80 included).
+  `overlord_ship.zip` untouched (backup still valid).
+- **Cannot do from this box (user actions):**
+  1. `docker build .` + §8 pre-run protocol (no docker binary
+     here — same constraint as E68) + MaMPF submission test
+     upload **before 17.09 21:00**.
+  2. `git commit` of the untracked trees
+     (`agent_code/{arbiter,arbiter_dagger,reaper,apex,…}`,
+     `scripts/probe_arbiter_{fault,chain,moveseeds}.py`,
+     `run_fieldproxy.sh`, `collect_arbiter_self.sh`,
+     `docs/experiments.md` E74–E82) — no git identity configured
+     on this box; commit as yourself, then push (public repo URL
+     is a report requirement).
+  3. Final `final-project-agent-code.zip` from the rebuilt ship
+     dir by ~21.09 (rebuild again if any file changes first —
+     never ship a stale zip).
+- **Ship-freeze advisory:** the DAGGER ship (G1 4.345) is the
+  strongest validated config in repo history. Further score work
+  should clear a pre-registered ≥4.5 pooled bar (noise floor rose
+  with the baseline) — otherwise robustness/report only.
+- **Verdict:** HANDOFF. **Report:** §5 (methods) + E82 as the
+  submission record.
+
 ### E77 — Guarded chain-bombing ❌ REJECTED (kills collapse, volume flat)
 - **Author:** team (AI-assisted session) · **Date:** 2026-09-09
 - **Question:** (E77 setup entry) Does warden-guarded chain admission
@@ -2678,3 +2708,105 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   non-regression, static probes 17/17 + sim ALL PASS. Remaining
   hygiene: commit + zip rebuild + `shipdefault` smoke (next entry).
   **Report:** §6 (promotion table + the waived-guard note).
+
+### E82 — Hunt-intent plans (ARBITER_HUNT) 🚀 IMPL + PROBED (16/16), screen pending
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** W1 kill volume via INTENT (the E77-diagnosed binding
+  constraint): can pursuit bomb-plans — generated when the warden hunt
+  trigger holds — buy the kill warden gets by movement, where
+  candidacy (E72/E77), credit (E67) and filtering (E73) all failed?
+- **Setup:** `agent_code/arbiter/search.py` — knobs `ARBITER_HUNT`
+  (default 0, bit-identical ship path), `ARBITER_HUNT_PLANS` (2),
+  `ARBITER_HUNT_DIST` (4 = ranked radius, same path-staleness class
+  per the E70 lesson). New pure helpers `hunt_trigger_ok` (warden
+  predicate: opps present AND loot ≤ 6 | step > 200 | opp within
+  Manhattan 3) + `hunt_tiles` (free tiles whose hypothetical blast
+  covers the opp, ring-first, wall break / crate passthrough). In
+  `gen_plans`, after the ranked walk and CHAIN_GUARD (E72b discipline:
+  pure max-addition, ranked plans keep rollout-seed indices): nearest
+  opp first, ≤ HUNT_PLANS total, ONE gate authority (`_try_bomb_plan`
+  proven-escape, E14b rule), same exact rollout + BOMB_MARGIN
+  arbitration. Probe `scripts/probe_arbiter_hunt.py` (16 checks:
+  trigger semantics, tile geometry, append-only, caps, determinism,
+  radius-0 exact admission, E2E smoke).
+- **Probe forensics:** (1) `W_OPP_TILE=2.0` already ranks adjacent
+  opp-covering tiles at the top of the ranked walk — hunt adds value
+  only beyond the ranked radius and on cornered-opp geometry (probe
+  E1: ranked absorbed 8 covering tiles, hunt supplied the 9th).
+  (2) Ship continuation finding: on sealed-pocket states the
+  post-bomb continuation can flee INTO the blast corridor
+  (seed-dependent −3 vs +5 payoff for the same plan) — pre-existing
+  ship-wide behavior (E66 flow), NOT fixed here; it prices hunt plans
+  conservatively, watch in the screen. (3) Rollout opp-suicide noise:
+  the random opp model can self-trap and the cert loop credits us —
+  inflates move plans by up to +5 occasionally; ship-wide, noted as a
+  Phase-3 (opponent-model) input.
+- **Pre-registered screen:** `ARBITER_HUNT=1`, 40×2 vs 3×rb
+  (`results/gate_arbiter_e82_s{0,1}.json`); proceed to validation
+  100×2 + field-proxy legs iff pooled ≥ ship class +0.2 (ship G1
+  4.345 → bar ≈ 4.5), kills ≥ ship 0.375, sui ≤ 0.40 (user-set cap).
+  Reject-fast if kills don't move (E77 failure signature).
+- **Verdict:** PENDING (screen). **Report:** §6.
+
+### E82 — Hunt-intent plans ❌ REJECTED (economy displaced, kills down)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Setup:** `ARBITER_HUNT=1` (defaults otherwise), screen 40×2 vs
+  3×rb → `results/gate_arbiter_e82_s{0,1}.json` (box-exclusive).
+- **Results — pooled 3.675** (s0 3.17/2.05/k.23/s.33 · s1
+  4.17/2.30/k.38/s.28) vs ship G1 4.345 (kills 0.375, coins 2.47)
+  → **−0.67**; kills 0.305 pooled (−0.07), coins −0.30, bombs flat
+  (19.9), crates flat (27.5). Bar was ≥ 4.5 → **REJECT, no
+  validation.** Knob stays default 0.
+- **Mechanism:** unlike E77 (kills collapse via junk), the pursuit
+  intents DID reach the opponents — they displaced economy instead:
+  winning pursuit prefixes pull the agent off crate clusters and coin
+  lines (the 6-step bomb lockout compounds it, E72b replay), and the
+  certified-trap cases are rare vs competent flight (E67's finding
+  holds in the exact rollout too). Fourth independent confirmation
+  (after E67/E72/E77) that W1 is not closable by adding bomb intent
+  of any kind; the constraint sits in the arbitration noise and the
+  rollout opponent model, not in intent generation.
+- **Verdict:** REJECT. Knob default 0 (code kept, env-gated for
+  ablation). **Report:** §6 (the intent-generation lesson, 4×
+  confirmation) + Phase-3 hand-off (rollout noise: opp-suicide
+  mis-certification + random opp model).
+
+### E83 — Rollout-noise arms (CERT_OWN, OPPMODEL) ❌ both REJECT (the noise is the signal)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-09
+- **Question:** E82 forensics identified two rollout pollutants: (a)
+  the cert loop credits US +5 for opp self-traps (engine pays
+  nobody), (b) the random opp model self-bombs ~0.5/round. Does
+  engine-exactness/realism buy score?
+- **Setup:** `agent_code/arbiter/search.py` — `ARBITER_CERT_OWN`
+  (cert trigger restricted to our bombs: owner 0, owner −1 unknown
+  stays; escape check stays global) and `ARBITER_OPPMODEL=wardenlite`
+  (avoid-lethal → Manhattan-coin-pursuit → bombs only under the
+  warden payoff guard [opps_hit > 0 | crates_hit ≥ 2] with pre-blast
+  mobility ≥ 2). Both default = validated flow (bit-parity probes).
+  Probe `scripts/probe_arbiter_oppmodel.py` 9/9 (incl. the seed-13
+  mis-attribution pair: default +5.0 → CERT_OWN 0.0). Screens 40×2
+  each, box-sequential.
+- **Results — E83a CERT_OWN=1: pooled 3.938** (s0 4.03/2.40/k.33/
+  s.28 · s1 3.85/2.73/k.23/s.15, crates 30.5) vs ship 4.345 →
+  **−0.41**; kills 0.28 (−0.095). Coins/crates/sui all improved — the
+  phantom +5s were acting as an aggression-shaping signal: states
+  where opponents self-destruct in rollout correlate with REAL
+  vulnerability, and pricing them exactly removes that pull.
+- **Results — E83b OPPMODEL=wardenlite: pooled 4.138** (s0
+  4.40/2.90/k.30/s.25 · s1 3.88/2.75/k.23/s.38, crates 30.3) →
+  **−0.21**, inside the ±0.5 noise band but below the 4.5 validate
+  bar. Coins **2.83 pooled — best ever** (+0.36; realistic coin-race
+  pressure sharpens our own coin play via plan competition), kills
+  0.265 (−0.11: opponents that dodge deliberately are harder to
+  certify), sui fine.
+- **Lesson (joins E71b):** the ship's rollout noise is load-bearing —
+  the random opp model's self-destruction and mis-certified kills
+  both correlate with vulnerability, and removing either shifts
+  composition toward safety/economy at a score cost. Exactness and
+  realism are NOT free upgrades here; the validated calibration must
+  stand. (Both knobs stay default-off, code kept env-gated.)
+- **Verdict:** REJECT both arms; Phase 3 line CLOSED. With E80
+  promoted and E82/E83 rejected, the score-push program stops per
+  the E67 precedent (3 consecutive clean rejects); Phase 4
+  (re-distillation) is MOOT — the ship policy is unchanged since the
+  E80 corpus. **Report:** §6 (noise-is-signal lesson).

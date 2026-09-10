@@ -137,6 +137,21 @@ HUNT_PLANS = _env_int('ARBITER_HUNT_PLANS', 2, 1, 4)
 # path-staleness class (certifies the bomb tile, not the path, E70
 # lesson); receding-horizon re-scoring covers the rest.
 HUNT_DIST = _env_int('ARBITER_HUNT_DIST', 4, 1, 11)
+# E83a cert-owner discipline: the certification loop runs over ALL sim
+# bombs; with the rollout opp model dropping bombs randomly (~0.5
+# suicides/round/opp), an opp self-trap gets certified and +5-credited
+# to US although the engine pays nobody. CERT_OWN=1 restricts the cert
+# trigger to our own bombs (owner 0; pre-existing bombs are owner -1 =
+# unknown and stay certifiable) while keeping the escape check global.
+# Engine-exact semantics; default 0 = validated flow.
+CERT_OWN = os.environ.get('ARBITER_CERT_OWN', '0') == '1'
+# E83b rollout opponent model: 'random' (default = validated:
+# avoid-lethal-myopic + uniform incl. BOMB) or 'wardenlite'
+# (avoid-lethal, then Manhattan-coin-pursuit step, bombs only under a
+# cheap warden guard: opps_hit > 0 | crates_hit >= 2, and only with a
+# free neighbour outside the new blast). Realism for arbitration
+# pricing vs strong unseen agents; O(1) per opp-tick (no extra BFS).
+OPPMODEL = os.environ.get('ARBITER_OPPMODEL', 'random').strip().lower()
 
 
 def _bfs_path(arena, blocked, start, goal, limit=12):
@@ -501,15 +516,15 @@ def _sim_bombs(st):
 
 
 def _opp_move(rng, st, i, danger_now):
-    """Avoid-lethal-if-possible + random (seeded)."""
+    """Avoid-lethal-if-possible + random (seeded); wardenlite overlay."""
     from .sim import valid_actions
     a = st['agents'][i]
     opts = valid_actions(st, i)
     if not opts:
         return 'WAIT'
+    bad = set()
     try:
         d = np.asarray(danger_now)
-        bad = set()
         for act in opts:
             from .sim import _DELTAS
             dx, dy = _DELTAS[act]
@@ -518,12 +533,68 @@ def _opp_move(rng, st, i, danger_now):
                 if bool(d[0, nx, ny]) or bool(d[1, nx, ny]) \
                         or bool(d[2, nx, ny]):
                     bad.add(act)
-        good = [o for o in opts if o not in bad]
-        if good:
-            opts = good
     except Exception:
         pass
-    return opts[int(rng.integers(len(opts)))]
+    good = [o for o in opts if o not in bad]
+    if OPPMODEL == 'wardenlite':
+        # bombs only under a cheap warden guard, and only when not
+        # cornered (pre-blast safe mobility >= 2 incl. WAIT — the
+        # escape proxy; the opp's own blast seals its neighbours by
+        # construction, so mobility is checked BEFORE dropping).
+        if 'BOMB' in good:
+            try:
+                from .sim import blast_coords
+                blast = set(blast_coords(st['arena'], a['x'], a['y']))
+                crates = sum(1 for (bx, by) in blast
+                             if st['arena'][bx, by] == 1)
+                opps = sum(1 for k, o in enumerate(st['agents'])
+                           if o['alive'] and k != i
+                           and (o['x'], o['y']) in blast)
+                guard = opps > 0 or crates >= 2
+                free = 0
+                if guard:
+                    d = np.asarray(danger_now) \
+                        if danger_now is not None else None
+                    from .sim import _DELTAS
+                    W, Hh = st['arena'].shape[0], st['arena'].shape[1]
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        nx, ny = a['x'] + dx, a['y'] + dy
+                        if not (0 <= nx < W and 0 <= ny < Hh):
+                            continue
+                        if st['arena'][nx, ny] != 0:
+                            continue
+                        if d is not None and d.ndim == 3 \
+                                and d.shape[0] > 2 and (
+                                    bool(d[0, nx, ny])
+                                    or bool(d[1, nx, ny])):
+                            continue
+                        free += 1
+                if not guard or free < 2:
+                    good.remove('BOMB')
+            except Exception:
+                pass
+        # movement: Manhattan-coin-pursuit among good moves
+        if good and good != ['WAIT']:
+            try:
+                coins = [c for c in st['coins'] if c[2]]
+                if coins:
+                    from .sim import _DELTAS
+                    cx, cy = min(((c[0], c[1]) for c in coins),
+                                 key=lambda c: abs(c[0] - a['x'])
+                                 + abs(c[1] - a['y']))
+                    def _step_cost(act):
+                        if act == 'WAIT':
+                            return abs(cx - a['x']) + abs(cy - a['y'])
+                        dx, dy = _DELTAS[act]
+                        return abs(cx - a['x'] - dx) \
+                            + abs(cy - a['y'] - dy)
+                    best = min(_step_cost(o) for o in good)
+                    good = [o for o in good if _step_cost(o) == best]
+            except Exception:
+                pass
+    if not good:
+        good = opts
+    return good[int(rng.integers(len(good)))]
 
 
 def _continuation(game_state, st, i, danger=None):
@@ -647,10 +718,15 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
             else:
                 acts.append('WAIT')
         # certify: opponents currently in any soon-detonating blast that
-        # cannot escape -> forced kills (optimal-flight assumption)
+        # cannot escape -> forced kills (optimal-flight assumption).
+        # CERT_OWN (E83a): restrict the trigger to OUR bombs (owner 0;
+        # pre-existing bombs owner -1 = unknown stay certifiable) —
+        # the engine pays nobody for an opp self-trap.
         try:
             for b in st['bombs']:
                 if b[2] > 2:
+                    continue
+                if CERT_OWN and b[3] not in (0, -1):
                     continue
                 from .sim import blast_coords
                 blast = set(blast_coords(st['arena'], b[0], b[1]))
