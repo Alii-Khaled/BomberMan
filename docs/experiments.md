@@ -2849,3 +2849,55 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   from the project brief still needs the authenticated push).
 - **Verdict:** NOTE ONLY (documentation hygiene; no experiments,
   no gate implications). **Report:** none.
+
+### E85 — Repo cleanup for the report phase ✅ 915 MB → 116 MB, ship verified
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-10
+- **Trigger:** user asked to clean the repo ahead of the project
+  report (due 28.09) while keeping graph/data-sample evidence.
+  **User decision: DELETE OUTRIGHT** for the ~800 MB of
+  git-ignored heavy artifacts (no `__shared` archive) — accepted on
+  the basis that all current ships are tracked `my-saved-model.pt`
+  + verified zips, and that resume-capability of older training
+  lineages is consciously surrendered (see Replication note).
+- **Deleted (all git-ignored, verified untracked before each rm):**
+  `results/archive/` (513 MB, 61 items — superseded overlord/apex/
+  reaper checkpoint generations; overlord_SHIP_379 and arbiter_P0
+  backups included; ships live as tracked exports + zips),
+  `results/sweeps/` (72 MB, 8 reaper arms), `agent_code/apex/
+  checkpoints/` (102 MB), `agent_code/overlord/checkpoints/`
+  (41 MB), `agent_code/reaper/checkpoints/` (1 MB),
+  `agent_code/sentinel/checkpoints/{ep_*,last.pt}` (best.pt +
+  best_stage1_nav.pt KEPT), `agent_code/{coin_collector,rule_based,
+  peaceful,random}_agent/logs/` (32 MB runtime logs), `logs/
+  game.log*` (8.4 MB), `results/arbiter_p{0,1}_cache.npz` (27 MB,
+  regenerable), all `__pycache__/` (~250 KB).
+- **Kept (report evidence):** `results/figures/` (4 PNGs +
+  captions, REGENERATED 02:21 from the 480-row CSV — now includes
+  E80 ship + E82/E83), 373 gate/stat JSONs, 9 diagnostic jsonl,
+  `arbiter_summary.csv`, demo corpora (`results/demos/` +
+  `results/apex_demos/`, 1,500 npz), all `runs/` + small training
+  logs, sweep logs (§5 evidence), all 5 tracked `my-saved-model.pt`
+  + `sentinel/checkpoints/{best,best_stage1_nav}.pt`, `logs/`
+  sweep logs, `__shared/` zips.
+- **Ship integrity (pre-delete):** arbiter weights sha256
+  `72ad6476…` ✓; `__shared/{arbiter,overlord}_ship.zip` CRC ✓; 180
+  tracked files snapshotted; `git status` clean after every batch.
+- **Post-flight:** repo 915 MB → **116 MB**; `probe_arbiter.py`
+  17/17 + sim ALL PASS; 2-round smoke 5.0/rd (frozen, no caches —
+  inference needs only the tracked weights); git clean.
+- **Replication note (user question):** ALL EVALUATIONS remain
+  replicable — frozen inference loads only `my-saved-model.pt`
+  (verified in all agents' setup); tables regenerate from kept gate
+  JSONs; arbiter figures from the kept CSV; ablation knobs are
+  env-gated committed code; BC retraining stays possible from the
+  kept demos (caches regenerable via `arbiter_extract.py`). NOT
+  replicable: resuming training from the deleted checkpoint rings
+  (deliberate); identical-trajectory reproduction was already
+  impossible (unseeded agent RNG, E09/E63 noise law). Pre-existing
+  limitation unaffected: sentinel/overlord `runs/metrics.csv`
+  training-curve figures were already unregenerable before cleanup.
+- **Verdict:** CLEANUP DONE. Report-asset inventory: figures 4 +
+  captions · gates/stats 373 JSON + 9 jsonl · summary 481 rows ·
+  demos 1,500 npz · ship zip ×2 (CRC-verified) · ledger 98 entries.
+  **Report:** §5 (reproducibility: fingerprint/backup pattern held;
+  cleanup ledgered).
