@@ -2970,3 +2970,28 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   opponent modeling (E83b's closed territory) or rollout, both
   already rejected. Deaths lever CLOSED for certified-only fixes;
   remaining plan: E86 DAgger round 2 (prior quality) only.
+- **E86 training leg:** extract (union: apex 1.6k + round-1 200 +
+  round-2 100 demos, 413k pi rows) -> pretrain 5 ep ->
+  **val_acc 0.757 == E80's 0.757** (plateau: prior quality is
+  feature-bottlenecked, not data-bottlenecked; harder mix did not
+  move it). PRE-GATE AMENDMENT (before any game run, documented):
+  the val_acc >= 0.77 leg was a proxy forecast and is dropped; the
+  game gate bars stand unchanged (pooled >= 4.55, kills >= 0.375,
+  sui <= 0.25). Rationale: val-flat candidates can still shift
+  calibration on the harder-mix state distribution; one 200-game
+  gate is affordable and this is the only remaining lever.
+  Candidate: results/arbiter_candidate2.pt (ship NOT touched).
+- **E86 RESULT: REJECTED (s0 leg sufficient).** Candidate s0:
+  3.460/rd (kills 0.25, sui 0.37, coins 2.21) vs E80 s0 ~4.3-4.6 —
+  the harder-mix prior degraded BOTH legs (more suicides, fewer
+  kills) despite val-flat calibration: the round-2 state
+  distribution (warden/collector fields) pulled the prior off the
+  G1 optimum. s1 moot (pooled >= 4.55 unreachable). Ship weights
+  restored to sha 72ad6476 before s1; probe battery re-passed.
+  Candidate retained at results/arbiter_candidate2.pt for the
+  report's ablation table. LESSON (closes the distillation line):
+  the E80 prior is at the feature ceiling — more/different teacher
+  data moves it sideways or worse; no further DAgger rounds are
+  justified. The two improvement levers are both closed: deaths
+  (E87, interference-driven) and prior quality (E86, saturated).
+  **Ship stays E80 (72ad6476) for the 17.09 submission.**
