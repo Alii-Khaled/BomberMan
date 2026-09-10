@@ -171,8 +171,59 @@ TRAP_BONUS = _env_float('ARBITER_TRAP_BONUS', 0.0)
 # 8 exact board symmetries. Set ARBITER_TTA=0 for the single-forward
 # P1 ablation.
 TTA = os.environ.get('ARBITER_TTA', '1') == '1'
+# E90 flee quality: while fleeing (own bomb ticking or must-flee), pick
+# among the mask's safe moves by optionality (free neighbours at the
+# destination + distance from opponents) instead of raw pi order.
+# Certified-only (only re-ranks already-valid+safe moves) and
+# feature-neutral (state_to_features is untouched). Default 0 =
+# ship-identical.
+FLEE_Q = os.environ.get('ARBITER_FLEE_Q', '0') == '1'
 _DELTAS = {'UP': (0, -1), 'DOWN': (0, 1), 'LEFT': (-1, 0),
            'RIGHT': (1, 0), 'WAIT': (0, 0), 'BOMB': (0, 0)}
+_DIRS4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
+
+
+def _flee_quality_choice(arena, bombs, others_xy, x, y, valid, safe, pi):
+    """Best safe flee move by open-space + opponent-distance (E90).
+
+    Only considers moves already marked valid+safe by the mask. Score =
+    free non-occupied 4-neighbours at the destination + 0.25 * min
+    Manhattan distance to an opponent; pi breaks ties. Returns None when
+    no safe move exists.
+    """
+    try:
+        W, H = arena.shape[0], arena.shape[1]
+        bomb_set = set()
+        for _xy, _t in (bombs or []):
+            bomb_set.add((int(_xy[0]), int(_xy[1])))
+        other_set = set((int(o[0]), int(o[1])) for o in (others_xy or []))
+        best_a, best_key = None, None
+        for a in ACTION_LIST:
+            if a == 'BOMB' or not (valid.get(a) and safe.get(a)):
+                continue
+            dx, dy = _DELTAS[a]
+            nx, ny = x + dx, y + dy
+            open_nb = 0
+            for ddx, ddy in _DIRS4:
+                tx, ty = nx + ddx, ny + ddy
+                if not (0 <= tx < W and 0 <= ty < H):
+                    continue
+                if arena[tx, ty] != 0:
+                    continue
+                if (tx, ty) in bomb_set or (tx, ty) in other_set:
+                    continue
+                open_nb += 1
+            if other_set:
+                dmin = min(abs(nx - ox) + abs(ny - oy)
+                           for (ox, oy) in other_set)
+            else:
+                dmin = 20
+            key = (open_nb + 0.25 * dmin, float(pi[ACTION_TO_IDX[a]]))
+            if best_key is None or key > best_key:
+                best_key, best_a = key, a
+        return best_a
+    except Exception:
+        return None
 
 
 def setup(self):
@@ -465,6 +516,14 @@ def _act_impl(self, game_state, t0):
     # Warden semantics (S2 arm1, +0.43 pooled): the mask binds moves only
     # under threat; otherwise every valid move is rankable by pi.
     if must_flee or flee_locked:
+        if FLEE_Q:
+            _fa = _flee_quality_choice(
+                arena, game_state.get('bombs') or [],
+                [(o[3][0], o[3][1]) for o in
+                 (game_state.get('others') or [])],
+                x, y, valid, safe, pi)
+            if _fa is not None:
+                return _commit(self, _fa, x, y, nxt, bombs_left)
         for i in order:
             a = ACTION_LIST[i]
             if valid.get(a) and safe.get(a):
