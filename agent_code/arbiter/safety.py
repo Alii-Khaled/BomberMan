@@ -42,6 +42,10 @@ def _env_int(name, default, lo, hi):
 # threaten t <= BOMB_TIMER+1 == 5, so REAPER_HORIZON=6 is the A/B candidate.
 HORIZON = _env_int('REAPER_HORIZON', 8, 4, 12)
 
+# E87: minimum post-plant first-step escape directions for BOMB to be
+# certified safe. 1 == ship behavior (any()); the gate run uses 2.
+BOMB_MARGIN = _env_int('ARBITER_BOMB_MARGIN', 1, 1, 4)
+
 
 def true_blast(arena, x, y, power=BOMB_POWER_DEFAULT):
     """Exact blast coords replicating items.py (stops at stone wall -1 only)."""
@@ -352,7 +356,13 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
     danger_hyp = with_hypothetical_bomb(danger, arena, x, y, horizon, bomb_timer, power)
     bombs_hyp = list(bombs or []) + [((x, y), bomb_timer)]
     safe_hyp, dist_hyp = escape_bfs((x, y), arena, bombs_hyp, others_xy, danger_hyp, horizon)
-    can_escape = any(safe_hyp.get(d, False) for d in [(0, -1), (0, 1), (-1, 0), (1, 0)])
+    # E87 (ARBITER_BOMB_MARGIN, default 1 = ship-identical): require at
+    # least M post-plant first-step escape DIRECTIONS (not just one).
+    # Phase A diagnosis: single-escape plants died 18/39 (46%); esc>=2
+    # plants 3/1379 (0.2%). n_esc >= 1 is exactly the legacy any().
+    _bomb_dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+    n_esc = sum(1 for d in _bomb_dirs if safe_hyp.get(d, False))
+    can_escape = n_esc >= BOMB_MARGIN
     # WAIT is not an escape from own bomb (staying dies at t=4/5 if in blast)
     # so exclude (0,0) from can_escape.
     # BOMB is safe iff valid and escape exists and current tile escapable

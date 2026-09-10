@@ -2901,3 +2901,72 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   demos 1,500 npz · ship zip ×2 (CRC-verified) · ledger 98 entries.
   **Report:** §5 (reproducibility: fingerprint/backup pattern held;
   cleanup ledgered).
+
+### E86 — Arbiter improvement round: Phase A death diagnosis (pre-registered)
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-10
+- **Motivation:** ship (E80) pooled 4.345 with kills 0.375/rd and
+  suicides 0.25/rd. Score = coins + 5·kills, so kills are the 5×
+  lever; every BROAD aggression knob failed (E69/E70/E82/E83) while
+  every NARROW certified change landed (ESC_DIST, W_DEATH, TTA).
+  Plan: diagnose deaths + missed certified kills first, then one
+  training candidate (DAgger round 2) and one surgical candidate.
+- **Phase A instrumentation (this entry):** env-gated `ARBITER_DIAG`
+  hook in arbiter callbacks/train (default-off, bit-identical when
+  unset; probe battery re-verified after wiring). Logs per-tick
+  snapshots (pos, action, valid/safe mask, flee state, nearby bombs,
+  own-bomb history, opponents, arena deltas, explosion map, round
+  events) for EVERY round to `<prefix>_deaths.jsonl`.
+- **Pre-registered Phase A plan (bars apply to the DECISION, not a
+  gate):** 60 instrumented games — 25×2 seeds 0/1 vs 3×
+  rule_based_agent (the G1 field) + 10 vs warden_v1 mix — ship
+  config unchanged (ARBITER_SEARCH=search, PI/V on). Attribution
+  taxonomy: own_bomb_chain / enemy_trap / corner_pin / sim_miss
+  (own sim called the killing move safe). Decision rule: a single
+  fixable pattern covering >= 30% of all deaths AND correctable by a
+  certified-only (no-rollout, pattern-restricted) change -> E87
+  greenlit; otherwise E87 skipped + ledgered as no-pattern.
+- **Expected:** ~15 suicides + ~? GOT_KILLED deaths across 60 games
+  at E80 rates (0.25 sui/rd). Missed-kill inventory: enemy-in-
+  certified-trap ticks (enemy inside blast set with no escape inside
+  bomb ttl, computed exactly from logged states — no rollout, NOT
+  the E82 mechanism).
+- **Report:** methods §5 (instrumentation pattern), results §X.
+
+- **Phase A RESULTS (85 instrumented rounds: s0 25 + s1 25 + wm 10,
+  frozen ship, train-mode; diag machinery env-gated, default-off,
+  probe battery re-passed post-wiring):**
+  - Deaths 23 (0.38/rd; KILLED_SELF 17, GOT_KILLED 6).
+    Attribution (exact, plant-tick escape read): **corner_pin 18
+    (78%) — every one an OWN-bomb plant with masked-safe escape
+    count = 1 at plant tick**; sim_miss 4 (17%) — enemy seals the
+    escape corridor after our plant (3 of 4 also esc=1 at plant);
+    enemy_trap 1. own_bomb_chain 0 (esc>=2 plants almost never die:
+    esc=2 3/379, esc>=3 ~0/942; esc=1 plants died 18/39 = 46%).
+  - Kill inventory: 10 kills in 60 rounds (0.17/rd) all from enemies
+    blundering into live blasts; 14 fully-sealed trap certificates
+    (exact escape-set check) produced 0 kills — certified traps are
+    rare and unnecessary; **hunting headroom ~0 (E82 closure
+    re-confirmed by exact analysis, not rollout speculation).**
+- **E87 GO (pre-registered):** veto BOMB when post-plant
+  masked-safe escape count <= 1 (ARBITER_BOMB_MARGIN, default 1 =
+  ship-identical; gate run sets 2). Certified-only, pattern-
+  restricted, no rollout, no opponent model — ESC_DIST precedent.
+  **Gate bars (G1 100x2, s0+s1, classic, 3x rule_based):** pooled
+  >= 4.45 (E80 = 4.345), KILLED_SELF <= 0.08/rd (from 0.28-0.35),
+  kills >= 0.30/rd, coins >= 2.0/rd. Probe: scripts/
+  probe_arbiter_margin.py before any gate. Field-proxy only on pass.
+
+- **E87 RESULT: REJECTED (s0 leg sufficient).** Margin=2 s0:
+  pooled-course 3.570/rd (kills 0.33, sui 0.28, coins 1.92,
+  crates 16.77) vs E80 s0 ~4.3-4.6 — the n_esc_hyp>=2 veto cut
+  crate/bomb income hard while NOT reducing suicides: the fatal
+  plants carry final-mask esc=1 but sim-hyp escapes >=2 (the sim's
+  static-world escape model is exactly what Phase A's sim_miss
+  class exposes — interference is not modeled, so the veto aims at
+  the wrong filter). s1 moot: pooled >= 4.45 unreachable. Knob kept
+  default-1 (ship-identical, probe-proven); no ship change. Lesson:
+  the corner-pin leak is interference-driven (enemy bombs sealing
+  corridors), not escape-count-geometry — fixing it requires
+  opponent modeling (E83b's closed territory) or rollout, both
+  already rejected. Deaths lever CLOSED for certified-only fixes;
+  remaining plan: E86 DAgger round 2 (prior quality) only.

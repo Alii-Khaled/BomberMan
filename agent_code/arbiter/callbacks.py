@@ -25,6 +25,7 @@ P1 adds the bounded best-first search between steps 2 and 3
 """
 from collections import deque
 import os
+import json
 import random
 import time
 
@@ -42,6 +43,100 @@ from .features import transform_state, map_action
 from .model import build_model, ACTION_LIST
 
 ACTION_TO_IDX = {a: i for i, a in enumerate(ACTION_LIST)}
+
+# E86 Phase-A death diagnostics (ARBITER_DIAG=path prefix; unset = no-op,
+# zero behavior change). When set, act() appends a compact per-tick
+# snapshot (position, action, safety mask, nearby bombs, opponents,
+# arena deltas, explosion map) to an in-memory buffer and end_of_round
+# dumps the tail to <prefix>_deaths.jsonl for every round in which the
+# agent died (SURVIVED_ROUND absent). Purely additive logging.
+_DIAG = os.path.abspath(
+    os.environ.get('ARBITER_DIAG', '').strip()) if \
+    os.environ.get('ARBITER_DIAG', '').strip() else ''
+
+
+def _diag_snapshot(self, game_state, t0_unused=0.0):
+    """Compact per-tick record for post-hoc death attribution."""
+    try:
+        _, _, _, (x, y) = game_state['self']
+        x, y = int(x), int(y)
+        rec = {
+            't': int(game_state.get('step', 0)),
+            'pos': [x, y],
+            'safe': self._diag_last_mask,
+            'flee': int(getattr(self, 'flee_timer', 0) > 0),
+            'must_flee': bool(self._diag_must_flee),
+        }
+        ev = getattr(self, '_diag_last_events', None)
+        if ev:
+            rec['ev'] = ev
+        bombs = []
+        for b in (game_state.get('bombs') or []):
+            (bx, by), ttl = b
+            if abs(bx - x) <= 5 and abs(by - y) <= 5:
+                bombs.append([int(bx), int(by), int(ttl)])
+        rec['bombs'] = bombs
+        rec['mine'] = [(int(bx), int(by))
+                       for (bx, by) in list(self.bomb_history)[-5:]]
+        rec['others'] = [[o[0], int(o[3][0]), int(o[3][1])]
+                         for o in (game_state.get('others') or [])]
+        fld = game_state.get('field')
+        h = hash(fld.tobytes()) if fld is not None else 0
+        if h != getattr(self, '_diag_field_hash', -1):
+            self._diag_field_hash = h
+            rec['field'] = [[int(v) for v in row] for row in fld]
+        em = game_state.get('explosion_map')
+        if em is not None:
+            cells = np.argwhere(np.asarray(em) > 0)
+            if len(cells):
+                rec['expl'] = [[int(cx), int(cy)]
+                               for cx, cy in cells]
+        return rec
+    except Exception:
+        return None
+
+
+def diag_dump_round(self, last_action, events):
+    """Called from train.py end_of_round (the dispatched hook).
+
+    Writes <prefix>_deaths.jsonl: a round_meta line + the full per-tick
+    buffer for EVERY round (survival context enables the missed-kill
+    inventory; death rounds carry KILLED_SELF / GOT_KILLED in the
+    accumulated round events).
+    """
+    if not _DIAG:
+        return
+    try:
+        ev_str = ' '.join(str(ev) for ev in (events or []))
+        survived = 'SURVIVED_ROUND' in ev_str
+        killer = ('SURVIVED' if survived else
+                  ('KILLED_SELF' if 'KILLED_SELF' in ev_str else
+                   ('GOT_KILLED' if 'GOT_KILLED' in ev_str else 'UNKNOWN')))
+        buf = getattr(self, '_diag_buf', None) or []
+        meta = {
+            'type': 'round_meta',
+            'killer': killer,
+            'killed_opp': 'KILLED_OPPONENT' in ev_str,
+            'last_action': last_action,
+            'n_ticks': len(buf),
+        }
+        with open(_DIAG + '_deaths.jsonl', 'a') as f:
+            f.write(json.dumps(meta) + '\n')
+            for rec in buf:
+                if rec is None:
+                    continue
+                rec2 = dict(rec)
+                rec2['type'] = 'tick'
+                try:
+                    f.write(json.dumps(rec2) + '\n')
+                except Exception:
+                    try:
+                        f.write(json.dumps(rec2, default=str) + '\n')
+                    except Exception:
+                        pass
+        self._diag_buf = []
+    except Exception:
+        pass
 
 
 def _env_float(name, default):
@@ -158,10 +253,20 @@ def act(self, game_state):
     """
     t0 = time.perf_counter()
     try:
-        return _act_impl(self, game_state, t0)
+        a = _act_impl(self, game_state, t0)
+        if _DIAG:
+            rec = _diag_snapshot(self, game_state)
+            if rec is not None:
+                rec['act'] = a
+                buf = getattr(self, '_diag_buf', None)
+                if buf is None:
+                    buf = self._diag_buf = []
+                buf.append(rec)
+        return a
     except Exception:
         try:
-            self.logger.warning('arbiter act failed; WAIT fallback')
+            self.logger.warning('arbiter act failed; WAIT fallback',
+                                exc_info=True)
         except Exception:
             pass
         return 'WAIT'
@@ -177,12 +282,21 @@ def _act_impl(self, game_state, t0):
         self.bomb_history = deque([], 5)
         self.current_round = rnd
         self.flee_timer = 0
+        if _DIAG:
+            self._diag_buf = []
+            self._diag_field_hash = -1
     arena = np.asarray(game_state['field'])
     _, _, bombs_left, (x, y) = game_state['self']
     x, y = int(x), int(y)
 
     safety = action_safety(game_state)
     valid, safe = safety.get('valid', {}), safety.get('safe', {})
+    if _DIAG:
+        self._diag_last_mask = [
+            ''.join('1' if valid.get(k) else '0' for k in ACTION_LIST),
+            ''.join('1' if safe.get(k) else '0' for k in ACTION_LIST)]
+        self._diag_must_flee = bool(_must_flee(game_state,
+                                               safety.get('danger')))
     flee_locked = getattr(self, 'flee_timer', 0) > 0
     if flee_locked:
         self.flee_timer = max(0, self.flee_timer - 1)
