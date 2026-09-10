@@ -19,6 +19,16 @@ E88 fixes over the first draft (all verified against engine semantics):
   * the seal window is bounded to enemy bombs planted <=2 ticks after
     the killer's plant tick (as the docstring always claimed).
 
+E90 v2 fixes:
+  * the killer bomb's plant tick is the START of the CONTIGUOUS block
+    of snapshots containing its coordinate that ends at the terminal
+    tick (the first-ever coordinate occurrence can belong to an older
+    bomb on a re-bombed tile, inflating the escape count);
+  * the engine's KILLED_SELF / GOT_KILLED round event is authoritative
+    for the terminal bomb's owner; coordinate history is kept only as a
+    diagnostic (`owner_mismatch`), since stale `mine` entries collide
+    after a tile is re-bombed.
+
 Taxonomy (priority order):
   own_bomb_chain  killer bomb is ours (KILLED_SELF) and we had >=2
                   masked-safe escapes at the killer bomb's plant tick
@@ -189,12 +199,22 @@ def attribute(rnd):
                 'live explosion t=%d pos=%s->%s' % (
                     hazard['t'], hazard['pos0'], hazard['pos1']))
     bx, by = hazard['bomb']
-    ours = bool(hazard['ours'])
+    coord_ours = bool(hazard['ours'])
+    # E90: engine event is authoritative for the terminal bomb's owner;
+    # coordinate history collides when a tile is re-bombed after an
+    # earlier own bomb (stale `mine` entries).
+    ours = (killer == 'KILLED_SELF') if killer in ('KILLED_SELF',
+                                                   'GOT_KILLED') \
+        else coord_ours
+    # Plant tick = start of the CONTIGUOUS block of snapshots containing
+    # this bomb coordinate that ends at the terminal tick. The first-ever
+    # occurrence can belong to an older bomb on the same tile.
     plant_i = len(ticks) - 1
-    for i, t in enumerate(ticks):
+    for i in range(len(ticks) - 1, -1, -1):
         if any((int(b[0]), int(b[1])) == (bx, by)
-               for b in t.get('bombs', [])):
+               for b in ticks[i].get('bombs', [])):
             plant_i = i
+        else:
             break
     pt = ticks[plant_i]
     esc = mask_moves(pt.get('safe', ['111111', '111111']))
@@ -205,8 +225,9 @@ def attribute(rnd):
     sealed = _sealed_after(ticks, fields, plant_i, mine_set, corridor,
                            (bx, by))
     mismatch = ''
-    if ours != (killer == 'KILLED_SELF'):
-        mismatch = ' owner_mismatch(engine=%s)' % killer
+    if coord_ours != ours:
+        mismatch = ' owner_mismatch(coord=%s,engine=%s)' % (
+            'own' if coord_ours else 'enemy', killer)
     if ours:
         if sealed:
             return 'sim_miss', ('plant t=%d own(%d,%d) esc=%d sealed '
