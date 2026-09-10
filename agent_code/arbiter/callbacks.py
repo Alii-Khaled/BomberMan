@@ -196,8 +196,15 @@ def setup(self):
     self.model = build_model()
     here = os.path.dirname(os.path.abspath(__file__))
     loaded = False
-    for cand in (os.path.join(here, 'my-saved-model.pt'),
-                 os.path.join(os.getcwd(), 'my-saved-model.pt')):
+    # Candidate gating: ARBITER_MODEL points at an eval-only weights file
+    # (never used in tournament zips, defaults identical to the ship path).
+    _cands = []
+    _env_model = os.environ.get('ARBITER_MODEL', '').strip()
+    if _env_model:
+        _cands.append(_env_model)
+    _cands += [os.path.join(here, 'my-saved-model.pt'),
+               os.path.join(os.getcwd(), 'my-saved-model.pt')]
+    for cand in _cands:
         if os.path.isfile(cand):
             try:
                 import torch as _t

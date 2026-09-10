@@ -98,6 +98,9 @@ def main():
           f'wardenlite={sorted(steps_w)} random={sorted(steps_r)}')
 
     # --- E1 cert-owner: opp self-trap credits us only under default ---
+    # E88: CERT_OWN semantics are orthogonal to CRN; pin the legacy
+    # unpaired rollout so this probe's seed scan stays stable.
+    SR.CRN = False
     gs1 = make_state(open_field(), others=())
     gs1['others'] = [('o0', 0, True, (5, 1))]
     st0 = from_game_state(gs1)

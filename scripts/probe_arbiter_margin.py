@@ -4,7 +4,8 @@
 Validates (1) default margin=1 is bit-identical to the legacy any()
 semantics, (2) margin=2 vetoes single-escape plants, (3) the veto
 propagates to act() (no BOMB chosen when n_esc < margin), (4) real
-game smoke: no act failures with the knob on.
+game smoke: no act failures with the knob on, (5) E88: the escape-dir
+knob is fully decoupled from search.ARBITER_BOMB_SCORE_MARGIN.
 """
 import os
 import sys
@@ -132,6 +133,90 @@ def probe_default_bitidentical():
     assert saf.ESC_MARGIN == 1, saf.ESC_MARGIN
     assert saf.BOMB_MARGIN == 1, saf.BOMB_MARGIN
     print('  default ESC_MARGIN == 1 (ship-identical)')
+
+
+@group
+def probe_knob_decoupled():
+    """E88: ESC margin and search score margin are independent knobs."""
+    import importlib
+    os.environ.pop('ARBITER_BOMB_ESC_MARGIN', None)
+    os.environ.pop('ARBITER_BOMB_MARGIN', None)
+    import agent_code.arbiter.safety as saf
+    import agent_code.arbiter.search as sch
+    importlib.reload(saf)
+    importlib.reload(sch)
+    base_safety, base_search = saf.ESC_MARGIN, sch.BOMB_MARGIN
+    os.environ['ARBITER_BOMB_ESC_MARGIN'] = '3'
+    importlib.reload(saf)
+    importlib.reload(sch)
+    assert saf.ESC_MARGIN == 3, saf.ESC_MARGIN
+    assert sch.BOMB_MARGIN == base_search, (sch.BOMB_MARGIN, base_search)
+    os.environ.pop('ARBITER_BOMB_ESC_MARGIN', None)
+    os.environ['ARBITER_BOMB_MARGIN'] = '0.7'
+    importlib.reload(saf)
+    importlib.reload(sch)
+    assert saf.ESC_MARGIN == base_safety, saf.ESC_MARGIN
+    assert abs(sch.BOMB_MARGIN - 0.7) < 1e-9, sch.BOMB_MARGIN
+    os.environ.pop('ARBITER_BOMB_MARGIN', None)
+    os.environ['ARBITER_BOMB_SCORE_MARGIN'] = '0.4'
+    importlib.reload(sch)
+    assert abs(sch.BOMB_MARGIN - 0.4) < 1e-9, sch.BOMB_MARGIN
+    os.environ.pop('ARBITER_BOMB_SCORE_MARGIN', None)
+    importlib.reload(saf)
+    importlib.reload(sch)
+    print('  ESC knob and SCORE knob decoupled (legacy alias honored)')
+
+
+@group
+def probe_plant_gate():
+    """E88: ARBITER_PLANT_ESC governs _try_bomb_plan (the gate that
+    actually admits search bombs; the mask's ESC_MARGIN does not)."""
+    import agent_code.arbiter.search as sch
+    import agent_code.arbiter.safety as saf
+
+    orig_esc = saf.escape_bfs
+    dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+
+    def run(n_dirs, plant_esc):
+        os.environ['ARBITER_PLANT_ESC'] = str(plant_esc)
+        for mod in list(sys.modules):
+            if mod in ('agent_code.arbiter.search',
+                       'agent_code.arbiter.safety'):
+                del sys.modules[mod]
+        import agent_code.arbiter.search as s2
+        import agent_code.arbiter.safety as saf2
+        sh = {d: (i < n_dirs) for i, d in enumerate(dirs)}
+
+        def fake_escape(pos, arena_, bombs_, others_, danger_, horizon=8):
+            return dict(sh), 1.0
+        saf2.escape_bfs = fake_escape
+        fld = board()
+        plans = []
+        try:
+            ok = s2._try_bomb_plan(
+                fld, set(), [], [], np.zeros((9, 17, 17), dtype=bool),
+                plans, 1, 1, 1, 2, {})
+        finally:
+            saf2.escape_bfs = orig_esc
+            os.environ.pop('ARBITER_PLANT_ESC', None)
+        return ok, len(plans)
+
+    ok1, n1 = run(1, 1)
+    ok1b, _ = run(1, 2)
+    ok2, _ = run(2, 2)
+    ok0, _ = run(0, 1)
+    print('  n_esc=1 plant1=%s plant2=%s | n_esc=2 plant2=%s | n_esc=0 plant1=%s' % (
+        ok1, ok1b, ok2, ok0))
+    assert ok1 is True and n1 == 1, 'legacy any() must admit 1-dir plant'
+    assert ok1b is False, 'plant2 must veto 1-dir plant'
+    assert ok2 is True, 'plant2 must admit 2-dir plant'
+    assert ok0 is False, 'no-escape plant must be vetoed'
+    # default bit-identical constant
+    for mod in list(sys.modules):
+        if mod in ('agent_code.arbiter.search',):
+            del sys.modules[mod]
+    import agent_code.arbiter.search as s3
+    assert s3.PLANT_ESC == 1, s3.PLANT_ESC
 
 
 @group

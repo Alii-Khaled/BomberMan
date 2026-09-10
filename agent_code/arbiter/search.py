@@ -56,6 +56,13 @@ SEEDS = _env_int('ARBITER_SEEDS', 1, 1, 8)
 # (j=0 seed formula unchanged -> bit-identical bomb scores);
 # moves buy the coin-side variance reduction. Default 1 = P1 flow.
 MOVE_SEEDS = _env_int('ARBITER_MOVE_SEEDS', 1, 1, 8)
+# E88 common random numbers: opponent rollouts keyed by (rollout seed,
+# tick, opponent) instead of (rollout seed, plan), so every plan in a
+# step is compared against the SAME opponent draws (paired comparison,
+# lower variance on plan differences). E88 ship: default ON (validated
+# G1 100x2 4.775 vs 4.590 with plan-indexed seeds on the same fixed
+# solver + margin 0.6); ARBITER_CRN=0 restores the legacy unpaired flow.
+CRN = os.environ.get('ARBITER_CRN', '1') == '1'
 K = _env_int('ARBITER_SEARCH_K', 8, 0, 32)
 RADIUS = _env_int('ARBITER_SEARCH_R', 4, 1, 8)
 PLAN_CAP = _env_int('ARBITER_SEARCH_PLANS', 48, 1, 256)
@@ -72,7 +79,17 @@ W_DEATH = _env_float('ARBITER_W_DEATH', 8.0)
 # 1-step value gaps, so V-ranked moves are noise vs pi's sharp policy).
 # A bomb plan executes only if it beats the best move plan by more than
 # BOMB_MARGIN; else search returns None and S0 (pi) decides the move.
-BOMB_MARGIN = _env_float('ARBITER_BOMB_MARGIN', 0.2)
+# E88: de-conflicted from safety.py's escape-dir count (both used to read
+# ARBITER_BOMB_MARGIN). The score margin now reads
+# ARBITER_BOMB_SCORE_MARGIN; the legacy ARBITER_BOMB_MARGIN name is still
+# honored (README-documented meaning) so existing scripts keep working.
+# E88 ship: default raised 0.2 -> 0.6. The corrected escape solver makes
+# certified kills and bomb admission stricter; the old 0.2 margin then
+# over-admits bombs (G1 40x2 3.325). 0.6 is the swept optimum on the
+# fixed solver (4.300 at 40x2; with CRN 4.775 at G1 100x2 vs E80 4.345).
+BOMB_MARGIN = _env_float(
+    'ARBITER_BOMB_SCORE_MARGIN',
+    _env_float('ARBITER_BOMB_MARGIN', 0.6))
 # Coin proximity in bomb-tile ranking: blast yield alone strands the
 # agent far from the coins it reveals (P1 screen: crates 20.8 but coins
 # 0.85). Prefer high-yield tiles near collectable coins.
@@ -93,6 +110,12 @@ W_OPP_TILE = _env_float('ARBITER_W_OPP_TILE', 2.0)
 # N > 0 = require escape_bfs dist_to_safe <= N. SHIP default 3.0
 # (validated G1 3.95; P1d grid W2/E3 beat W2/E0 on both seeds).
 ESC_DIST = _env_float('ARBITER_ESC_DIST', 3.0)
+# E88: minimum post-plant escape DIRECTIONS required by the search's bomb
+# gate. 1 = legacy any() (bit-identical). E87 tested the mask's copy of
+# this idea, but the mask does not govern search-selected bombs (16.2% of
+# executed bombs had safe['BOMB']=0); this knob targets the gate that
+# actually admits search bombs (the clean E87 redo).
+PLANT_ESC = _env_int('ARBITER_PLANT_ESC', 1, 1, 4)
 # Coin-race move plan (E75): a committed BFS path to the nearest
 # reachable visible coin, scored by the exact rollout like any plan.
 # Competes as a MOVE plan (bomb_at None) — a valuable coin run
@@ -274,8 +297,9 @@ def _try_bomb_plan(arena, blocked, bombs, others_xy, danger,
         bh = list(bombs) + [((cx, cy), 4)]
         sh, dhyp = escape_bfs((cx, cy), arena, bh,
                               others_xy, dh, 8)
-        can = any(sh.get(d, False)
-                  for d in [(0, -1), (0, 1), (-1, 0), (1, 0)])
+        _dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+        n_esc = sum(1 for d in _dirs if sh.get(d, False))
+        can = n_esc >= PLANT_ESC
         if ESC_DIST > 0:
             try:
                 can = bool(can and float(dhyp) <= ESC_DIST)
@@ -669,7 +693,7 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
     import copy
     from .sim import step as sim_step, margin, to_game_state
     from .safety import opp_can_escape, future_danger
-    rng = np.random.default_rng(seed)
+    rng = None if CRN else np.random.default_rng(seed)
     st = copy.deepcopy(st0)
     m0 = margin(st)
     prefix = list(plan['prefix'])
@@ -677,6 +701,13 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
     certified_kills = 0
     frac_done = set()
     ticks = 0
+
+    def _opp_act(i, tick, danger):
+        if CRN:
+            r = np.random.default_rng((int(seed), int(tick), int(i)))
+            return _opp_move(r, st, i, danger)
+        return _opp_move(rng, st, i, danger)
+
     # phase 1: committed prefix
     for act in prefix:
         if not st['agents'][0]['alive']:
@@ -688,7 +719,7 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
             danger = None
         for i in range(1, len(st['agents'])):
             if st['agents'][i]['alive']:
-                acts.append(_opp_move(rng, st, i, danger))
+                acts.append(_opp_act(i, ticks, danger))
             else:
                 acts.append('WAIT')
         info = sim_step(st, acts)
@@ -714,7 +745,7 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
         acts = [_continuation(None, st, 0, danger)]
         for i in range(1, len(st['agents'])):
             if st['agents'][i]['alive']:
-                acts.append(_opp_move(rng, st, i, danger))
+                acts.append(_opp_act(i, ticks, danger))
             else:
                 acts.append('WAIT')
         # certify: opponents currently in any soon-detonating blast that
@@ -809,8 +840,12 @@ def search_action(game_state, safety, model, t0, budget):
             if (time.perf_counter() - t0) >= budget:
                 dbg['exhausted'] = True
                 break
+            # E88: CRN drops the plan index from the seed; the per-tick
+            # opponent RNG inside score_plan then keys on (seed, tick,
+            # opponent), sharing draws across plans.
             payoff_j, end_j = score_plan(
-                st0, plan, seed=base_seed + 7919 * j + pi_)
+                st0, plan,
+                seed=base_seed + 7919 * j + (0 if CRN else pi_))
             died_j = not end_j['agents'][0]['alive']
             pay_sum += payoff_j + (W_DEATH if died_j else 0.0)
             died_any = died_any or died_j
