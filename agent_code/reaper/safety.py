@@ -95,12 +95,28 @@ def with_hypothetical_bomb(danger, arena, x, y, horizon=HORIZON,
 
 def first_lethal(danger, horizon=HORIZON):
     """first_lethal[x, y] = earliest t in 0..horizon that is lethal, else
-    horizon+1 (sentinel). Lets the escape BFS answer "is this tile lethal at
-    some t >= ct?" in O(1) instead of rescanning the whole time axis."""
+    horizon+1 (sentinel). Kept for API compatibility; the escape BFS uses
+    last_lethal below (earliest is insufficient when danger windows are
+    non-contiguous, e.g. a timer-0 bomb at t=0..1 plus another at t=3..4)."""
     d = np.asarray(danger)
     any_d = d.any(axis=0)
     fl = np.where(any_d, d.argmax(axis=0), horizon + 1).astype(np.int32)
     return fl
+
+
+def last_lethal(danger, horizon=HORIZON):
+    """last_lethal[x, y] = latest t in 0..horizon that is lethal, else -1.
+
+    The correct O(1) predicate for "is this tile lethal at some t >= ct"
+    is `last_lethal >= ct`: danger windows may be non-contiguous (a
+    timer-0 bomb marks t=0 and t=1; a farther bomb marks t=3 and t=4), so
+    the earliest lethal time alone can miss a later window. Mirrors the
+    arbiter E88 fix (differential-tested against the older full-scan
+    escape solver in sentinel/overlord/apex, which was already correct)."""
+    d = np.asarray(danger)
+    any_d = d.any(axis=0)
+    ll = np.where(any_d, horizon - d[::-1].argmax(axis=0), -1).astype(np.int32)
+    return ll
 
 
 def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
@@ -122,7 +138,10 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
     free_b = (ar == 0).reshape(-1).tobytes()          # 1 == walkable floor
     dng = np.asarray(danger, dtype=bool)
     dang_b = dng.reshape(-1).tobytes()                # (t*W + x)*H + y
-    fl_flat = first_lethal(dng, horizon).reshape(-1).tolist()
+    # E88 fix (ported from arbiter): "lethal at some t >= ct" needs the
+    # LAST lethal time, and arrival lethality must be checked BEFORE a
+    # tile is marked safe.
+    ll_flat = last_lethal(dng, horizon).reshape(-1).tolist()
     plane = W * H
 
     bomb_cells = set()
@@ -161,9 +180,9 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
     while q:
         cx, cy, ct, fmi = q.popleft()
         ci = cx * H + cy
-        fl = fl_flat[ci]
-        # lethal at some t in [ct, horizon]?  (fl is the earliest lethal t)
-        future_hit = fl <= horizon and fl >= ct
+        if dang_b[ct * plane + ci]:
+            continue                                   # lethal on arrival
+        future_hit = ll_flat[ci] >= ct
         if not future_hit:
             found_safe.add(fmi)
             if ct < dist_to_safe:
@@ -171,8 +190,6 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
         if ct == horizon:
             safe_first.add(fmi)
             continue
-        if dang_b[ct * plane + ci]:
-            continue                                   # died on this tile
         if ct >= 1 and not future_hit:
             safe_first.add(fmi)
         nt = ct + 1
