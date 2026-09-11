@@ -53,13 +53,17 @@ def end_of_round(self, last_game_state, last_action, events):
         path = os.path.join(self._dag_demo_dir,
                             f'round_{self._dag_round_id:06d}.npz')
         try:
-            np.savez_compressed(
-                path,
-                feats=np.asarray(self._dag_feats, dtype=np.float32),
-                acts=np.asarray(self._dag_acts, dtype=np.uint8),
-            )
+            payload = {
+                'feats': np.asarray(self._dag_feats, dtype=np.float32),
+                'acts': np.asarray(self._dag_acts, dtype=np.uint8),
+            }
+            _aw = getattr(self, '_dag_acts_w', None)
+            if _aw:
+                payload['acts_w'] = np.asarray(_aw, dtype=np.uint8)
+            np.savez_compressed(path, **payload)
             self.logger.info(f'arbiter_dagger saved {n} samples to {path}')
         except Exception as ex:
             self.logger.warning(f'arbiter_dagger save failed: {ex}')
     self._dag_feats = []
     self._dag_acts = []
+    self._dag_acts_w = []

@@ -116,6 +116,15 @@ ESC_DIST = _env_float('ARBITER_ESC_DIST', 3.0)
 # executed bombs had safe['BOMB']=0); this knob targets the gate that
 # actually admits search bombs (the clean E87 redo).
 PLANT_ESC = _env_int('ARBITER_PLANT_ESC', 1, 1, 4)
+# E97 Phase 3: opponent-aware plant certification (targeted at the E90
+# interference death class: a planted bomb whose certified escape is cut
+# by an opponent body block). 0 = off (ship-identical). N >= 1 requires
+# at least N post-plant escape directions that avoid the opponents'
+# K-step shadow (tiles within ARBITER_PLANT_OPP_K BFS steps of any
+# opponent). Certified-only, no de-aggression: it vetoes bombs, never
+# re-ranks or slows play.
+PLANT_OPP = _env_int('ARBITER_PLANT_OPP', 0, 0, 4)
+PLANT_OPP_K = _env_int('ARBITER_PLANT_OPP_K', 1, 1, 3)
 # Coin-race move plan (E75): a committed BFS path to the nearest
 # reachable visible coin, scored by the exact rollout like any plan.
 # Competes as a MOVE plan (bomb_at None) — a valuable coin run
@@ -237,6 +246,48 @@ def _bfs_dist(arena, blocked, start):
     return dist
 
 
+def _opp_min_dist(arena, blocked, others_xy):
+    """BFS distance to the nearest opponent over walkable tiles."""
+    W, Hh = arena.shape[0], arena.shape[1]
+    dist = np.full((W, Hh), 10 ** 9, dtype=np.int32)
+    q = deque()
+    for (ox, oy) in (others_xy or []):
+        ox, oy = int(ox), int(oy)
+        if 0 <= ox < W and 0 <= oy < Hh and dist[ox, oy] != 0:
+            dist[ox, oy] = 0
+            q.append((ox, oy))
+    while q:
+        cx, cy = q.popleft()
+        for dx, dy in _DELTAS4:
+            nx, ny = cx + dx, cy + dy
+            if not (0 <= nx < W and 0 <= ny < Hh):
+                continue
+            if dist[nx, ny] != 10 ** 9:
+                continue
+            if arena[nx, ny] != 0 or (nx, ny) in blocked:
+                continue
+            dist[nx, ny] = dist[cx, cy] + 1
+            q.append((nx, ny))
+    return dist
+
+
+_SHADOW_CACHE = {'key': None, 'val': ()}
+
+
+def _shadow_cells(arena, others_xy, k):
+    """Tiles within k BFS steps of any opponent (per-step memoized)."""
+    if not others_xy:
+        return set()
+    key = (arena.tobytes(), tuple(sorted((int(a), int(b))
+                                         for (a, b) in others_xy)), int(k))
+    if _SHADOW_CACHE['key'] != key:
+        dist = _opp_min_dist(arena, set(), others_xy)
+        cells = set(map(tuple, np.argwhere(dist <= int(k)).tolist()))
+        _SHADOW_CACHE['key'] = key
+        _SHADOW_CACHE['val'] = cells
+    return _SHADOW_CACHE['val']
+
+
 def chain_guard_ok(arena, blocked, bombs, others_xy, danger, tx, ty):
     """E77 warden-rule admission predicate for chain tiles.
 
@@ -303,6 +354,19 @@ def _try_bomb_plan(arena, blocked, bombs, others_xy, danger,
         if ESC_DIST > 0:
             try:
                 can = bool(can and float(dhyp) <= ESC_DIST)
+            except Exception:
+                can = False
+        if can and PLANT_OPP > 0:
+            # E97: escapes must also avoid the opponents' k-step shadow.
+            try:
+                shadow = _shadow_cells(arena, others_xy, PLANT_OPP_K)
+                sh_opp, d_opp = escape_bfs(
+                    (cx, cy), arena, bh,
+                    list(others_xy) + list(shadow), dh, 8)
+                n_opp = sum(1 for d in _dirs if sh_opp.get(d, False))
+                can = n_opp >= PLANT_OPP
+                if can and ESC_DIST > 0:
+                    can = bool(float(d_opp) <= max(ESC_DIST, 4.0))
             except Exception:
                 can = False
     except Exception:

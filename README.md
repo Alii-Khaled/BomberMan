@@ -22,7 +22,11 @@ plus the outsider sparring agents `warden_v1` (frozen heuristic reference)
 and `warden_v2` (active: v1 + corrected escape solver, 8-step danger
 horizon, deterministic RNG, probe-gated; paired 100x2 G1 vs v1 at parity
 (4.40 vs 4.26), paired STRONG 40x5 sample above arbiter on score/rank —
-directional, see E94 in `docs/experiments.md`).
+directional, see E94 in `docs/experiments.md`). E97 same-session
+baselines: **warden_v2 now leads the ship** — G1 100x6 4.673 vs 4.502,
+STRONG 40x10 5.572/0.411 vs 4.715/0.348; seven E97/E98 challenger arms
+(prior scale, warden teacher, fine-tune, hybrid moves, plant gate,
+on-policy labels) were all rejected, ship = E88.
 
 ## Requirements
 

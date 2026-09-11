@@ -54,6 +54,12 @@ _DIAG = os.path.abspath(
     os.environ.get('ARBITER_DIAG', '').strip()) if \
     os.environ.get('ARBITER_DIAG', '').strip() else ''
 
+# ARBITER_POLICY: 'pi' (ship: learned prior ranks S0 moves) or 'warden'
+# (E97 experiment: warden_v2's fast heuristic ranks S0 moves). Only the
+# move fallback changes — search/tactical still own BOMB decisions and
+# action_safety's mask still binds. Default 'pi' == ship behavior.
+POLICY = os.environ.get('ARBITER_POLICY', 'pi').strip().lower()
+
 
 def _diag_snapshot(self, game_state, t0_unused=0.0):
     """Compact per-tick record for post-hoc death attribution."""
@@ -252,7 +258,20 @@ def setup(self):
     _cands = []
     _env_model = os.environ.get('ARBITER_MODEL', '').strip()
     if _env_model:
-        _cands.append(_env_model)
+        # Agent callbacks run with cwd = the agent dir, so a relative
+        # candidate path must be anchored to the repo root or it would be
+        # silently skipped and the ship weights loaded instead.
+        if not os.path.isabs(_env_model):
+            _root = os.path.dirname(os.path.dirname(here))
+            _env_model = os.path.join(_root, _env_model)
+        if os.path.isfile(_env_model):
+            _cands.append(_env_model)
+        else:
+            try:
+                self.logger.warning(
+                    f'ARBITER_MODEL not found: {_env_model}')
+            except Exception:
+                pass
     _cands += [os.path.join(here, 'my-saved-model.pt'),
                os.path.join(os.getcwd(), 'my-saved-model.pt')]
     for cand in _cands:
@@ -286,6 +305,23 @@ def setup(self):
     self.bomb_history = deque([], 5)
     self.current_round = 0
     self.flee_timer = 0
+    # E97 hybrid: warden_v2 move prior (default off == ship behavior).
+    self._warden = None
+    if POLICY == 'warden':
+        try:
+            import types
+            from agent_code.warden_v2 import callbacks as _wc
+            _w = types.SimpleNamespace()
+            _wc.setup(_w)
+            self._warden = _w
+            self._warden_mod = _wc
+            self.logger.info('arbiter policy=warden (hybrid S0 moves)')
+        except Exception as ex:
+            self._warden = None
+            try:
+                self.logger.warning(f'warden policy unavailable: {ex}')
+            except Exception:
+                pass
 
 
 def _must_flee(game_state, danger):
@@ -298,6 +334,47 @@ def _must_flee(game_state, danger):
     except Exception:
         pass
     return False
+
+
+def _warden_move(self, game_state, valid, safe, threat):
+    """Best warden_v2 move (BOMB excluded) that is valid for this agent.
+
+    E97 hybrid: warden_v2's heuristic carries the crate/coin/kill
+    navigation; arbiter's search carries bomb placement. Returns None
+    when the hook is off or warden has no admissible move.
+    """
+    w = getattr(self, '_warden', None)
+    if w is None:
+        return None
+    try:
+        wc = self._warden_mod
+        st = wc.parse(game_state)
+        if st['round'] != getattr(w, 'current_round', -1):
+            w.current_round = st['round']
+            w.coord_hist = deque([], 24)
+            w.bomb_hist = deque([], 5)
+        _want, aux = wc.decide(st, w.bomb_hist)
+        cands = wc.choose_fast(st, aux, w.coord_hist, _want, own_live=False)
+        for _sc, a in sorted(cands, key=lambda p: p[0], reverse=True):
+            if a == 'BOMB' or not valid.get(a):
+                continue
+            if threat and not safe.get(a):
+                continue
+            return a
+    except Exception:
+        return None
+    return None
+
+
+def _warden_hist_update(self, action, x, y, nxt):
+    """Mirror the executed action into warden's loop-avoidance histories."""
+    try:
+        w = getattr(self, '_warden', None)
+        if w is None:
+            return
+        w.coord_hist.append(nxt[action] if action != 'BOMB' else (x, y))
+    except Exception:
+        pass
 
 
 def act(self, game_state):
@@ -491,6 +568,16 @@ def _act_impl(self, game_state, t0):
                     return _commit(self, a, x, y, nxt, bombs_left)
     except Exception:
         pass
+
+    # --- S0 policy: warden_v2 move prior (E97 hybrid, default off) ---
+    # Search/tactical above may already have committed a BOMB or plan;
+    # this only replaces the pi-ranked move fallback.
+    if POLICY == 'warden':
+        _wa = _warden_move(self, game_state, valid, safe,
+                           must_flee or flee_locked)
+        if _wa is not None:
+            _warden_hist_update(self, _wa, x, y, nxt)
+            return _commit(self, _wa, x, y, nxt, bombs_left)
 
     # --- rank: pi, warden filter semantics, bounded tie-breaks only ---
     def tiebreak(a):

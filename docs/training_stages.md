@@ -329,6 +329,15 @@ The training that exists, with configs, bars, and evidence locations:
   not replicate at 100×2 and de-aggression levers cost score; no ship
   change. Robustness guards (long-horizon + mask-survival fuzz, E91)
   landed in `probe_arbiter_sim.py`.
+- **Phase-3 challenge round (E97/E98):** prior capacity sweep (flat on
+  the e88 cache; 0.7765 val on the p0 mix), warden_v2 teacher corpus
+  (val 0.81, G1 parity only), low-LR fine-tune from E80 (`--init`),
+  margin m0.7 100x3, warden_v2 move hybrid, and on-policy warden label
+  transfer were ALL rejected — no ship change. Same-session baselines
+  show **warden_v2 now leads the ship**: G1 100x6 4.673 vs 4.502;
+  STRONG 40x10 5.572/0.411 vs 4.715/0.348. Infra: `run_arbiter_battery.sh`,
+  `probe_arbiter_plant.*`, `collect_arbiter_wv2.sh`, `pretrain --init`,
+  relative-`ARBITER_MODEL` fix.
 - **Ship protocol:** same E30 rule; current ship with zero-env defaults
   (`SEARCH=search`, score margin 0.6, `CRN=1`, `ESC_DIST=3.0`).
   Zip: `agent_code/arbiter/` only (E68 audit).

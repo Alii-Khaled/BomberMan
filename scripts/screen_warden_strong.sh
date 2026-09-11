@@ -6,6 +6,7 @@
 # Lobby: <warden> arbiter overlord sentinel (the field-proxy STRONG field).
 set -u
 cd "$(dirname "$0")/.."
+KEY_PREFIX="${KEY_PREFIX:-warden}"
 SEED="${1:?seed}"; shift
 ROUNDS="${1:?rounds}"; shift
 for cfg in "$@"; do
@@ -30,7 +31,7 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 w = sys.argv[2]
 for n, v in sorted(d['summary'].items()):
-    if n.startswith('warden'):
+    if n.startswith(KEY_PREFIX):
         print('%-10s %-10s score %.3f  win %.3f  rank %.2f  kills %.2f  sui %d'
               % (w, n, v['score_mean'], v['win_rate'], v['mean_rank'],
                  v['kills_total'] / d['n_rounds'], v['suicides_total']))

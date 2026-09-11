@@ -11,6 +11,7 @@
 # JSON lands in results/screen_<tag>_s<seed>.json.
 set -u
 cd "$(dirname "$0")/.."
+KEY_PREFIX="${KEY_PREFIX:-warden}"
 SEED="${1:?seed}"; shift
 ROUNDS="${1:?rounds}"; shift
 for cfg in "$@"; do
@@ -36,7 +37,7 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 best = None
 for k, v in d['by_agent'].items():
-    if k.startswith('warden'):
+    if k.startswith(KEY_PREFIX):
         best = (k, v); break
 k, v = best
 r = v.get('rounds', 1) or 1

@@ -52,6 +52,10 @@ def main():
     ap.add_argument('--out', default=os.path.join(REPO, 'agent_code',
                                                   'arbiter',
                                                   'my-saved-model.pt'))
+    # Optional warm start (E97): load existing weights before training so
+    # a short low-LR fine-tune can shift calibration without the
+    # catastrophic distribution shift of a from-scratch retrain.
+    ap.add_argument('--init', default=None)
     a = ap.parse_args()
     rng = np.random.default_rng(a.seed)
 
@@ -88,6 +92,18 @@ def main():
     print('device:', dev)
     torch.manual_seed(a.seed)
     model = AM.build_model().to(dev)
+    if a.init:
+        obj = torch.load(a.init, map_location='cpu', weights_only=True)
+        if isinstance(obj, dict):
+            for key in ('arbiter', 'pi_v_net', 'state_dict', 'q_net',
+                        'model'):
+                if key in obj and isinstance(obj[key], dict):
+                    obj = obj[key]
+                    break
+        missing = model.load_state_dict(obj, strict=False)
+        print('init %s (missing=%d unexpected=%d)'
+              % (a.init, len(missing.missing_keys),
+                 len(missing.unexpected_keys)))
     opt = torch.optim.Adam(model.parameters(), lr=a.lr)
     ce = nn.CrossEntropyLoss()
     mse = nn.MSELoss()

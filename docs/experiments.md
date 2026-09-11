@@ -3439,3 +3439,100 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
 
 - **Artifacts:** `results/screen_e96_*.json`, `results/smoke_e96_*.json`,
   `logs/screen_e96.log`.
+
+### E97 — Ship-challenge round: prior scale, hybrid moves, plant gate ❌ all REJECTED (ship = E88)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-11
+- **Motivation:** the user's goal is "surpass all agents". E88 has ten
+  consecutive post-promotion knob rejects (E90-E93), so this round goes
+  after never-tried levers: prior capacity/data scale, a warden_v2 move
+  hybrid, opponent-aware plant certification, and a decisive margin
+  re-test. Pre-registered protocol: strict E30 promotion, benchmark =
+  E88 ship AND warden_v2, 100x2 floor, paired same-session seeds.
+- **Baselines (same session, paired seeds).** G1 100rd:
+  E88 **4.502** pooled / win 0.431 (4.70/4.53/4.25/4.60/4.43) ·
+  warden_v2 **4.673** / 0.415 (4.66/4.87/4.76/5.10/4.72/3.93).
+  STRONG 40x10 (arbiter + warden_v2 + overlord + sentinel):
+  arbiter 4.715 / 0.348 / rank 2.02 · **warden_v2 5.572 / 0.411 /
+  2.01** · overlord 2.025 / 0.123 · sentinel 2.105 / 0.117.
+  **warden_v2 now leads both protocols** — the "surpass all" bar is
+  explicitly +0.17 G1 and +0.86 STRONG score, +0.06 STRONG win rate.
+- **A1 architecture sweep (never swept before).** e88 cache (159,027 pi
+  rows): 5 ep 256 -> 0.7101, 512 -> 0.7151; 20 ep 256/512/768/1024 ->
+  0.7221/0.7208/0.7173/0.7208 (capacity FLAT). p0 cache (393,853 rows,
+  E86 harder mix): 20 ep 256/512/768 -> 0.7600/**0.7703**/0.7765
+  (capacity helps only once data suffices; E86's val != G1 law still
+  applies — 0.7765 was measured on the degraded mix). No game gates
+  from the sweep.
+- **A2 warden_v2 teacher corpus (T).** apex 500rd re-featurized +
+  warden_v2 400rd demos + E88 self rows = **288,063 pi / 123,212 V**
+  (teachers 0:164,060 · 1:25,027 · 2:24,659 · 3:19,251 · 4:55,066).
+  From-scratch 20 ep: val **0.800** (256) / **0.810** (512) — the
+  first priors above the 0.757 plateau. G1 100x2: T256 **4.530**
+  (4.14/4.92) · T512 **4.505** (4.32/4.69) vs ship 4.502 -> PARITY,
+  no promotion (val gain did not transfer to play, third confirmation
+  of the E86/E88 lesson).
+- **A3 gentle fine-tune from E80 weights** (`pretrain_arbiter.py`
+  `--init`, lr 1e-4/3e-4, 2-5 ep, on T): val 0.797-0.807; G1 40x2
+  lr4_2 **4.250** (4.725/3.775) vs control first-40 4.388
+  (4.900/3.875) -> no gain (low-LR preserves calibration but adds
+  nothing).
+- **A4 margin m0.7 decisive re-test** (E88-follow-up's +0.29 did not
+  replicate in a full battery): G1 100x3 **4.240** (4.04/4.32/4.36) vs
+  4.502 -> REJECT; ship margin stays 0.6.
+- **A5 warden_v2 move hybrid** (`ARBITER_POLICY=warden`: warden_v2's
+  fast policy ranks the S0 move fallback; search/tactical keep BOMB
+  ownership; default off): G1 100x2 **3.610** (3.70/3.52); STRONG
+  40x3 **3.908** (3.60/3.975/4.150) while warden_v2 in-lobby scores
+  5.475-6.300 -> REJECT. The learned move prior is load-bearing for
+  the search's bomb plans; substituting a foreign policy breaks the
+  composition (E90's interference lesson, now from the other side).
+- **A6 opponent-aware plant gate** (`ARBITER_PLANT_OPP=1/K=1`: a bomb
+  is admitted only with >=1 post-plant escape direction that avoids
+  the opponents' 1-step BFS shadow; certified-only, no de-aggression).
+  Probe `scripts/probe_arbiter_plant.{py,sh}` PASS (determinism,
+  on-subset-off, liveness: mode 1 vetoes 2/150 random states; mode 2
+  vetoes 31/150 — near-total bomb collapse, rejected by inspection).
+  G1 40x2 **4.450** (3.95/4.95) vs control 4.388 -> within noise;
+  G1 100rd s0 **4.660 / 0.438** vs same-session control 4.670 / 0.462
+  -> NEUTRAL, no promotion (seed 1 in flight at writing; knob stays
+  default 0).
+- **Infra landed:** `scripts/run_arbiter_battery.sh` (g1/strong/ab
+  modes, per-run log-dir isolation), `scripts/probe_arbiter_plant.*`,
+  `scripts/collect_arbiter_wv2.sh`, `pretrain_arbiter.py --init`, and
+  an `ARBITER_MODEL` fix (relative candidate paths were silently
+  ignored because callbacks run with cwd = the agent dir; now anchored
+  to the repo root).
+- **Verdict:** every arm REJECTED; the E88 ship stands. The learned
+  prior + exact search is a strong local optimum: capacity does not
+  move it, better teachers/architectures do not transfer to G1 play,
+  foreign move policies destructure it, and the interference gate is
+  too narrow to matter. warden_v2 (heuristic) currently leads both
+  protocols. **Next program (scoped, not run): feature-v2 (new
+  information — opponent reachability/interference, post-plant
+  corridor geometry), exact-outcome V targets, then KL-anchored
+  on-policy RL on the search-gated distribution.** **Report:** §6.
+
+### E98 — On-policy warden_v2 label transfer ❌ REJECTED
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-11
+- **Motivation:** E86's DAgger failed on off-distribution (warden)-
+  visited states; E97/A2 failed on warden-v2-visited states. The
+  untried cell is the ship's OWN state distribution with warden_v2
+  labels: keep where the agent goes, change what it should do there.
+- **Setup:** `ARBITER_DAGGER_WARDEN=1` (pure observer; ship acts and
+  is unchanged) records `acts_w` = warden_v2's preferred non-BOMB move
+  at every ship-visited tick. 293 rounds (150 rb / 75 wm / 37 rn /
+  31 cl; the volume filled at 2.0 GB and killed the last cl rounds —
+  runtime logs were pruned to recover; no tracked artifacts lost).
+  Ship-vs-warden action agreement **41.5%** (large label signal).
+  Cache: 260,164 pi rows (teacher 5 = 81,886).
+- **Results:** w2 (pi teachers {0,1,2,5}) val 0.809 (256) / 0.811
+  (512); w3 (+self 4) val 0.772/0.763 (label conflict, as expected).
+  G1 100x2 seed 0: w2_256 **3.900 / 0.365**, w2_512 **3.040 / 0.225**
+  vs same-session control **4.670 / 0.462** -> REJECT; seed 1
+  stopped. On-policy warden labels hurt *worse* than off-policy ones.
+- **Verdict:** REJECT. Combined with E97/A5, warden_v2's move decisions
+  do not compose with the arbiter search under any transfer scheme
+  tried (acting policy, off-policy labels, on-policy labels).
+  **Report:** §5 (recorder) + §6 (label-transfer table).

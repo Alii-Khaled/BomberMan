@@ -51,7 +51,11 @@ for a in sys.argv[1:]:
 
 TEACHER_ID = {'warden': 0, 'warden_v1': 0, 'warden_v2': 0, 'sentinel': 1, 'overlord': 2,
               'coin_collector_agent': 3, 'collector': 3,
-              'arbiter_self': 4, 'arbiter': 4}  # P2-C self-distillation
+              'arbiter_self': 4, 'arbiter': 4,  # P2-C self-distillation
+              'da_warden': 5}  # E98 ship-state warden_v2 label transfer
+# --warden-labels (E98): for dirs recorded with ARBITER_DAGGER_WARDEN=1,
+# train pi on warden_v2's action at the ship's own visited states.
+WARDEN_LABELS = '--warden-labels' in sys.argv
 
 
 def teacher_of(path):
@@ -120,12 +124,16 @@ def main():
         d = np.load(f)
         feats = d['feats'].astype(np.float32)
         act = d['acts'].astype(np.int64)
+        tid = teacher_of(f)
+        if WARDEN_LABELS and 'acts_w' in d.files:
+            act = d['acts_w'].astype(np.int64)
+            tid = TEACHER_ID['da_warden']
         assert feats.shape[1] == 98 and len(act) == len(feats), f
         assert set(np.unique(act)).issubset(set(range(6))), f
         F.append(feats)
         A.append(act.astype(np.uint8))
         V.append(np.full(len(act), np.nan, dtype=np.float32))
-        T.append(np.full(len(act), teacher_of(f), dtype=np.uint8))
+        T.append(np.full(len(act), tid, dtype=np.uint8))
         R.append(np.full(len(act), rnd, dtype=np.int32))
         rnd += 1
     F = np.concatenate(F)
