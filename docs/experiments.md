@@ -3360,3 +3360,48 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   always versioned. Zero-env defaults == the validated config
   (`SEARCH=off`, `OPP_TRAP=0`, H=8). **Report:** §5 (solver fix +
   probes) + §6 (screens, paired A/B, STRONG, death diagnosis).
+
+### E95 — Warden own-bomb diagnosis + escape/plant arms ✅ (E94 defaults kept)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-11
+- **Motivation:** E94 attributed 13/15 STRONG warden deaths to own
+  bombs but left no reproducible attribution tooling and no lever
+  (esc2/crate-guard rejected).
+- **Instrumentation:** `WARDEN_DIAG_DIR` (default off) writes a
+  per-tick jsonl (pos/action/safe_moves/hyp_dist/n_esc/plants/bombs);
+  `scripts/diag_warden_deaths.py` joins it with `game.log` terminal
+  lines (`blown up by own bomb` vs `agent <X>'s bomb`).
+- **Reproduction (20 STRONG rd, seed 0, `WARDEN_SEED=123`,
+  `logs/diag_warden_e95/`):** 15 deaths = **13 own + 2 enemy** (exact
+  E94 match); all 13 own are `own_pinned` at the fatal tick.
+- **Mechanism:** every fatal plant had passed `can_escape` (n_esc>=1);
+  the certified safe set then survives 0–3 ticks before opponents cut
+  the corridor or seal it with a new bomb; where safe moves existed
+  warden followed them (8/13 — it is not target-chasing into blasts).
+  Plant-time n_esc: 7/13 single, 1/13 dual, 5/13 >=3; hyp_dist 2–4,
+  and 58% of ALL plants have hyp_dist>=3, so distance alone does not
+  separate fatal plants.
+- **Arms (default off):** `WARDEN_ESCAPE_COMMIT` (a1: while own bomb
+  live, no target-chase, prefer safe moves and later first-lethal);
+  `WARDEN_PLANT_LOCAL` + `WARDEN_PLANT_NEAR_D` (a2: veto plants near
+  an opponent unless n_esc>=2 and hyp_dist<=2); combo a12.
+- **Screens (40x2 G1, same session, `WARDEN_SEED=123`):** base 3.912 ·
+  a1 4.300 · a2 4.700 · a12 4.862 (E94's 5.385 base did not reproduce
+  cross-session — same-session comparisons only, E92).
+- **Replication:** G1 100x2: a2 4.335 vs base 4.380 → **REJECT a2**
+  (crates 31.5 vs 34.1). a1 G1 4.405/win 0.419/sui 0.24 but STRONG
+  40x5 5.105 vs base 5.505 → **REJECT a1** (score). **a12:** G1 100x2
+  4.640 vs 4.380, then 10-seed G1 **4.644 vs 4.652** (paired diff
+  -0.008, t -0.04 — wash), 10-seed STRONG **5.350 vs 5.235** (+0.115,
+  t 0.34), win **0.407 vs 0.344** (+0.063, ~2.1σ), rank 2.04 vs 2.08,
+  sui **0.39 vs 0.55** (-29%), kills 0.54 vs 0.48. G1 sui 0.25 vs
+  0.36.
+- **Verdict:** no promotion (the tournament objective, score, is a
+  wash at 10 seeds; strict target still unmet). **a12 is documented as
+  the E95 optional STRONG-field arm** (lower suicides, higher win,
+  default off). Battery gained per-run `--log-dir` isolation.
+- **Artifacts:** `results/tourney_warden_v2e95{base,a1,a2,a12}_*.json`,
+  `results/screen_e95*_s*.json`,
+  `results/diag_warden_e95_attribution.json` + `_deaths.md`,
+  `scripts/diag_warden_deaths.py`. **Report:** §5 (solver/probes) +
+  §6 (deaths, arms).

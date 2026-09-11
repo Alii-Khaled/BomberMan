@@ -32,7 +32,7 @@ torch, no absolute paths).
   earliest-lethal information loss.
 - **Deterministic seeded RNG** (`WARDEN_SEED`) for reproducible A/B.
 
-## Optional arms (default OFF; screened in E94 — all rejected)
+## Optional arms (default OFF; screened in E94/E95)
 
 - `WARDEN_SEARCH=rollout`: bounded exact-dynamics rollout search
   (`search.py`) over moves + certified bomb plans with CRN-paired greedy
@@ -40,11 +40,18 @@ torch, no absolute paths).
 - `WARDEN_OPP_TRAP=1`: plant on opponents with no proven escape.
 - `WARDEN_PLANT_ESC=2`: require two post-plant escape directions
   (aggression collapse, 0.675 STRONG score).
+- `WARDEN_ESCAPE_COMMIT=1` + `WARDEN_PLANT_LOCAL=1` (E95 a12):
+  proactive own-bomb flee (no target-chase, later first-lethal) and a
+  local plant veto near opponents unless n_esc>=2 & hyp_dist<=2.
+  Score-neutral G1 (10-seed 4.644 vs 4.652) with STRONG win 0.407 vs
+  0.344, suicides -29% (0.39 vs 0.55) — E95 optional STRONG-field arm.
 - `WARDEN_HORIZON` (6 loses to 8), `WARDEN_COIN_FIRST`,
   `WARDEN_SINGLE_CRATE(_DIST)`, `WARDEN_MULTI_CRATE_DIST`,
   `WARDEN_WAIT_PENALTY`, `WARDEN_MOBILITY_W`, `WARDEN_DEADEND_W`,
   `WARDEN_FLEE_OPP_W`, `WARDEN_OPP_AVOID_W`, `WARDEN_CRATE_GUARD_DIST`,
-  `WARDEN_W_*` search/rollout weights.
+  `WARDEN_PLANT_NEAR_D`, `WARDEN_W_*` search/rollout weights.
+- `WARDEN_DIAG_DIR` (E95): per-tick decision jsonl for
+  `scripts/diag_warden_deaths.py` (default off).
 
 ## Run
 

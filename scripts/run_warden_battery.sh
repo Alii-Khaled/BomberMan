@@ -35,15 +35,18 @@ esac
 for seed in "${SEEDS[@]}"; do
   out="results/tourney_${WARDEN}${TAG}_${MODE}_s${seed}.json"
   log="logs/tourney_${WARDEN}${TAG}_${MODE}_s${seed}.log"
+  logdir="logs/${WARDEN}${TAG}_${MODE}_s${seed}"
   if [ -f "$out" ] && [ "${FORCE:-0}" != "1" ]; then
     echo "SKIP existing $out (FORCE=1 to rerun)"
     continue
   fi
   echo "=== $MODE seed=$seed: $WARDEN ${OPPONENTS[*]} (N=$N)"
+  mkdir -p "$logdir"
   python3 scripts/tournament_eval.py \
     --agents "$WARDEN" "${OPPONENTS[@]}" \
     --n-rounds "$N" --seed "$seed" --scenario classic \
-    --match-name "warden_battery_${WARDEN}_${MODE}_s${seed}" \
+    --log-dir "$logdir" \
+    --match-name "warden_battery_${WARDEN}${TAG}_${MODE}_s${seed}" \
     --out "$out" >"$log" 2>&1 || { echo "FAILED seed $seed (see $log)"; exit 1; }
   tail -n 8 "$log"
 done

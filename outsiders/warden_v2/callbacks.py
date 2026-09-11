@@ -13,6 +13,8 @@
 #   * deterministic seeded RNG for reproducible A/B evaluation
 # Everything is numpy-only, CPU-only, self-contained.
 
+import json
+import os
 from collections import deque
 
 import numpy as np
@@ -64,6 +66,10 @@ PLANT_ESC = _env('WARDEN_PLANT_ESC', 1, int, 1, 4)
 FLEE_OPP_W = _env('WARDEN_FLEE_OPP_W', 0.0, float)
 OPP_AVOID_W = _env('WARDEN_OPP_AVOID_W', 0.0, float)
 CRATE_GUARD_DIST = _env('WARDEN_CRATE_GUARD_DIST', 0, int, 0, 6)
+ESCAPE_COMMIT = bool(_env('WARDEN_ESCAPE_COMMIT', 0, int, 0, 1))
+PLANT_LOCAL = bool(_env('WARDEN_PLANT_LOCAL', 0, int, 0, 1))
+PLANT_NEAR_D = _env('WARDEN_PLANT_NEAR_D', 4, int, 1, 8)
+DIAG_DIR = os.environ.get('WARDEN_DIAG_DIR') or None
 
 
 def setup(self):
@@ -77,6 +83,9 @@ def setup(self):
     self.bomb_hist = deque([], 5)
     self.current_round = -1
     self._rng = np.random.default_rng(self._seed)
+    self.own_plants = deque([], 12)
+    if DIAG_DIR:
+        os.makedirs(DIAG_DIR, exist_ok=True)
 
 
 def _make_rng(seed, round_id, step):
@@ -209,6 +218,10 @@ def decide(st, bomb_hist=()):
             if others else 99
         if dmin <= CRATE_GUARD_DIST:
             guard = False
+    if guard and PLANT_LOCAL and opps_hit == 0 and others:
+        dmin = min(abs(ox - x) + abs(oy - y) for (ox, oy) in others)
+        if dmin <= PLANT_NEAR_D and not (n_esc >= 2 and hyp_dist <= 2):
+            guard = False
     if guard:
         if opps_hit > 0:
             want_bomb = True
@@ -249,7 +262,8 @@ def decide(st, bomb_hist=()):
 
     aux = {'danger': danger, 'safe_moves': safe_moves, 'valid': valid,
            'must_flee': must_flee, 'safe_first': safe_first,
-           'hyp_dist': hyp_dist, 'can_escape_bomb': can_escape_bomb,
+           'hyp_dist': hyp_dist, 'esc_dist': esc_dist, 'n_esc': n_esc,
+           'can_escape_bomb': can_escape_bomb,
            'blast_now': blast_now, 'opps_hit': opps_hit,
            'crates_hit': crates_hit, 'trap_kill': trap_kill,
            'preferred': preferred, 'hunt': hunt, 'dist': dist,
@@ -258,11 +272,12 @@ def decide(st, bomb_hist=()):
     return want_bomb, aux
 
 
-def choose_fast(st, aux, coord_hist, want_bomb):
+def choose_fast(st, aux, coord_hist, want_bomb, own_live=False):
     """v1 move scoring on top of decide()'s derived state."""
     arena, x, y = st['arena'], st['x'], st['y']
     danger = aux['danger']
     valid = aux['valid']
+    flee_mode = bool(aux['must_flee'] or (ESCAPE_COMMIT and own_live))
 
     def loop_penalty(action):
         dx, dy = _DELTAS[action]
@@ -283,6 +298,16 @@ def choose_fast(st, aux, coord_hist, want_bomb):
                     return -2.0
                 break
         return 0.0
+
+    def first_lethal(action):
+        dx, dy = _DELTAS[action]
+        tx, ty = x + dx, y + dy
+        if not (0 <= tx < danger.shape[1] and 0 <= ty < danger.shape[2]):
+            return 0
+        for t in range(danger.shape[0]):
+            if danger[t, tx, ty]:
+                return t
+        return danger.shape[0]
 
     def mobility(action):
         if MOBILITY_W <= 0.0 and DEADEND_W <= 0.0:
@@ -317,7 +342,7 @@ def choose_fast(st, aux, coord_hist, want_bomb):
                 if abs(ox - tx) + abs(oy - ty) <= 1)
         return -OPP_AVOID_W * n
 
-    preferred = aux['preferred']
+    preferred = [] if (ESCAPE_COMMIT and own_live) else aux['preferred']
     candidates = []
     for action in _MOVES:
         if not valid.get(action):
@@ -330,6 +355,8 @@ def choose_fast(st, aux, coord_hist, want_bomb):
         elif action in preferred:
             score += PREF_BONUS2
         score += danger_cost(action)
+        if ESCAPE_COMMIT and own_live and action not in aux['safe_moves']:
+            score += 0.3 * min(first_lethal(action), 8)
         score += loop_penalty(action)
         score += mobility(action)
         score += avoid_term(action)
@@ -340,7 +367,7 @@ def choose_fast(st, aux, coord_hist, want_bomb):
             if action == 'WAIT':
                 score -= 5.0
         candidates.append((score, action))
-    if aux['must_flee']:
+    if flee_mode:
         safe_candidates = [(sc, a) for sc, a in candidates
                            if a in aux['safe_moves']]
         if safe_candidates:
@@ -354,6 +381,7 @@ def act(self, game_state):
         self.current_round = st['round']
         self.coord_hist = deque([], 24)
         self.bomb_hist = deque([], 5)
+        self.own_plants = deque([], 12)
         self._rng = _make_rng(self._seed, st['round'], 0)
 
     want_bomb, aux = decide(st, self.bomb_hist)
@@ -369,7 +397,10 @@ def act(self, game_state):
         if want_bomb:
             action = 'BOMB'
         else:
-            candidates = choose_fast(st, aux, self.coord_hist, want_bomb)
+            own_live = ESCAPE_COMMIT and any(
+                p[2] < st['step'] <= p[2] + 3 for p in self.own_plants)
+            candidates = choose_fast(st, aux, self.coord_hist, want_bomb,
+                                     own_live)
             if candidates:
                 best = max(sc for sc, _ in candidates)
                 tied = sorted(a for sc, a in candidates if sc == best)
@@ -380,7 +411,39 @@ def act(self, game_state):
     if action == 'BOMB':
         self.bomb_hist.append((st['x'], st['y']))
         self.coord_hist.append((st['x'], st['y']))
+        self.own_plants.append((st['x'], st['y'], st['step']))
     elif action in _DELTAS:
         dx, dy = _DELTAS[action]
         self.coord_hist.append((st['x'] + dx, st['y'] + dy))
+    if DIAG_DIR is not None:
+        _diag_write(st, aux, action, want_bomb, self.own_plants)
     return action
+
+
+def _diag_write(st, aux, action, want_bomb, plants):
+    danger = aux['danger']
+    x, y = st['x'], st['y']
+    rec = {
+        'round': int(st['round']), 'step': int(st['step']),
+        'x': int(x), 'y': int(y), 'action': action,
+        'bombs_left': bool(st['bombs_left']),
+        'want_bomb': bool(want_bomb),
+        'must_flee': bool(aux['must_flee']),
+        'can_escape': bool(aux['can_escape_bomb']),
+        'n_esc': int(aux['n_esc']),
+        'hyp_dist': float(aux['hyp_dist']),
+        'esc_dist': float(aux['esc_dist']),
+        'safe_moves': sorted(aux['safe_moves']),
+        'preferred': list(aux['preferred']),
+        'in_safe': action in aux['safe_moves'],
+        'hunt': bool(aux['hunt']),
+        'danger_own_t0': bool(danger[0, x, y]),
+        'danger_own_t1': bool(danger[1, x, y]) if danger.shape[0] > 1
+        else False,
+        'bombs': [[int(b[0][0]), int(b[0][1]), int(b[1])]
+                  for b in st['bombs']],
+        'plants': [[int(px), int(py), int(ps)] for (px, py, ps) in plants],
+    }
+    path = os.path.join(DIAG_DIR, 'warden_diag.jsonl')
+    with open(path, 'a') as fh:
+        fh.write(json.dumps(rec, separators=(',', ':')) + '\n')
