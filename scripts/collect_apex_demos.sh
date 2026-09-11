@@ -1,6 +1,6 @@
 #!/bin/bash
 # Re-collect apex-format BC demos (S3): the 2026-09-09 disk cleanup wiped
-# results/apex_demos/ (400 npz, E51). Restores warden_v1/sentinel/overlord
+# results/apex_demos/ (400 npz, E51). Restores warden_vN/sentinel/overlord
 # at E51 parity and ADDS coin_collector_agent (100) — the only agent in the
 # repo realizing 3.39 crates/bomb, hence the only source of high-yield
 # placement demonstrations for ARBITER's V (E62/S3 decision).
@@ -11,10 +11,11 @@
 # crate-light 12.5% (E41 mixed-density coverage lesson). No random field:
 # random agents die early and boards are unrepresentative.
 # Usage: bash scripts/collect_apex_demos.sh [teacher ...]
-#   (default: warden_v1 sentinel overlord coin_collector_agent)
+#   (default: warden_v2 sentinel overlord coin_collector_agent)
 set -e
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"
+WARDEN="${WARDEN:-warden_v2}"
 OUT="$(pwd)/results/apex_demos"
 W=${WARDEN_N:-200}
 S=${SENTINEL_N:-100}
@@ -38,10 +39,10 @@ collect() { # teacher, field-tag, scenario, opponents..., n-rounds
       --n-rounds "$n" --save-stats "results/apex_demos_${t}_${tag}.json" 2>&1 | tail -1
 }
 
-if [ "$#" -eq 0 ]; then set -- warden_v1 sentinel overlord coin_collector_agent; fi
+if [ "$#" -eq 0 ]; then set -- warden_v2 sentinel overlord coin_collector_agent; fi
 for t in "$@"; do
   case "$t" in
-    warden_v1)           N=$W ;;
+    warden|warden_v1|warden_v2) N=$W ;;
     sentinel)            N=$S ;;
     overlord)            N=$O ;;
     coin_collector_agent) N=$C ;;
@@ -54,7 +55,7 @@ for t in "$@"; do
   n_cr=$(python3 -c "print(int($N*0.125))")
   n_rb=$(( n_rb + N - n_rb - n_wm - n_cl - n_cr ))
   collect "$t" rb classic rule_based_agent rule_based_agent rule_based_agent "$n_rb"
-  collect "$t" wm classic warden_v1 rule_based_agent rule_based_agent "$n_wm"
+  collect "$t" wm classic $WARDEN rule_based_agent rule_based_agent "$n_wm"
   collect "$t" co classic coin_collector_agent coin_collector_agent coin_collector_agent "$n_cl"
   collect "$t" cr crate-light rule_based_agent rule_based_agent rule_based_agent "$n_cr"
 done

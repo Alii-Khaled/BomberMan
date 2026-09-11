@@ -1,6 +1,6 @@
 """Apex demo recorder (B3): delegating wrapper around a teacher policy.
 
-TEACHER env: warden_v1 | sentinel | overlord (default warden_v1).
+TEACHER env: warden_v2 | warden_v1 | sentinel | overlord (default warden_v2).
 Records per step: img uint8 (12x17x17, x4 scale, LOSSLESS per E48),
 sc float32 (16: overlord-8 + apex-extras-8), act uint8 (teacher action).
 One npz per round -> APEX_DEMO_OUT/<teacher>/round_%06d.npz.
@@ -29,7 +29,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 # flushes the final round (without it the last round per invocation was
 # silently dropped: 150 played -> 149 files).
 _REPO = os.path.abspath(os.path.join(_HERE, '..', '..'))
-TEACHER = os.environ.get('APEX_TEACHER', 'warden_v1')
+TEACHER = os.environ.get('APEX_TEACHER', 'warden_v2')
 OUT = os.environ.get('APEX_DEMO_OUT', os.path.join(_REPO, 'results', 'apex_demos'))
 
 ORDER = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']

@@ -11,6 +11,7 @@
 set -e
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"
+WARDEN="${WARDEN:-warden_v2}"
 G1N=${G1N:-100}; G2N=${G2N:-40}; G3N=${G3N:-60}; G4N=${G4N:-40}
 
 stage() { # run_dir -> bake name
@@ -61,7 +62,7 @@ for rd in "$@"; do
   echo "== $name =="
   gate "$name" rb  "$G1N" rule_based_agent rule_based_agent rule_based_agent
   gate "$name" rn  "$G2N" random_agent random_agent random_agent
-  gate "$name" wm  "$G3N" warden_v1 rule_based_agent rule_based_agent
+  gate "$name" wm  "$G3N" $WARDEN rule_based_agent rule_based_agent
   gate "$name" cl  "$G4N" coin_collector_agent coin_collector_agent coin_collector_agent
   rm -rf "$dest"
 done

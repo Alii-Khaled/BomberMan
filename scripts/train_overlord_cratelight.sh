@@ -11,6 +11,7 @@
 set -e
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"
+WARDEN="${WARDEN:-warden_v2}"
 export OVERLORD_OPT=adam OVERLORD_TUNED=1
 export OVERLORD_BATCH=1024 OVERLORD_UTD=2 OVERLORD_EOR_UPDATES=12
 export OVERLORD_EPS_DECAY=100000 OVERLORD_SAVE_EVERY=5
@@ -34,5 +35,5 @@ OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord rule_based_agent
 echo "=== Frozen gates (CPU) ==="
 OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord rule_based_agent rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 100 --seed 0 --save-stats results/overlord_w0_eval_rb_s0.json
 OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord rule_based_agent rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 100 --seed 1 --save-stats results/overlord_w0_eval_rb_s1.json
-OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord warden_v1 rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 60 --seed 0 --save-stats results/overlord_w0_eval_warden.json
+OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord $WARDEN rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 60 --seed 0 --save-stats results/overlord_w0_eval_warden.json
 echo "Done. Metrics: agent_code/overlord/runs/metrics.csv"

@@ -3,7 +3,7 @@
 # Base: ep_1400 weights in last.pt (EMA cleared, eps re-warm 0.40 applied at
 # restore) + E28 crate-approach pull (probed 7/7 in scripts/probe_crate_pull.py).
 #   W1 economy  300: solo classic (crate pull must convert to crates/coins)
-#   W2 sparring 300: vs warden_v1 + 2x rule_based (discipline by example)
+#   W2 sparring 300: vs warden_vN + 2x rule_based (discipline by example)
 #   W3 gate     300: vs 3x rule_based (gate-matchup consolidation)
 #   + frozen evals: 100 vs 3x rb (gate, comparable to 3.70) + 60 warden-mix.
 # Resumable per stage: re-run with W*_N=0 to skip finished stages.
@@ -14,6 +14,7 @@
 set -e
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"
+WARDEN="${WARDEN:-warden_v2}"
 export OVERLORD_OPT=adam OVERLORD_TUNED=1
 export OVERLORD_BATCH=1024 OVERLORD_UTD=2 OVERLORD_EOR_UPDATES=12
 export OVERLORD_EPS_DECAY=100000 OVERLORD_SAVE_EVERY=5
@@ -45,7 +46,7 @@ fi
 
 if [ "$W2" -gt 0 ]; then
 echo "=== W2 (warden sparring: warden + 2x rule_based) N=$W2 ==="
-$PY main.py play --no-gui --agents overlord warden_v1 rule_based_agent rule_based_agent --train 1 --scenario classic --n-rounds $W2 --save-stats results/overlord_focused_w2.json
+$PY main.py play --no-gui --agents overlord $WARDEN rule_based_agent rule_based_agent --train 1 --scenario classic --n-rounds $W2 --save-stats results/overlord_focused_w2.json
 reset_for_next_stage W2
 fi
 
@@ -57,5 +58,5 @@ fi
 echo "=== Frozen eval vs 3x rule_based (100 rounds, CPU) ==="
 OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord rule_based_agent rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 100 --save-stats results/overlord_focused_eval_rb.json
 echo "=== Frozen eval vs warden-mix (60 rounds, CPU) ==="
-OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord warden_v1 rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 60 --save-stats results/overlord_focused_eval_warden.json
+OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord $WARDEN rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 60 --save-stats results/overlord_focused_eval_warden.json
 echo "Done. Metrics: agent_code/overlord/runs/metrics.csv"

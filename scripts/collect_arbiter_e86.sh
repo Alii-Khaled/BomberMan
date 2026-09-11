@@ -4,6 +4,7 @@
 # corpus (arbiter_self*) was rb-heavy and light vs strong opponents.
 set -u
 PY=python3
+WARDEN="${WARDEN:-warden_v2}"
 
 run() { # tag, n-rounds, opponents...
   local tag="$1"; shift
@@ -19,6 +20,6 @@ run() { # tag, n-rounds, opponents...
 }
 
 run ""    40 rule_based_agent rule_based_agent rule_based_agent
-run "_wm" 40 warden_v1 rule_based_agent rule_based_agent
+run "_wm" 40 $WARDEN rule_based_agent rule_based_agent
 run "_cl" 20 coin_collector_agent coin_collector_agent coin_collector_agent
 echo "Done. E86 teacher demos in results/demos/arbiter_self2*/ (~100 rounds)"

@@ -41,7 +41,9 @@ def setup(self):
     except Exception as ex:
         raise RuntimeError(f'reaper_teacher cannot import reaper features: {ex}')
     module = None
-    if _TEACHER == 'warden':
+    if _TEACHER in ('warden', 'warden_v2'):
+        import agent_code.warden_v2.callbacks as module
+    elif _TEACHER == 'warden_v1':
         import agent_code.warden_v1.callbacks as module
     elif _TEACHER == 'sentinel':
         import agent_code.sentinel.callbacks as module

@@ -3284,3 +3284,79 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   (21.09 21:00), public-repo push.
 - **Verdict:** CLOSE-OUT. Ship = E88; Phase-2 null results documented.
   **Report:** §5 (fuzz) + §6 (screen-vs-validation, tuning plateau).
+
+### E94 — Warden v2: best warden (corrected solver + 8-step horizon) 🚀 (sparring reference)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-10
+- **Motivation:** make the outsider heuristic Warden the best warden
+  yet under versioned naming only (`warden_vN`); target = beat the E88
+  ship on G1 (100x2 vs 3x rule_based, ship 4.775) and on the STRONG
+  lobby (score / win rate / rank). The arbiter ship itself is untouched.
+- **Changes** (`outsiders/warden_v2/`, numpy-only, self-contained):
+  E88-corrected `escape_bfs` (latest-lethal test + arrival check before
+  marking safe), boolean danger timeline at `WARDEN_HORIZON=8`
+  (v1 used 6 with earliest-lethal), deterministic seeded RNG
+  (`WARDEN_SEED`), certified-trap bomb option, and a bounded
+  exact-dynamics rollout search (`search.py`, default OFF after
+  screening). Every new behaviour is `WARDEN_*` env-gated; `warden_v1`
+  stays frozen as the historical reference.
+- **Probe** (`scripts/probe_warden.py`, 7/7): sim blast/full-step parity
+  vs the engine's own step functions, chosen-action spec validity,
+  valid_mask parity, determinism, latency (default config p50 0.28 ms,
+  p99 0.32 ms; search arm p50 ~5 ms, p99 < 20 ms).
+- **G1 100x2 samples (classic, CPU, vs 3x rule_based_agent):** the
+  cross-run spread is large (rule_based agent RNG is unseeded):
+  warden_v2 **5.095** in one session (4.870/5.320) and **4.190** in a
+  later zero-env session (4.040/4.340); warden_v1 4.515
+  (4.400/4.630); E88 arbiter 4.775. Single 100x2 samples cannot
+  separate these agents. **Paired head-to-head** (v2 vs v1 in the same
+  games + 2x rb, 100x2 seeds 0/1): v2 **4.400 pooled / win 0.309** vs
+  v1 4.260 / 0.342 — score +0.14, win -0.033, rank ~tied (statistical
+  parity). Paired vs arbiter (2x rb, 100x2): v2 **4.670 / 0.398 /
+  2.09** vs arbiter 4.180 / 0.328 / 2.30 — v2 leads on score and win
+  in both samples (different field; supportive, not the G1 protocol).
+- **G1 arms:** warden_v2 H=6 **4.715** (8-step wins that sample); the
+  bounded rollout search (`WARDEN_SEARCH=rollout`) G1 100x2 **2.260
+  pooled** (2.370/2.150) — the search suppresses bombing (14/rd vs 28)
+  and loses kills, REJECTED (default off).
+- **Paired 40x2 G1 screens (seeds 0/1, `WARDEN_SEED=123`, pooled):**
+  base 5.385 · mobility/dead-end 5.250 · coin-first 5.215 ·
+  wait-penalty 4.460 · certified-trap 4.575 · no-single-crate 4.235.
+  No arm replicates (E92 lesson) — the base config ships.
+- **STRONG lobby 40x5 (arbiter + overlord + sentinel):**
+  | agent | score | win rate | mean rank |
+  |---|---|---|---|
+  | warden_v1 | 5.160 | 0.357 | 2.09 |
+  | arbiter (v1 lobby) | 5.155 | 0.407 | 2.01 |
+  | **warden_v2** | **5.765** | **0.412** | **1.99** |
+  | arbiter (v2 lobby) | 5.080 | 0.365 | 2.00 |
+  In this 5-seed sample warden_v2 leads arbiter on all three paired
+  metrics and warden_v1 on all three; v1 lost the win-rate/rank legs
+  to arbiter. The zero-env 5-seed repeat: warden_v2 5.440 / 0.374 /
+  2.07 vs arbiter 4.975 / 0.389 / 1.99. **Combined 10 seeds:** warden
+  score **5.60** vs arbiter 5.03 (+0.57), win **0.393** vs 0.377
+  (+0.016), rank 2.03 vs 2.00 (-0.03) — a consistent score edge, a
+  win-rate wash.
+- **STRONG arm screens (40rd, s0):** plant-esc=2 (two post-plant escape
+  directions) **0.675 / win 0.025** — near-total aggression collapse,
+  REJECTED (E87 echo); opp-avoid 0.388 · flee-quality 0.338 ·
+  crate-guard 0.338 vs base 0.338 — within noise, all default-off.
+- **Death diagnosis (20 instrumented STRONG rounds, `WARDEN_SEED=123`,
+  isolated `logs/diag_warden/`):** 15 warden deaths, **13 own-bomb
+  (0.65/rd) vs 2 enemy kills** — the E90 own-bomb interference class
+  dominates; 9 kills, 394 bombs, 46 coins. Levers that attack this
+  (esc2, crate guard) trade away the crate economy; documented.
+- **Verdict:** SHIPPED as the warden reference, with an honest bar
+  accounting. warden_v2 is the best-evidenced warden to date
+  (corrected solver, probe-gated, deterministic): paired G1 vs v1 at
+  score parity (+0.14), paired vs arbiter ahead on both samples,
+  STRONG 10-seed score +0.57 with win/rank a wash, plus fewer STRONG
+  suicides than v1 (115 vs 116 in the zero-env repeat; 104 vs 116 in
+  the first). The strict target (robustly beat the E88 ship on both G1
+  score and STRONG win rate) is **not statistically established** —
+  the warden heuristic is at its ceiling and the rollout search that
+  could break it was rejected (G1 2.260 pooled vs 5.095 fast).
+  Arbiter remains the tournament ship; warden stays an outsider and is
+  always versioned. Zero-env defaults == the validated config
+  (`SEARCH=off`, `OPP_TRAP=0`, H=8). **Report:** §5 (solver fix +
+  probes) + §6 (screens, paired A/B, STRONG, death diagnosis).

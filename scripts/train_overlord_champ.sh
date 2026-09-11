@@ -4,7 +4,7 @@
 # C2 counting, C5 sparring-light). One change vs validation: opponent
 # schedule + low re-warm. NO pull, NO arch change, NO UTD change.
 #   R1 400: gate matchup 3x rule_based (consolidation)
-#   R2a 200: warden_v1 + 2x rule_based (discipline sparring)
+#   R2a 200: warden_vN + 2x rule_based (discipline sparring)
 #   R2b 200: sentinel + 2x rule_based (diverse learned foe; --train 1 => only overlord learns)
 #   + frozen gates: 100 rb + 60 warden-mix + 60 sentinel-mix (CPU).
 # Resumable: STAGE_R1_N=0 etc. Guard: watch_overlord_focused.sh (patched to
@@ -12,6 +12,7 @@
 set -e
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"
+WARDEN="${WARDEN:-warden_v2}"
 export OVERLORD_OPT=adam OVERLORD_TUNED=1
 export OVERLORD_BATCH=1024 OVERLORD_UTD=2 OVERLORD_EOR_UPDATES=12
 export OVERLORD_EPS_DECAY=100000 OVERLORD_SAVE_EVERY=5
@@ -43,7 +44,7 @@ fi
 
 if [ "$R2A" -gt 0 ]; then
 echo "=== R2a (warden sparring) N=$R2A ==="
-$PY main.py play --no-gui --agents overlord warden_v1 rule_based_agent rule_based_agent --train 1 --scenario classic --n-rounds $R2A --save-stats results/overlord_champ_r2a.json
+$PY main.py play --no-gui --agents overlord $WARDEN rule_based_agent rule_based_agent --train 1 --scenario classic --n-rounds $R2A --save-stats results/overlord_champ_r2a.json
 fi
 
 if [ "$R2B" -gt 0 ]; then
@@ -54,6 +55,6 @@ fi
 
 echo "=== Frozen gates (CPU) ==="
 OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord rule_based_agent rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 100 --save-stats results/overlord_champ_eval_rb.json
-OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord warden_v1 rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 60 --save-stats results/overlord_champ_eval_warden.json
+OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord $WARDEN rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 60 --save-stats results/overlord_champ_eval_warden.json
 OVERLORD_DEVICE=cpu $PY main.py play --no-gui --agents overlord sentinel rule_based_agent rule_based_agent --train 0 --continue-without-training --scenario classic --n-rounds 60 --save-stats results/overlord_champ_eval_sentinel.json
 echo "Done. Metrics: agent_code/overlord/runs/metrics.csv"

@@ -7,6 +7,7 @@
 # Env: SENTINEL_DEVICE=cpu for eval (CPU inference is what the tournament uses).
 set -e
 PY="${PY:-python3}"
+WARDEN="${WARDEN:-warden_v2}"
 N=40
 SEEDS="0 1"
 
@@ -18,7 +19,7 @@ MATCHUPS[m4]="sentinel peaceful_agent peaceful_agent peaceful_agent --scenario c
 MATCHUPS[m5]="sentinel coin_collector_agent coin_collector_agent coin_collector_agent --scenario classic"
 MATCHUPS[m6]="sentinel rule_based_agent rule_based_agent rule_based_agent --scenario classic"
 MATCHUPS[m7]="sentinel overlord rule_based_agent rule_based_agent --scenario classic"
-MATCHUPS[m8]="sentinel warden_v1 rule_based_agent rule_based_agent --scenario classic"
+MATCHUPS[m8]="sentinel $WARDEN rule_based_agent rule_based_agent --scenario classic"
 
 WANT="$*"
 if [ -z "$WANT" ]; then WANT="m1 m2 m3 m4 m5 m6 m7 m8"; fi

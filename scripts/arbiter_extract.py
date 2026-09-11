@@ -49,7 +49,7 @@ for a in sys.argv[1:]:
     elif a.startswith('--reaper-include='):
         REAPER_INCLUDE = [p for p in a.split('=', 1)[1].split(',') if p]
 
-TEACHER_ID = {'warden': 0, 'warden_v1': 0, 'sentinel': 1, 'overlord': 2,
+TEACHER_ID = {'warden': 0, 'warden_v1': 0, 'warden_v2': 0, 'sentinel': 1, 'overlord': 2,
               'coin_collector_agent': 3, 'collector': 3,
               'arbiter_self': 4, 'arbiter': 4}  # P2-C self-distillation
 

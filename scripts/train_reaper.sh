@@ -2,7 +2,7 @@
 # Reaper curriculum (BC-init fine-tune). Resumable per stage; guard: manual.
 #   C1 economy 150: solo classic (placement + survival calibration)
 #   C2 hunt    200: vs peaceful + coin_collector
-#   C3 mixed   500: vs rule_based + warden_v1 + sentinel (robustness)
+#   C3 mixed   500: vs rule_based + warden_vN + sentinel (robustness)
 #   C4 gate    150: vs 3x rule_based (gate consolidation)
 #   + frozen gates (CPU): see scripts/eval_reaper.sh
 #
@@ -14,6 +14,7 @@
 set -e
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"
+WARDEN="${WARDEN:-warden_v2}"
 export REAPER_OPT=adam REAPER_TUNED=1
 export REAPER_BATCH=256 REAPER_UTD=1 REAPER_EOR_UPDATES=4
 export REAPER_EPS_START=${REAPER_EPS_START:-0.10}
@@ -65,7 +66,7 @@ fi
 
 if [ "$C3" -gt 0 ]; then
 echo "=== [${TAG:-main}] C3 (mixed sparring) N=$C3 ==="
-$PY main.py play --no-gui --agents reaper rule_based_agent warden_v1 sentinel --train 1 --scenario classic --n-rounds $C3 $SEED_ARG --save-stats results/${TAG}reaper_c3.json
+$PY main.py play --no-gui --agents reaper rule_based_agent $WARDEN sentinel --train 1 --scenario classic --n-rounds $C3 $SEED_ARG --save-stats results/${TAG}reaper_c3.json
 reset_for_next_stage C3
 fi
 

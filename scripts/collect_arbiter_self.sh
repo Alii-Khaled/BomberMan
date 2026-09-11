@@ -12,6 +12,7 @@
 set -e
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"
+WARDEN="${WARDEN:-warden_v2}"
 N=${DAGGER_N:-200}
 PREFIX=${DEMO_PREFIX:-arbiter_self}
 mkdir -p results/demos logs
@@ -33,7 +34,7 @@ n_wm=$(( N * 25 / 100 ))
 n_rn=$(( N * 125 / 1000 ))
 n_cl=$(( N - n_rb - n_wm - n_rn ))
 run ""    "$n_rb" rule_based_agent rule_based_agent rule_based_agent
-run "_wm" "$n_wm" warden_v1 rule_based_agent rule_based_agent
+run "_wm" "$n_wm" $WARDEN rule_based_agent rule_based_agent
 run "_rn" "$n_rn" random_agent random_agent random_agent
 run "_cl" "$n_cl" coin_collector_agent coin_collector_agent coin_collector_agent
 echo "Done. Self-demo files in results/demos/arbiter_self*/ (~$N rounds)"

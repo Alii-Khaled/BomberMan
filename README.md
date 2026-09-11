@@ -18,7 +18,11 @@ Backup ship: **overlord** (CNN agent, 3.79 pooled). Report models:
 
 Rule-based / scripted opponents (`rule_based_agent`, `coin_collector_agent`,
 `peaceful_agent`, `random_agent`) are included for curriculum training and eval,
-plus the outsider sparring agent `warden_v1` (strong heuristic reference, 5.07).
+plus the outsider sparring agents `warden_v1` (frozen heuristic reference)
+and `warden_v2` (active: v1 + corrected escape solver, 8-step danger
+horizon, deterministic RNG, probe-gated; paired 100x2 G1 vs v1 at parity
+(4.40 vs 4.26), paired STRONG 40x5 sample above arbiter on score/rank —
+directional, see E94 in `docs/experiments.md`).
 
 ## Requirements
 
@@ -68,7 +72,7 @@ only, git-ignored; byte-identical mirrors live outside the repo (see
 Arbiter (offline warm start, then frozen gates — no curriculum training):
 
 ```bash
-bash scripts/collect_apex_demos.sh     # teacher demos (warden/sentinel/overlord/collector)
+bash scripts/collect_apex_demos.sh     # teacher demos (warden_v2/sentinel/overlord/collector)
 bash scripts/collect_demos.sh          # reaper-format demos (98-dim features)
 python3 scripts/arbiter_extract.py     # joint pi/V cache (results/arbiter_p0_cache.npz)
 python3 scripts/pretrain_arbiter.py    # CE + margin regression, gate val_acc >= 0.5

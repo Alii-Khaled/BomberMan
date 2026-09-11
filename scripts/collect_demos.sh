@@ -18,6 +18,7 @@ PY="${PY:-python3}"
 W=${WARDEN_N:-400}
 S=${SENTINEL_N:-200}
 O=${OVERLORD_N:-200}
+WARDEN="${WARDEN:-warden_v2}"
 # field split: rb / warden-mix / random / collector (fractions of teacher N)
 FRB=${FIELD_RB:-0.50}
 FWM=${FIELD_WM:-0.25}
@@ -41,10 +42,10 @@ collect() { # teacher, tag, opponents..., n-rounds
       --n-rounds "$n" --save-stats "results/demos_${t}${tag}.json"
 }
 
-if [ "$#" -eq 0 ]; then set -- warden sentinel overlord; fi
+if [ "$#" -eq 0 ]; then set -- warden_v2 sentinel overlord; fi
 for t in "$@"; do
   case "$t" in
-    warden)   N=$W ;;
+    warden|warden_v1|warden_v2) N=$W ;;
     sentinel) N=$S ;;
     overlord) N=$O ;;
     *) echo "unknown teacher $t"; exit 1 ;;
@@ -57,7 +58,7 @@ for t in "$@"; do
   n_cl=$(python3 -c "print(int($N*$FCL))")
   n_rb=$(( n_rb + N - n_rb - n_wm - n_rn - n_cl ))
   collect "$t" ""   rule_based_agent rule_based_agent rule_based_agent "$n_rb"
-  collect "$t" "_wm" warden_v1 rule_based_agent rule_based_agent "$n_wm"
+  collect "$t" "_wm" $WARDEN rule_based_agent rule_based_agent "$n_wm"
   collect "$t" "_rn" random_agent random_agent random_agent "$n_rn"
   collect "$t" "_cl" coin_collector_agent coin_collector_agent coin_collector_agent "$n_cl"
   if [ "$STAGE_DAGGER_N" -gt 0 ]; then

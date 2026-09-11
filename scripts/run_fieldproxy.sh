@@ -2,7 +2,7 @@
 # Field-proxy matrix (P1.3): arbiter vs field archetypes that proxy the
 # unseen tournament field (no Discord downloads available). Frozen CPU,
 # 40 rounds x seeds 0,1 — same discipline as G2-G4, lighter N.
-#   STRONG : arbiter warden_v1 overlord sentinel      (hunters present)
+#   STRONG : arbiter warden_vN overlord sentinel      (hunters present)
 #   RACER  : arbiter coin_collector x2 + overlord     (crate-race field)
 #   WEAK   : arbiter peaceful random overlord         (free-kill farm)
 #   TRAINED: arbiter apex reaper sentinel             (DQN-class field)
@@ -10,7 +10,8 @@
 # Usage: bash scripts/run_fieldproxy.sh [TAG]  (TAG prefixes output files)
 set -u
 TAG="${1:-fieldproxy}"
-for lobby in "strong:arbiter warden_v1 overlord sentinel" \
+WARDEN="${WARDEN:-warden_v2}"
+for lobby in "strong:arbiter $WARDEN overlord sentinel" \
              "racer:arbiter coin_collector_agent coin_collector_agent overlord" \
              "weak:arbiter peaceful_agent random_agent overlord" \
              "trained:arbiter apex reaper sentinel"; do

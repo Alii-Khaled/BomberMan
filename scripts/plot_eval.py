@@ -38,6 +38,7 @@ AGENT_COLORS = {
     'sentinel': '#0173B2',
     'rule_based_agent': '#DE8F05',
     'warden_v1': '#029E73',
+    'warden_v2': '#029E73',
     'coin_collector_agent': '#CC78BC',
     'peaceful_agent': '#949494',
     'random_agent': '#CA9161',

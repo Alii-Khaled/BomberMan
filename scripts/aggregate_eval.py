@@ -24,7 +24,7 @@ MATCHUP_LABELS = {
     'm5': 'vs 3x coin_collector',
     'm6': 'vs 3x rule_based',
     'm7': 'vs overlord+2x rule_based',
-    'm8': 'vs warden_v1+2x rule_based',
+    'm8': 'vs warden_v2+2x rule_based',
 }
 
 
