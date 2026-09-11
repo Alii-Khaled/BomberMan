@@ -32,11 +32,16 @@ torch, no absolute paths).
   earliest-lethal information loss.
 - **Deterministic seeded RNG** (`WARDEN_SEED`) for reproducible A/B.
 
-## Optional arms (default OFF; screened in E94/E95)
+## Optional arms (default OFF; screened in E94/E95/E96)
 
 - `WARDEN_SEARCH=rollout`: bounded exact-dynamics rollout search
   (`search.py`) over moves + certified bomb plans with CRN-paired greedy
   opponents; G1 2.370 (bomb suppression), keep off.
+- `WARDEN_SEARCH=danger|moves` (E96): selective search — danger-mode
+  invokes the rollout only while fleeing / an own bomb is live, moves-mode
+  arbitrates moves only; both keep heuristic bomb ownership. Screen G1
+  40x2: base 4.71 vs danger 3.89 / danger+escape-commit 3.88 /
+  escape-commit 4.59 / moves (post-fix) weak move arbitration — REJECTED.
 - `WARDEN_OPP_TRAP=1`: plant on opponents with no proven escape.
 - `WARDEN_PLANT_ESC=2`: require two post-plant escape directions
   (aggression collapse, 0.675 STRONG score).

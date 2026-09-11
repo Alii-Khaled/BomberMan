@@ -128,4 +128,6 @@ agent_code/arbiter/runs/
 agent_code/arbiter/logs/
 # Runtime logs anywhere (game + agent backends; never commit)
 agent_code/*/logs/
-logs/game.log*
+logs/*
+!logs/.gitkeep
+*.log.[0-9]*

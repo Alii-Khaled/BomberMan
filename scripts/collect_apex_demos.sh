@@ -42,7 +42,7 @@ collect() { # teacher, field-tag, scenario, opponents..., n-rounds
 if [ "$#" -eq 0 ]; then set -- warden_v2 sentinel overlord coin_collector_agent; fi
 for t in "$@"; do
   case "$t" in
-    warden|warden_v1|warden_v2) N=$W ;;
+    warden_v1|warden_v2) N=$W ;;
     sentinel)            N=$S ;;
     overlord)            N=$O ;;
     coin_collector_agent) N=$C ;;

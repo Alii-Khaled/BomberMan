@@ -27,7 +27,7 @@ _ACTION_TO_IDX = {a: i for i, a in enumerate(_ACTION_LIST)}
 def _demo_dir():
     d = os.environ.get('REAPER_DEMO_DIR', '').strip()
     if not d:
-        teach = os.environ.get('TEACHER', 'warden').strip().lower()
+        teach = os.environ.get('TEACHER', 'warden_v2').strip().lower()
         d = os.path.join(_ROOT, 'results', 'demos', teach)
     if not os.path.isabs(d):
         d = os.path.join(_ROOT, d)

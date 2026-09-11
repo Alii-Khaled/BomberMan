@@ -1,5 +1,5 @@
 #!/bin/bash
-# Collect BC demos for reaper from the teachers (warden/sentinel/overlord).
+# Collect BC demos for reaper from the teachers (warden_vN / sentinel / overlord).
 # The recorder delegates act() to the teacher and writes (features, action)
 # npz files to results/demos/<teacher>/ (training-time only, never ships).
 # Teachers act greedily (their own train flags are absent -> epsilon 0).
@@ -45,7 +45,7 @@ collect() { # teacher, tag, opponents..., n-rounds
 if [ "$#" -eq 0 ]; then set -- warden_v2 sentinel overlord; fi
 for t in "$@"; do
   case "$t" in
-    warden|warden_v1|warden_v2) N=$W ;;
+    warden_v1|warden_v2) N=$W ;;
     sentinel) N=$S ;;
     overlord) N=$O ;;
     *) echo "unknown teacher $t"; exit 1 ;;

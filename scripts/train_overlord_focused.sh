@@ -45,7 +45,7 @@ reset_for_next_stage W1
 fi
 
 if [ "$W2" -gt 0 ]; then
-echo "=== W2 (warden sparring: warden + 2x rule_based) N=$W2 ==="
+echo "=== W2 (warden sparring: $WARDEN + 2x rule_based) N=$W2 ==="
 $PY main.py play --no-gui --agents overlord $WARDEN rule_based_agent rule_based_agent --train 1 --scenario classic --n-rounds $W2 --save-stats results/overlord_focused_w2.json
 reset_for_next_stage W2
 fi

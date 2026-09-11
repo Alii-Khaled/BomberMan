@@ -2,9 +2,10 @@
 (features, action) samples for BC pretraining. Training-time only — never
 ships to the tournament.
 
-Teacher selection: TEACHER env = warden | sentinel | overlord (default
-warden). The recorder reuses the teacher's own ``setup``/``act`` on the
-same self object, so delegation is exact.
+Teacher selection: TEACHER env = warden_v2 | warden_v1 | sentinel |
+overlord (default warden_v2; the warden is always versioned). The
+recorder reuses the teacher's own ``setup``/``act`` on the same self
+object, so delegation is exact.
 
 DAgger mode (REAPER_DAGGER=1): the STUDENT (reaper with current weights)
 acts, and the teacher only labels the visited state. This puts teacher
@@ -24,7 +25,7 @@ _ROOT = os.path.dirname(os.path.dirname(_HERE))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-_TEACHER = os.environ.get('TEACHER', 'warden').strip().lower()
+_TEACHER = os.environ.get('TEACHER', 'warden_v2').strip().lower()
 _DAGGER = os.environ.get('REAPER_DAGGER', '0') == '1'
 _STUDENT_PT = os.environ.get('REAPER_STUDENT_PT', '').strip()
 _ACTION_LIST = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
@@ -41,7 +42,7 @@ def setup(self):
     except Exception as ex:
         raise RuntimeError(f'reaper_teacher cannot import reaper features: {ex}')
     module = None
-    if _TEACHER in ('warden', 'warden_v2'):
+    if _TEACHER == 'warden_v2':
         import agent_code.warden_v2.callbacks as module
     elif _TEACHER == 'warden_v1':
         import agent_code.warden_v1.callbacks as module

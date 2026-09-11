@@ -3405,3 +3405,37 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   `results/diag_warden_e95_attribution.json` + `_deaths.md`,
   `scripts/diag_warden_deaths.py`. **Report:** §5 (solver/probes) +
   §6 (deaths, arms).
+
+### E96 — Selective rollout search (danger/moves modes) ❌ REJECTED (E94 defaults kept)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-11
+- **Motivation:** E95 showed the own-bomb interference class dominates
+  warden deaths and that full-rollout or always-on de-aggression arms
+  either suppress bombing or trade the crate economy. Test the middle
+  path: invoke the exact-dynamics rollout search ONLY where it should
+  help — escape selection while fleeing / own bomb live (`SEARCH=danger`)
+  or move arbitration (`SEARCH=moves`) — with the fast heuristic keeping
+  bomb ownership (bomb plans off in both modes).
+- **Implementation:** `WARDEN_SEARCH=danger|moves` (+ `ESCAPE_COMMIT`
+  own-plant tracking); `search.override(..., allow_bombs=)`; `moves`
+  and `danger` never bypass the heuristic `want_bomb` decision.
+  Robustness fix found during the arm run: plans left unscored by the
+  wall-clock deadline are skipped instead of raising KeyError (the old
+  path silently fell back to the heuristic).
+- **Screen (40x2 G1, same session, `WARDEN_SEED=123`, pooled):**
+  base **4.71** (4.75/4.67) · danger 3.89 (4.28/3.50) ·
+  danger+escape-commit 3.88 · escape-commit 4.59 (sui 0.25 vs 0.28,
+  kills 0.44 vs 0.34, but coins 2.41 vs 3.03) · `moves` pre-fix 0.40
+  (the mode bypassed the heuristic bomb decision — 0 bombs/rd).
+- **Post-fix smoke (5rd):** `moves` restores bombing (11.4/rd) but the
+  rollout's greedy move arbitration is weak (crates 11.2/rd vs ~33 for
+  the heuristic) — a fundamental leaf/continuation-policy limit, not a
+  wiring bug; `danger` behaves as designed (search only on threat).
+- **Verdict:** REJECT all selective-search arms; E94 zero-env defaults
+  stand (`SEARCH=off`, H=8, `OPP_TRAP=0`). The E95 a12 combo remains the
+  documented optional STRONG-field arm (lower suicides/higher win, G1
+  score wash). **Report:** §6 (search-mode sweep, move-arbitration
+  limit).
+
+- **Artifacts:** `results/screen_e96_*.json`, `results/smoke_e96_*.json`,
+  `logs/screen_e96.log`.

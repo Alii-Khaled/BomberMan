@@ -385,11 +385,24 @@ def act(self, game_state):
         self._rng = _make_rng(self._seed, st['round'], 0)
 
     want_bomb, aux = decide(st, self.bomb_hist)
+    own_live = (ESCAPE_COMMIT or SEARCH == 'danger') and any(
+        p[2] < st['step'] <= p[2] + 3 for p in self.own_plants)
     action = None
-    if SEARCH != 'off':
+    run_search = False
+    allow_bombs = False
+    if SEARCH == 'rollout':
+        run_search, allow_bombs = True, True
+    elif SEARCH == 'moves':
+        # move-only arbitration; the heuristic keeps bomb ownership
+        run_search = not want_bomb
+    elif SEARCH == 'danger':
+        # selective search: flee quality / own-bomb escape only
+        run_search = (aux['must_flee'] or own_live) and not want_bomb
+    if run_search:
         try:
             from . import search as SR
-            action = SR.override(game_state, st, aux, self)
+            action = SR.override(game_state, st, aux, self,
+                                 allow_bombs=allow_bombs)
         except Exception:
             action = None
 
@@ -397,8 +410,6 @@ def act(self, game_state):
         if want_bomb:
             action = 'BOMB'
         else:
-            own_live = ESCAPE_COMMIT and any(
-                p[2] < st['step'] <= p[2] + 3 for p in self.own_plants)
             candidates = choose_fast(st, aux, self.coord_hist, want_bomb,
                                      own_live)
             if candidates:

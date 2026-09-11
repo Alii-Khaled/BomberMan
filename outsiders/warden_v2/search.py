@@ -303,7 +303,7 @@ def _bomb_plans(st, aux, deadline):
     return plans
 
 
-def override(game_state, st, aux, self_obj):
+def override(game_state, st, aux, self_obj, allow_bombs=True):
     """Return a searched action or None (caller falls back to heuristic)."""
     t0 = time.monotonic()
     deadline = t0 + BUDGET
@@ -319,7 +319,8 @@ def override(game_state, st, aux, self_obj):
         if aux['valid'].get(action):
             plans.append({'prefix': [action], 'bomb_tile': None,
                           'is_bomb': False})
-    plans.extend(_bomb_plans(st, aux, deadline))
+    if allow_bombs:
+        plans.extend(_bomb_plans(st, aux, deadline))
     if not plans:
         return None
 
@@ -347,6 +348,8 @@ def override(game_state, st, aux, self_obj):
     best_move = None
     best_bomb = None
     for p in plans:
+        if 'score' not in p:
+            continue
         if p['is_bomb']:
             if best_bomb is None or p['score'] > best_bomb['score']:
                 best_bomb = p
