@@ -26,10 +26,9 @@ sys.path.insert(0, os.path.join(REPO, 'agent_code'))
 
 import numpy as np
 
-import arbiter.model as AM
-import arbiter.features as AF
+# AM/AF are resolved from --pkg inside main() (E99 candidate packages).
 
-ACTION_LIST = AM.ACTION_LIST
+ACTION_LIST = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 
 def parse_env_set(name, default):
@@ -56,7 +55,15 @@ def main():
     # a short low-LR fine-tune can shift calibration without the
     # catastrophic distribution shift of a from-scratch retrain.
     ap.add_argument('--init', default=None)
+    # E99: candidate package selector (default ship 'arbiter'), e.g.
+    # --pkg=arbiter_v2 for the 114-dim feature-v2 candidate.
+    ap.add_argument('--pkg', default=os.environ.get('ARBITER_PKG', 'arbiter'))
     a = ap.parse_args()
+    import importlib
+    AM = importlib.import_module(a.pkg + '.model')
+    AF = importlib.import_module(a.pkg + '.features')
+    global ACTION_LIST
+    ACTION_LIST = list(AM.ACTION_LIST)
     rng = np.random.default_rng(a.seed)
 
     z = np.load(a.cache)
@@ -100,10 +107,29 @@ def main():
                 if key in obj and isinstance(obj[key], dict):
                     obj = obj[key]
                     break
-        missing = model.load_state_dict(obj, strict=False)
-        print('init %s (missing=%d unexpected=%d)'
-              % (a.init, len(missing.missing_keys),
-                 len(missing.unexpected_keys)))
+        # Tolerant warm start incl. feature expansion (E99): a wider first
+        # layer keeps the old input columns and zero-inits the new dims.
+        msd = model.state_dict()
+        copied, expanded, skipped = 0, 0, 0
+        for k, v in obj.items():
+            if k not in msd:
+                skipped += 1
+                continue
+            t = msd[k]
+            if t.shape == v.shape:
+                msd[k] = v
+                copied += 1
+            elif t.dim() == 2 and v.dim() == 2 and t.shape[0] == v.shape[0]:
+                w = t.clone()
+                w[:, :min(t.shape[1], v.shape[1])] = \
+                    v[:, :min(t.shape[1], v.shape[1])]
+                msd[k] = w
+                expanded += 1
+            else:
+                skipped += 1
+        model.load_state_dict(msd)
+        print('init %s (copied=%d expanded=%d skipped=%d)'
+              % (a.init, copied, expanded, skipped))
     opt = torch.optim.Adam(model.parameters(), lr=a.lr)
     ce = nn.CrossEntropyLoss()
     mse = nn.MSELoss()

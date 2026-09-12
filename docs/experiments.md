@@ -3536,3 +3536,54 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   do not compose with the arbiter search under any transfer scheme
   tried (acting policy, off-policy labels, on-policy labels).
   **Report:** §5 (recorder) + §6 (label-transfer table).
+
+### E99 — Feature-v2 + exact-outcome V targets ❌ both REJECTED (ship = E88)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-12
+- **Motivation:** E97/E98 exhausted capacity, teachers, labels and
+  move-policy transfer; E86 named the feature set as the bottleneck, so
+  Phase A adds NEW information; E66 blamed V-null on label noise, so
+  Phase B rebuilds V targets from exact rollout outcomes.
+- **Phase A — feature-v2 (114-dim, candidate package).** New self-contained
+  `agent_code/arbiter_v2/` (ship stays byte-identical) extends the vector
+  98 -> 114: per-dir opponent seal risk, min opponent BFS distance to our
+  tile, opponents within 2/3 steps, opponent-reachable area, best
+  coin-race margin, contested coins, `n_esc_hyp`, post-plant lane width,
+  corridor depth, last-lethal time at our tile, stacked-bomb overlap
+  risk, opponent distance to our best escape. Probe
+  `scripts/probe_arbiter_v2.py` **12/12 PASS**: new block exactly
+  equivariant under all 8 symmetries; features 1.20 ms (leaf path) /
+  1.39 ms (full); one pre-existing 1/300 ship asymmetry at index 45
+  documented (present identically in `arbiter`).
+- **Corpus + training.** apex 500 rounds re-featurized + 400 fresh
+  ship self-play rounds (200 rb / 100 wm / 50 rn / 50 cl) recorded by
+  `arbiter_v2_dagger` = **231,427 pi / 123,212 V** rows (teacher 4:
+  108,215). From-scratch 256/512 val **0.755/0.748**; warm starts from
+  the E80 ship with first-layer input-column expansion
+  (`pretrain_arbiter.py --init`, lr 1e-4/3e-4, 5-20 ep) val 0.749-0.760.
+  The 0.82 aspiration failed — feature-v2 did not improve label fit.
+- **G1 screen 40x2 (same session):** control 4.013/0.354 · v2_256
+  4.425/0.435 · **v2_512 4.700/0.425** · ws4_5 4.225 · **ws4_20
+  4.975/0.488** · ws3_10 3.825.
+- **G1 validation 100x2:** control **4.500 / 0.442** (4.50/4.50) ·
+  v2_512 4.250 / 0.395 (4.46/4.04) · ws4_20 4.240 / 0.349 (4.39/4.09) ·
+  v2_256 3.935 / 0.348 -> **all below the control**; the 40-round lifts
+  did not replicate (fourth E92 confirmation). Warm starts regressed
+  harder (feature-shift calibration, E88 echo).
+- **Phase B — exact-outcome V targets.** `scripts/arbiter_value_targets.py`
+  rolls the search's OWN continuation/opponent model (`score_plan`,
+  empty prefix) from 123,212 apex states; targets (std 2.118, range
+  -2..10) replace the legacy teacher margin-to-go (std 2.643). V trained
+  on exact targets: held-out **RMSE 2.2415** (corr 0.128) vs legacy ship
+  V **RMSE 2.2446** (corr 0.180) on the same targets. No improvement at
+  all — the V-null is representational (features/net cannot predict
+  rollout outcomes), not label noise. **V line closed permanently.**
+- **Infra landed:** `probe_arbiter_v2.py`, `arbiter_value_targets.py`,
+  `eval_arbiter_v.py`, `collect_arbiter_v2_self.sh`, extract/pretrain
+  `--pkg` selectors, pretrain `--init` tolerant warm start (feature
+  expansion), `arbiter_v2_dagger` recorder.
+- **Verdict:** REJECT both phases; ship = E88. With capacity, teachers,
+  labels, move-policy transfer, feature information and V all exhausted,
+  the only untried paradigm is **on-policy RL** (Phase D, conditional):
+  KL-anchored policy gradient on the search-gated distribution.
+  **Report:** §5 (feature/RL methods) + §6 (E97-E99 rejection table).

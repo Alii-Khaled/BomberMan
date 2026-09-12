@@ -38,7 +38,16 @@ sys.path.insert(0, os.path.join(REPO, 'agent_code'))
 
 import numpy as np
 
-import arbiter.features as AF
+# --pkg=arbiter_v2 selects the feature module (E99 feature-v2 candidate);
+# reaper-format rows must carry that package's FEATURE_DIM.
+import importlib
+_PKG = 'arbiter'
+for _a in sys.argv[1:]:
+    if _a == '--pkg':
+        _PKG = sys.argv[sys.argv.index(_a) + 1]
+    elif _a.startswith('--pkg='):
+        _PKG = _a.split('=', 1)[1]
+AF = importlib.import_module(_PKG + '.features')
 
 OUT = os.path.join(REPO, 'results', 'arbiter_p0_cache.npz')
 SKIP_REAPER = '--skip-reaper' in sys.argv
@@ -52,6 +61,7 @@ for a in sys.argv[1:]:
 TEACHER_ID = {'warden': 0, 'warden_v1': 0, 'warden_v2': 0, 'sentinel': 1, 'overlord': 2,
               'coin_collector_agent': 3, 'collector': 3,
               'arbiter_self': 4, 'arbiter': 4,  # P2-C self-distillation
+              'arbiter_v2_self': 4,  # E99 feature-v2 self corpus
               'da_warden': 5}  # E98 ship-state warden_v2 label transfer
 # --warden-labels (E98): for dirs recorded with ARBITER_DAGGER_WARDEN=1,
 # train pi on warden_v2's action at the ship's own visited states.
@@ -128,7 +138,7 @@ def main():
         if WARDEN_LABELS and 'acts_w' in d.files:
             act = d['acts_w'].astype(np.int64)
             tid = TEACHER_ID['da_warden']
-        assert feats.shape[1] == 98 and len(act) == len(feats), f
+        assert feats.shape[1] == AF.FEATURE_DIM and len(act) == len(feats), f
         assert set(np.unique(act)).issubset(set(range(6))), f
         F.append(feats)
         A.append(act.astype(np.uint8))

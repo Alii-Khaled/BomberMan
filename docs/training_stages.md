@@ -338,6 +338,14 @@ The training that exists, with configs, bars, and evidence locations:
   STRONG 40x10 5.572/0.411 vs 4.715/0.348. Infra: `run_arbiter_battery.sh`,
   `probe_arbiter_plant.*`, `collect_arbiter_wv2.sh`, `pretrain --init`,
   relative-`ARBITER_MODEL` fix.
+- **Phase-4 feature-v2 + V rebuild (E99):** a 114-dim candidate package
+  (`agent_code/arbiter_v2/`, self-contained; interference/coin-race/
+  post-plant features) with 231K pi rows reached val 0.755/0.748
+  (warm-start 0.749-0.760) and G1 100x2 4.25/4.24/3.94 vs same-session
+  control 4.500 -> REJECTED; exact-outcome V targets (search's own
+  rollout labels) gave RMSE 2.242 vs legacy 2.245 -> the V line is
+  CLOSED (representational, not label noise). Only untried paradigm:
+  on-policy KL-anchored RL.
 - **Ship protocol:** same E30 rule; current ship with zero-env defaults
   (`SEARCH=search`, score margin 0.6, `CRN=1`, `ESC_DIST=3.0`).
   Zip: `agent_code/arbiter/` only (E68 audit).
