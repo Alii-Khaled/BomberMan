@@ -110,6 +110,8 @@ def main():
                                                     'arbiter_ng_scalars.npz'))
     ap.add_argument('--init-scalars', default=None)
     ap.add_argument('--rebuild', action='store_true')
+    ap.add_argument('--save-every', type=int, default=1,
+                    help='also keep <out>.epNN checkpoints (0 = best only)')
     a = ap.parse_args()
     rng = np.random.default_rng(a.seed)
 
@@ -229,6 +231,12 @@ def main():
                 json.dump({'val_acc': vacc, 'epoch': ep + 1, 'lr': a.lr,
                            'aux_w': a.aux_w, 'rows': N,
                            'n_files': len(files)}, fh, indent=1)
+        if a.save_every and (ep + 1) % a.save_every == 0:
+            ep_out = '%s.ep%02d' % (a.out, ep + 1)
+            tmp = ep_out + '.part'
+            torch.save({k: v.cpu() for k, v in model.state_dict().items()},
+                       tmp)
+            os.replace(tmp, ep_out)
     print('saved best %s (val_acc %.3f)' % (a.out, best))
 
 

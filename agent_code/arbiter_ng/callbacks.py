@@ -412,6 +412,10 @@ def _act_impl(self, game_state, t0):
         rnd = int(game_state.get('round', 0))
     except Exception:
         rnd = 0
+    try:
+        self._rl_step = int(game_state.get('step', 0))
+    except Exception:
+        self._rl_step = 0
     if rnd != getattr(self, 'current_round', 0):
         self.coord_history = deque([], 24)
         self.bomb_history = deque([], 5)
@@ -578,6 +582,18 @@ def _act_impl(self, game_state, t0):
         if _wa is not None:
             _warden_hist_update(self, _wa, x, y, nxt)
             return _commit(self, _wa, x, y, nxt, bombs_left)
+
+    # --- E101 RL: on-policy masked-softmax sample (train mode only) ---
+    if getattr(self, '_rl', False) and getattr(self, 'train', False):
+        try:
+            from .rl_policy import sample_action
+            _rf = state_to_features(game_state, safety)
+            _ra = sample_action(self, pi, valid, safe, must_flee,
+                                flee_locked, _rf)
+            if _ra is not None:
+                return _commit(self, _ra, x, y, nxt, bombs_left)
+        except Exception:
+            pass
 
     # --- rank: pi, warden filter semantics, bounded tie-breaks only ---
     def tiebreak(a):
