@@ -3587,3 +3587,29 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   the only untried paradigm is **on-policy RL** (Phase D, conditional):
   KL-anchored policy gradient on the search-gated distribution.
   **Report:** §5 (feature/RL methods) + §6 (E97-E99 rejection table).
+
+### E100 — KL-anchored on-policy RL fine-tune 🚧 (run 1 diverged; run 2 in flight)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-12
+- **Motivation:** with capacity, teachers, labels, move-policy transfer,
+  feature information and V all exhausted (E97-E99), on-policy RL is the
+  only untried paradigm (E66's P2 redesign).
+- **Vehicle:** `agent_code/arbiter_rl/` (self-contained ship copy). The
+  search/tactical still own bombs; the move fallback samples from the
+  masked softmax(pi/T) over the ship's admissible set and records
+  (feats, allowed idx, chosen j) per pi step (`rl_policy.py`). `train.py`
+  is a KL-anchored REINFORCE: exact engine reward + reaper's
+  death/invalid/wait terms, returns-to-go over the round, frozen BC-prior
+  reference, `ARBITER_RL_{LR,BETA,GAMMA,TEMP,TRUNK,SAVE_EVERY,OUT,CSV}`.
+  CPU-only by design (callbacks forward on CPU; the net is tiny).
+- **Run 1 (lr 1e-4, beta 0.02):** ep100 G1 40x2 **4.763 / 0.444** vs
+  same-session control 4.600 / 0.427 (parity+, within noise); KL grew
+  0.03 -> 6 by ep 200 and the policy drifted (ep200 s0 G1
+  **3.550 / 0.300**) -> run ABORTED at ep ~285. Lesson: raw advantage
+  scale + weak anchor is unstable.
+- **Run 2 (lr 5e-5, beta 0.1, unit-variance advantages, return clip
+  +-20):** 600 rounds in flight (`results/arbiter_rl_e100b.*`); gate =
+  G1 100x2 vs the same-session control, then STRONG/field-proxy.
+- **Artifacts:** `results/arbiter_rl_ep100.pt` (parity checkpoint),
+  `arbiter_rl_ep200.pt`, `arbiter_rl_e100*.{pt,csv,log}`.
+  **Report:** §5 (RL method) + §6 (stability table).
