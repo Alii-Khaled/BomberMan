@@ -3613,3 +3613,44 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
 - **Artifacts:** `results/arbiter_rl_ep100.pt` (parity checkpoint),
   `arbiter_rl_ep200.pt`, `arbiter_rl_e100*.{pt,csv,log}`.
   **Report:** §5 (RL method) + §6 (stability table).
+
+### E101 — ARBITER-NG: policy/training redesign 🚧 (skeleton + early screens)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-12
+- **Mandate:** full freedom to redesign the policy and training for the
+  best outcome vs the current roster and unseen agents. Diagnosis from
+  the ledger: bomb intent/volume is the scoring bottleneck (E67/E77),
+  the 98-dim scalar MLP is representation-limited (E86/E99), imitation
+  saturates (~0.76), and V is representational dead weight (E99).
+- **Design:** self-contained `agent_code/arbiter_ng/`.
+  * Input: flat 3566 = 12x17x17 lossless board tensor (apex channels)
+    ++ 98 scalars, so the copied callbacks/search work unchanged;
+    `transform_tensor` gives exact dihedral augmentation.
+  * Model: 12-channel CNN trunk fused with the scalar MLP branch,
+    pi/V/aux heads (zero-init), 849K params; 0.47 ms batch-1 forward at
+    1 thread; `V_BLEND=0` by default (V dead per E99, avoids per-leaf
+    CNN cost — pi runs once per step).
+  * Contract: full-action policy — pi ranks all six actions whenever the
+    exact-solver mask certifies them (the ship's S0 semantics); the
+    search keeps certification + margin arbitration.
+  * Training: NG-1 expert-iteration BC on a warden-heavy league corpus
+    (apex-format recordings via apex_teacher; scalar branch warm-started
+    from the E80 weights); NG-2 KL-anchored RL on the same machinery as
+    E100 (lr 5e-5, beta 0.1, unit-variance advantages).
+- **Probe** `scripts/probe_arbiter_ng.py` 13/13: tensor augmentation
+  exact under all 8 symmetries, scalar parity, features 1.19 ms,
+  forward 0.47 ms, act p99 44 ms.
+- **Early screens (G1 40x2, same-session control):**
+  * 2-epoch apex-only smoke (val 0.711): 4.412/0.406 vs control
+    4.500/0.400 — parity with a barely-trained prior.
+  * 10-epoch partial corpus (apex + 286 ship rounds, val 0.779 — the
+    best fit recorded): 4.725/0.425 vs control 4.513/0.435 — score
+    +0.21, win parity, but per-seed spread 3.67/5.78 -> 100x2 required.
+- **Infra:** `pretrain_arbiter_ng.py` (featurize/cache + on-the-fly
+  augmentation + per-epoch checkpoints + scalar warm start),
+  `collect_arbiter_ng_league.sh` (1250 rounds, warden-heavy),
+  `run_arbiter_ng_pipeline.sh` (corpus -> NG-1 -> epoch screens ->
+  NG-2 RL -> screen, self-driving).
+- **Status:** interim. Architecture is viable and the redesign is the
+  first line since E97 with a positive screen delta; promotion requires
+  100x2 + STRONG 40x10 + field-proxy per E30. **Report:** §5/§6.
