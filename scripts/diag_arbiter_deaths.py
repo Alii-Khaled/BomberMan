@@ -54,8 +54,8 @@ import numpy as np
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BATCHES = ['s0', 's1', 'wm']
-PREFIX = 'diag_e86'
-OUT_PREFIX = 'diag_e86'
+PREFIX = os.environ.get('DIAG_PREFIX', 'diag_e86')
+OUT_PREFIX = os.environ.get('DIAG_OUT_PREFIX', 'diag_e86')
 LABEL = None
 for a in sys.argv[1:]:
     if a.startswith('--prefix='):

@@ -55,6 +55,18 @@ def main():
     p.add_argument('--silence', action='store_true', default=True)
     a = p.parse_args()
 
+    # P0-battery: quiet logging. The wrapper logger emits 2 DEBUG lines per
+    # callback call (per step, per agent); with several games running
+    # concurrently on the NFS home this saturates I/O. Levels are module
+    # constants read at AgentRunner construction, so patching before the
+    # world exists is sufficient. Engine game.log verbosity is untouched.
+    import settings as _s
+    import logging as _logging
+    _s.LOG_AGENT_WRAPPER = max(getattr(_s, 'LOG_AGENT_WRAPPER',
+                                      _logging.INFO), _logging.WARNING)
+    _s.LOG_AGENT_CODE = max(getattr(_s, 'LOG_AGENT_CODE', _logging.INFO),
+                            _logging.WARNING)
+
     from environment import BombeRLeWorld, WorldArgs
     args = WorldArgs(
         no_gui=True, fps=0, turn_based=False, update_interval=0.1,

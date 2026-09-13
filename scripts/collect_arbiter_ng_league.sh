@@ -7,7 +7,7 @@
 set -u
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"
-OUT="${APEX_DEMO_OUT:-results/apex_ng_demos}"
+OUT="${APEX_DEMO_OUT:-$(pwd)/results/apex_ng_demos}"
 mkdir -p "$OUT" logs
 
 collect() { # teacher, tag, n-rounds, opponents...
