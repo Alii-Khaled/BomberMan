@@ -184,6 +184,11 @@ TTA = os.environ.get('ARBITER_TTA', '1') == '1'
 # feature-neutral (state_to_features is untouched). Default 0 =
 # ship-identical.
 FLEE_Q = os.environ.get('ARBITER_FLEE_Q', '0') == '1'
+# E103 A2 flee-window bomb veto (ARBITER_FLEE_LOCK=1): while an own bomb
+# is ticking (flee_timer>0), search/tactical may not commit another BOMB —
+# the 19/44 own_bomb_chain deaths were second plants sealing our own
+# escape corridor. Default 0 = ship behavior.
+FLEE_LOCK = os.environ.get('ARBITER_FLEE_LOCK', '0') == '1'
 _DELTAS = {'UP': (0, -1), 'DOWN': (0, 1), 'LEFT': (-1, 0),
            'RIGHT': (1, 0), 'WAIT': (0, 0), 'BOMB': (0, 0)}
 _DIRS4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -541,7 +546,8 @@ def _act_impl(self, game_state, t0):
     # certified escape, so deferring to the search can only veto it.
     try:
         if _TACTICAL_ON and valid.get('BOMB') and safe.get('BOMB') \
-                and (time.perf_counter() - t0) < TIME_BUDGET * 0.95:
+                and (time.perf_counter() - t0) < TIME_BUDGET * 0.95 \
+                and not (FLEE_LOCK and flee_locked):
             _traps, _ = bomb_here_traps(game_state, safety)
             if _traps:
                 self.bomb_history.append((x, y))
@@ -565,7 +571,10 @@ def _act_impl(self, game_state, t0):
                 except Exception:
                     pass
                 if a in ACTION_LIST:
-                    return _commit(self, a, x, y, nxt, bombs_left)
+                    if a == 'BOMB' and FLEE_LOCK and flee_locked:
+                        pass  # veto: bomb while fleeing own bomb
+                    else:
+                        return _commit(self, a, x, y, nxt, bombs_left)
     except Exception:
         pass
 
