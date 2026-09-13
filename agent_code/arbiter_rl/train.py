@@ -4,8 +4,8 @@ Only the move fallback is a pi decision (the search owns bombs); steps
 where search/tactical acted carry no trace entry. Rewards are the exact
 engine objective plus reaper's death/invalid/wait terms; returns-to-go
 over the whole round feed the traced steps. KL(pi || frozen BC prior)
-anchors calibration. CPU-only by design (the callbacks forward the model
-on CPU; the net is tiny).
+anchors calibration. Runs on the callbacks' device (main CUDA device
+with CPU fallback, E100c); the net is tiny.
 """
 import copy
 import os
@@ -52,6 +52,20 @@ def setup_training(self):
     self._rl_beta = _env('ARBITER_RL_BETA', 0.02)
     self._rl_trunk = os.environ.get('ARBITER_RL_TRUNK', '1') == '1'
     self._rl_save_every = int(_env('ARBITER_RL_SAVE_EVERY', 25, int))
+    # E102 RL loop v2 (all env-gated; defaults = E100 behavior):
+    # STABLE — adaptive KL anchor + hard revert guard;
+    # EPOCHS — extra passes over the round batch; CRITIC — V-as-baseline
+    # advantages + value regression.
+    self._rl_stable = os.environ.get('ARBITER_RL_STABLE', '0') == '1'
+    self._rl_kl_hi = _env('ARBITER_RL_KL_HI', 0.5)
+    self._rl_kl_lo = _env('ARBITER_RL_KL_LO', 0.1)
+    self._rl_kl_rev = _env('ARBITER_RL_KL_REVERT', 1.0)
+    self._rl_beta_min = _env('ARBITER_RL_BETA_MIN', 0.02)
+    self._rl_beta_max = _env('ARBITER_RL_BETA_MAX', 1.0)
+    self._rl_epochs = int(_env('ARBITER_RL_EPOCHS', 1, int))
+    self._rl_critic = os.environ.get('ARBITER_RL_CRITIC', '0') == '1'
+    self._rl_vf_coef = _env('ARBITER_RL_VF_COEF', 0.5)
+    self._rl_good = None
     here = os.path.dirname(os.path.abspath(__file__))
     root = os.path.dirname(os.path.dirname(here))
     self._rl_out = os.environ.get(
@@ -76,8 +90,10 @@ def setup_training(self):
     self.epsilon = 0.0
     try:
         self.logger.info(
-            'arbiter_rl setup lr=%.1e beta=%.3f trunk=%s out=%s'
-            % (self._rl_lr, self._rl_beta, self._rl_trunk, self._rl_out))
+            'arbiter_rl setup lr=%.1e beta=%.3f trunk=%s out=%s '
+            'stable=%d critic=%d epochs=%d'
+            % (self._rl_lr, self._rl_beta, self._rl_trunk, self._rl_out,
+               self._rl_stable, self._rl_critic, self._rl_epochs))
     except Exception:
         pass
 
@@ -102,6 +118,18 @@ def end_of_round(self, last_game_state, last_action, events):
     self._rl_ep = int(getattr(self, '_rl_ep', 0)) + 1
     if trace and rew:
         try:
+            # E104 B2 shaping knob: survived a round in which we planted
+            # bombs -> terminal bonus (counter-weights KILLED_SELF -8;
+            # default 0 = ship behavior).
+            _sb = _env('ARBITER_RL_BOMB_SURVIVE_BONUS', 0.0)
+            if _sb > 0 \
+                    and 'SURVIVED_ROUND' in ' '.join(
+                        str(ev) for ev in (events or [])) \
+                    and any(t[3][t[4]] == 5 for t in trace):
+                rew[-1] += _sb
+        except Exception:
+            pass
+        try:
             _rl_update(self, trace, rew)
         except Exception as ex:
             try:
@@ -125,37 +153,57 @@ def _rl_update(self, trace, rew):
         ret[i] = run
     ret = np.clip(ret, -20.0, 20.0)
     base = float(np.mean(ret))
-    feats, idxs, js, advs = [], [], [], []
+    feats, idxs, js, steps_k = [], [], [], []
     for (_rnd, step, f, idx, j) in trace:
         i = min(max(step - 1, 0), T - 1)
         feats.append(f)
         idxs.append(idx)
         js.append(j)
-        advs.append(ret[i] - base)
-    adv_arr = np.asarray(advs, dtype=np.float64)
+        steps_k.append(i)
+    dev = next(self.model.parameters()).device
+    xb = torch.from_numpy(np.stack(feats)).to(dev)
+    ret_t = torch.tensor([ret[i] for i in steps_k],
+                         dtype=torch.float32, device=dev)
+    critic = getattr(self, '_rl_critic', False)
+    self.model.train()
+    logits, vv = self.model(xb)
+    if critic:
+        adv_arr = (ret_t.detach().cpu().numpy().astype(np.float64)
+                   - vv.detach().cpu().numpy().astype(np.float64))
+    else:
+        adv_arr = np.asarray([ret[i] - base for i in steps_k],
+                             dtype=np.float64)
     # E100b stability: unit-variance advantages (raw returns span +-20 and
     # destabilized the first run: KL blew to 12 and G1 fell to 3.55).
     adv_arr = (adv_arr - adv_arr.mean()) / (adv_arr.std() + 1e-6)
-    xb = torch.from_numpy(np.stack(feats))
-    self.model.train()
-    logits, _v = self.model(xb)
-    logp = []
-    for k in range(len(feats)):
-        sel = torch.tensor(idxs[k], dtype=torch.long)
-        logp.append(F.log_softmax(logits[k][sel], dim=0)[js[k]])
-    logp = torch.stack(logp)
-    adv = torch.tensor(adv_arr, dtype=torch.float32)
-    pg = -(logp * adv).mean()
+    adv = torch.tensor(adv_arr, dtype=torch.float32, device=dev)
     with torch.no_grad():
         rlogits, _ = self._rl_ref(xb)
-    kl = F.kl_div(F.log_softmax(logits, dim=-1),
-                  F.softmax(rlogits, dim=-1), reduction='batchmean')
-    loss = pg + self._rl_beta * kl
-    self._rl_opt.zero_grad(set_to_none=True)
-    loss.backward()
-    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
-    self._rl_opt.step()
-    self._rl_hist.append((float(pg.detach()), float(kl.detach())))
+        rprob = F.softmax(rlogits, dim=-1)
+    stable = getattr(self, '_rl_stable', False)
+    epochs = max(1, int(getattr(self, '_rl_epochs', 1)))
+    pg_val, kl_val = 0.0, 0.0
+    for _ in range(epochs):
+        logits, vv = self.model(xb)
+        logp = []
+        for k in range(len(feats)):
+            sel = torch.tensor(idxs[k], dtype=torch.long, device=dev)
+            logp.append(F.log_softmax(logits[k][sel], dim=0)[js[k]])
+        logp = torch.stack(logp)
+        pg = -(logp * adv).mean()
+        kl = F.kl_div(F.log_softmax(logits, dim=-1), rprob,
+                      reduction='batchmean')
+        loss = pg + self._rl_beta * kl
+        if critic:
+            loss = loss + self._rl_vf_coef * F.mse_loss(vv, ret_t)
+        self._rl_opt.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
+        self._rl_opt.step()
+        pg_val, kl_val = float(pg.detach()), float(kl.detach())
+        if stable:
+            _rl_stable_post(self, kl_val)
+    self._rl_hist.append((pg_val, kl_val))
     if self._rl_csv:
         try:
             new = not os.path.exists(self._rl_csv)
@@ -164,21 +212,55 @@ def _rl_update(self, trace, rew):
                     fh.write('ep,steps,ret_mean,pg,kl\n')
                 fh.write('%d,%d,%.4f,%.4f,%.4f\n'
                          % (self._rl_ep, len(trace), base,
-                            float(pg.detach()), float(kl.detach())))
+                            pg_val, kl_val))
         except Exception:
             pass
+
+
+def _rl_stable_post(self, kl_val):
+    """E102 stable mode: revert guard + adaptive beta on the measured KL."""
+    import torch
+    try:
+        if kl_val > self._rl_kl_rev and self._rl_good is not None:
+            self.model.load_state_dict(self._rl_good)
+            params = [p for g in self._rl_opt.param_groups
+                      for p in g['params']]
+            self._rl_opt = torch.optim.Adam(params, lr=self._rl_lr)
+            self._rl_beta = min(self._rl_beta_max, self._rl_beta * 2.0)
+            try:
+                self.logger.warning(
+                    'arbiter_rl KL %.2f > %.2f: reverted to last good '
+                    '(beta -> %.3f)' % (kl_val, self._rl_kl_rev,
+                                        self._rl_beta))
+            except Exception:
+                pass
+            return
+        self._rl_good = {k: v.detach().cpu().clone()
+                         for k, v in self.model.state_dict().items()}
+        if kl_val > self._rl_kl_hi:
+            self._rl_beta = min(self._rl_beta_max, self._rl_beta * 1.5)
+        elif kl_val < self._rl_kl_lo:
+            self._rl_beta = max(self._rl_beta_min, self._rl_beta * 0.9)
+    except Exception:
+        pass
 
 
 def _rl_save(self):
     import torch
     try:
+        sd = {k: v.cpu() for k, v in self.model.state_dict().items()}
         tmp = self._rl_out + '.part'
-        torch.save({k: v.cpu() for k, v in self.model.state_dict().items()},
-                   tmp)
+        torch.save(sd, tmp)
         os.replace(tmp, self._rl_out)
+        ep = int(getattr(self, '_rl_ep', 0))
+        if ep:
+            snap = '%s.ep%03d' % (self._rl_out, ep)
+            tmp2 = snap + '.part'
+            torch.save(sd, tmp2)
+            os.replace(tmp2, snap)
         try:
             self.logger.info('arbiter_rl saved %s (ep %d)'
-                             % (self._rl_out, self._rl_ep))
+                             % (self._rl_out, ep))
         except Exception:
             pass
     except Exception as ex:

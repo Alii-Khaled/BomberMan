@@ -60,6 +60,16 @@ _DIAG = os.path.abspath(
 # action_safety's mask still binds. Default 'pi' == ship behavior.
 POLICY = os.environ.get('ARBITER_POLICY', 'pi').strip().lower()
 
+# E100c device knob: 'cuda:0' (main CUDA device) by default when CUDA is
+# available, resolved per-agent in setup() with automatic CPU fallback;
+# ARBITER_DEVICE=cpu pins the ship CPU behavior.
+DEVICE_NAME = os.environ.get('ARBITER_DEVICE', 'cuda:0').strip() or 'cuda:0'
+
+# E102: trace search/tactical-committed BOMB steps into the RL trace
+# (ARBITER_RL_BOMB_TRACE=1) so the move policy gets a gradient on the
+# states where bombs are planted (66% of deaths were own-bomb).
+BOMB_TRACE = os.environ.get('ARBITER_RL_BOMB_TRACE', '0') == '1'
+
 
 def _diag_snapshot(self, game_state, t0_unused=0.0):
     """Compact per-tick record for post-hoc death attribution."""
@@ -291,6 +301,14 @@ def setup(self):
                 break
             except Exception as ex:
                 self.logger.warning(f'arbiter load failed {cand}: {ex}')
+    self._device = None
+    if _HAS_TORCH:
+        try:
+            import torch as _t
+            self._device = _t.device(DEVICE_NAME)
+            self.model.to(self._device)
+        except Exception:
+            self._device = None
     try:
         self.model.eval()
     except Exception:
@@ -477,6 +495,9 @@ def _act_impl(self, game_state, t0):
                     with _t.no_grad():
                         _tb = _t.from_numpy(np.stack(
                             [f.astype(np.float32) for (_, f) in _pairs]))
+                        _dev = getattr(self, '_device', None)
+                        if _dev is not None:
+                            _tb = _tb.to(_dev)
                         _mdl = getattr(self, 'model')
                         _lg, _vv = _mdl(_tb)
                         _lg = np.asarray(_lg.cpu().numpy(),
@@ -504,6 +525,9 @@ def _act_impl(self, game_state, t0):
                     with _t.no_grad():
                         tf = _t.from_numpy(
                             feats.astype(np.float32)).unsqueeze(0)
+                        _dev = getattr(self, '_device', None)
+                        if _dev is not None:
+                            tf = tf.to(_dev)
                         mdl = getattr(self, 'model')
                         logits, vv = mdl(tf)
                         pi = np.asarray(logits.squeeze(0).cpu().numpy(),
@@ -548,6 +572,7 @@ def _act_impl(self, game_state, t0):
                 and (time.perf_counter() - t0) < TIME_BUDGET * 0.95:
             _traps, _ = bomb_here_traps(game_state, safety)
             if _traps:
+                _rl_trace_bomb(self, game_state, safety, valid)
                 self.bomb_history.append((x, y))
                 self.flee_timer = 5
                 return 'BOMB'
@@ -569,6 +594,8 @@ def _act_impl(self, game_state, t0):
                 except Exception:
                     pass
                 if a in ACTION_LIST:
+                    if a == 'BOMB':
+                        _rl_trace_bomb(self, game_state, safety, valid)
                     return _commit(self, a, x, y, nxt, bombs_left)
     except Exception:
         pass
@@ -662,3 +689,27 @@ def _commit(self, a, x, y, nxt, bombs_left):
     except Exception:
         pass
     return a
+
+
+def _rl_trace_bomb(self, game_state, safety, valid):
+    """E102: record a search/tactical-committed BOMB step for REINFORCE.
+
+    Allowed set = every mask-valid action at this state (BOMB included);
+    chosen = BOMB. Returns flow via returns-to-go as for move steps.
+    """
+    if not BOMB_TRACE:
+        return
+    if not (getattr(self, '_rl', False) and getattr(self, 'train', False)):
+        return
+    try:
+        allowed = [ACTION_TO_IDX[a] for a in ACTION_LIST if valid.get(a)]
+        if not allowed or ACTION_TO_IDX['BOMB'] not in allowed:
+            return
+        f = state_to_features(game_state, safety)
+        self._rl_trace.append(
+            (int(getattr(self, 'current_round', 0)),
+             int(getattr(self, '_rl_step', 0)),
+             np.asarray(f, dtype=np.float32).copy(),
+             tuple(allowed), allowed.index(ACTION_TO_IDX['BOMB'])))
+    except Exception:
+        pass
