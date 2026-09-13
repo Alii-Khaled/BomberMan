@@ -4,29 +4,29 @@ Train Reinforcement Learning agents for the classic game Bomberman (course proje
 Tournament inference is CPU-only with a 0.5 s/step budget; training defaults to
 CUDA with AMP (Google Colab ready).
 
-Current ship: **arbiter** — learned policy prior over 98-dim engineered
-features + exact-dynamics lookahead search for bomb placement
-(G1 vs 3× rule_based **4.775 pooled**, 100 rounds × 2 seeds, E88:
-corrected escape solver + score margin 0.6 + paired (CRN) opponent
-rollouts, E80 weights unchanged — field-proxy 4-seed means all above
-the E80 baseline: STRONG 4.94 / RACER 5.29 / WEAK 8.54 / TRAINED 5.52
-(E80: 4.54/4.62/7.45/4.54); win-rate G1 0.41 vs 0.32, STRONG 0.40 vs
-0.37 over 5 seeds).
-Backup ship: **overlord** (CNN agent, 3.79 pooled). Report models:
-**sentinel** (MLP Dueling-DQN curriculum), **reaper** (distilled feature-MLP),
-**apex** (synthesis CNN — unshipped: learned Q net-negative, see `docs/experiments.md` E61).
+Current ship: **arbiter_ng (b1e150)** — CNN+scalar fused policy
+(3566-dim lossless board tensor + 98 scalars) over the exact-dynamics
+lookahead search, BC warm-start then RL fine-tuned (E104 b1 leg:
+KL-anchored REINFORCE with adaptive anchor + revert guard, bomb-trace,
+trained vs a rule_based x2 + warden_v2 league). Promoted in E106 on the
+pooled multi-battery bar (G1 100x2 + STRONG 40x10 + UNSEEN battery,
+1120 rounds): **pooled 6.889 / win 0.669** vs E88 arbiter 5.991 / 0.633
+— +1.9 on the chaotic unseen lobby, +0.6 vs the hunter field, all four
+unseen-archetype legs +1.0+, G1 parity-plus. Legacy ship **arbiter**
+(E88: learned prior over 98-dim features + exact-dynamics search,
+pooled 4.775 G1 100x2) preserved as `__shared/arbiter_ship_e88.zip`.
+Backup: **overlord** (CNN, 3.79). Report models: **sentinel** (MLP
+Dueling-DQN curriculum), **reaper** (distilled feature-MLP), **apex**
+(synthesis CNN — unshipped: learned Q net-negative, see
+`docs/experiments.md` E61).
 
 Rule-based / scripted opponents (`rule_based_agent`, `coin_collector_agent`,
 `peaceful_agent`, `random_agent`) are included for curriculum training and eval,
 plus the outsider sparring agents `warden_v1` (frozen heuristic reference)
 and `warden_v2` (active: v1 + corrected escape solver, 8-step danger
-horizon, deterministic RNG, probe-gated; paired 100x2 G1 vs v1 at parity
-(4.40 vs 4.26), paired STRONG 40x5 sample above arbiter on score/rank —
-directional, see E94 in `docs/experiments.md`). E97 same-session
-baselines: **warden_v2 now leads the ship** — G1 100x6 4.673 vs 4.502,
-STRONG 40x10 5.572/0.411 vs 4.715/0.348; seven E97/E98 challenger arms
-(prior scale, warden teacher, fine-tune, hybrid moves, plant gate,
-on-policy labels) were all rejected, ship = E88.
+horizon, deterministic RNG, probe-gated), and the **unseen-behavior
+sparring suite** `outsiders/unseen_{coward,bomber,rusher,racer}` (eval-only
+held-out proxies, E106: never shipped, never used as teachers).
 
 ## Requirements
 

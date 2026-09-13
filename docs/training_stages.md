@@ -346,6 +346,11 @@ The training that exists, with configs, bars, and evidence locations:
   rollout labels) gave RMSE 2.242 vs legacy 2.245 -> the V line is
   CLOSED (representational, not label noise). Only untried paradigm:
   on-policy KL-anchored RL.
-- **Ship protocol:** same E30 rule; current ship with zero-env defaults
-  (`SEARCH=search`, score margin 0.6, `CRN=1`, `ESC_DIST=3.0`).
-  Zip: `agent_code/arbiter/` only (E68 audit).
+- **Ship protocol:** E30 rule + E106 pooled multi-battery bar
+  (G1 100x2 + STRONG 40x10 + UNSEEN battery, fresh same-session control
+  on every battery). Current ship (since 2026-09-13): **arbiter_ng
+  (b1e150)** — NG-1 BC then E104 RL leg; pooled 6.889 / win 0.669 vs
+  E88 arbiter 5.991 / 0.633 (see E106 in `docs/experiments.md`).
+  Legacy arbiter E88 (4.775 G1 100x2) preserved as
+  `__shared/arbiter_ship_e88.zip`.
+  Zip: `agent_code/arbiter_ng/` (weights at `my-saved-model.pt`).

@@ -1,0 +1,18 @@
+{
+  "agent": "arbiter_ng",
+  "weights": "my-saved-model.pt",
+  "source": "results/e104_b1.pt.ep150",
+  "experiment": "E106 P0 cash-in battery",
+  "recipe": "NG-1 BC (3566-dim tensor+scalar CNN, ep20 base) -> E104 b1 RL leg (KL-anchored REINFORCE, STABLE adaptive beta + revert guard, BOMB_TRACE, 300 eps vs rule_based x2 + warden_v2 league), ep150 checkpoint",
+  "decision": {
+    "bar": "pooled multi-battery (G1 100x2 + STRONG 40x10 + UNSEEN UMIX 100x2 + archetype legs 40x2)",
+    "pooled_score": 6.889,
+    "pooled_win": 0.669,
+    "control": {"agent": "arbiter E88", "pooled_score": 5.991, "pooled_win": 0.633},
+    "deltas": {"score": "+0.898", "win": "+0.036"},
+    "strong_lobby": {"b1e150": 5.200, "ctl": 4.595},
+    "unseen_umix": {"b1e150": 10.490, "ctl": 8.570}
+  },
+  "date": "2026-09-13",
+  "notes": "All batteries CPU, tournament conditions, fresh same-session control; 1120 rounds per model; 0 think-time violations; default load path = my-saved-model.pt verified."
+}

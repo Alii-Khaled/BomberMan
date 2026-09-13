@@ -3654,3 +3654,210 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
 - **Status:** interim. Architecture is viable and the redesign is the
   first line since E97 with a positive screen delta; promotion requires
   100x2 + STRONG 40x10 + field-proxy per E30. **Report:** §5/§6.
+
+### E100-eval — arbiter_rl checkpoint evaluation + weakness attribution ✅ (gate FAILED, weaknesses ranked)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-12
+- **Purpose:** proper evaluation of the E100 run-2 GPU fine-tune
+  (`arbiter_rl_e100c.pt`, resumed from the ep-250 CPU checkpoint) and
+  weakness spotting for enhancement. Two separated regimes (new
+  convention): Regime A performance evaluation (GPU allowed, diagnostic)
+  and Regime B tournament evaluation (official, CPU-only, E30 conditions).
+- **Regime A (screen, G1 40x1 s0, GPU; diag leg 100 rounds):** ship
+  control 4.625/0.438 > rl_e100b(ep250) 4.175/0.400 > rl_e100c(ep850)
+  3.775/0.338 > rl_ep100 3.675/0.350 > rl_ep200 3.500/0.346 — degradation
+  tracks KL drift monotonically. GPU eval legs were NOT faster than CPU
+  (~11.5 s/round both; the 98-dim MLP is overhead-dominated — tournament
+  CPU condition costs nothing). Death attribution (e100b weights): 44
+  deaths/100rd (29 KILLED_SELF/15 GOT_KILLED); own_bomb_chain 43% +
+  corner_pin 36% (10/16 own-bomb) => **66% of deaths from our own bombs**;
+  11 certified our-bomb traps, **0 realized kills**; 22 missed-kill
+  opportunities (6 ours).
+- **Regime B (gate, G1 100x2, ARBITER_DEVICE=cpu):** ship pooled
+  4.445/0.400 (4.630/0.392 s0, 4.260/0.408 s1) vs e100b pooled
+  4.305/0.400 (4.540/0.400 s0, 4.070/0.400 s1). **GATE FAILED** — deficit
+  -0.14 pooled, win parity, both seeds negative. The 40x1 screen
+  overestimated the gap (-0.45).
+- **Forensics:** e100c KL 0.02 -> 6.42 over 600 eps (blow-up starts ~ep
+  200, self-accelerating), returns FLAT at -3.5 the whole run, max|PG| 2.7
+  -> 16.7. Fixed-anchor REINFORCE (beta 0.1, lr 5e-5, unit-variance adv)
+  cannot hold: same failure mode as run 1 (beta 0.02, KL->6 by ep 200).
+- **Ranked weaknesses:** (1) RL has no gradient on BOMB (search owns
+  bombs; pi ranks moves only) — 66% of deaths outside the trained policy's
+  control; (2) KL anchor unstable — needs adaptive beta / KL-threshold
+  early-stop + rollback / PPO-style clip; (3) no critic, one update per
+  round, ~35% steps traced — needs actor-critic + minibatch epochs;
+  (4) post-plant flee skeleton fails under multi-bomb interference
+  (corner_pin/chain); (5) missed-kill conversion 0/11 on certified traps
+  (BOMB_MARGIN arbitration over-conservative?).
+- **Artifacts:** `results/e100eval_findings.md` (full tables),
+  `results/tourney_e100eval_*.json`, `results/tourney_e100gate_*.json`,
+  `results/diag_e100_perf_*.{jsonl,csv,md}` via `diag_arbiter_deaths.py`
+  (now env-prefixable: `DIAG_PREFIX`/`DIAG_OUT_PREFIX`).
+  **Report:** §5/§6.
+
+### E102 — RL loop v2 ablations on arbiter_rl ✅ (machinery sound; gates FAILED)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-12
+- **Machinery** (env-gated, defaults = E100): `ARBITER_RL_STABLE` adaptive
+  beta (x1.5 if KL>0.5 / x0.9 if KL<0.1, bounds [0.02,1]) + hard revert
+  (KL>1.0 -> restore last-good CPU copy, reset Adam, beta x2);
+  `ARBITER_RL_EPOCHS`; `ARBITER_RL_CRITIC` (V-baseline advantages + value
+  regression); `ARBITER_RL_BOMB_TRACE` (search/tactical BOMB steps enter
+  the REINFORCE trace, j = index within the allowed subset); numbered
+  snapshots `<out>.epNNN` at every save.
+- **Legs** (300 eps GPU from e100b ep250, screens G1 40x1 s0): L0 probe
+  e100b+search+tactical 3.800/0.275 vs 4.175 plain (REJECTED — E69
+  semantics validated on ship only); L1 STABLE mean 3.54 (best ep200
+  4.250); L2 STABLE+BOMB_TRACE mean 4.23 (best ep250 4.475/0.463); L3
+  STABLE+CRITIC ep100 4.975/0.458 -> ep300 2.025/0.025 collapse
+  (REJECTED: trunk-shared value regression corrupts V, the search
+  consumes V (V_BLEND=1) => play collapses while KL(pi) stays small).
+- **Gate (G1 100x2, CPU, fresh controls):** ship 4.590 vs e102l2-ep250
+  4.015 — **delta -0.575, GATE FAILED.** The bomb-trace screen lift was
+  40x1 noise.
+- **Positive:** stability machinery sound (KL bounded <=0.67 all legs,
+  guard recovered 1 revert per leg, snapshots preserved) — reusable.
+
+### E101 NG-2 v2 — stable RL on the NG policy ✅ (gate parity-minus; FAILED)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-12
+- **Port:** E102 train.py copied to arbiter_ng (byte-identical files
+  pre-port); NG callbacks gained the device knob (E100c) + bomb trace
+  (E102). 300 eps GPU, STABLE+BOMB_TRACE, from NG-1 ep04 / ep20 bases.
+- **Screens (G1 40x1 s0):** ep04 base mean 4.91 (ep250 5.750/0.550,
+  ep150 5.150/0.550, ep300 5.075/0.438) vs ep20 base mean 4.40 (best
+  ep200 5.400/0.512). ep04 confirmed the better NG-1 base; KL bounded.
+- **Gate (G1 100x2, CPU, fresh controls):** ship 4.360 vs ng04-ep250
+  4.290 — **delta -0.070, GATE FAILED (parity-minus).** STRONG 40x10
+  skipped (gate rule).
+- **Session conclusions:** (1) 40x1 screens overestimate deltas < ~0.5
+  (4.475 -> 4.015; 5.750 -> 4.290) — promotion needs 100x2 directly;
+  (2) every honest 100x2 of on-policy RL lands parity-minus (E100 -0.14,
+  E102 -0.58, E101v2 -0.07): single-trajectory REINFORCE extracts no
+  signal beyond the BC prior with returns flat across 850+ eps; the E30
+  bar (ship 4.775) is untouched, nothing ships. Next levers: opponent
+  diversity (league/seed-varied), off-policy replay on NG tensor
+  features, longer seed-varied curricula, trap-conversion reward shaping.
+- **Artifacts:** `results/e102_e101_findings.md` (full tables),
+  `results/e102_{l0,l1,l2,l3}.{pt,ep*,csv}`, `results/e101ng_{ng04,ng20}.*`,
+  `results/tourney_e102gate_*.json`, `results/tourney_e101gate_*.json`,
+  `results/tourney_arbiter_rl_e102*ep*_g1_s0.json`,
+  `results/tourney_arbiter_ng_e101ng*ep*_g1_s0.json`. **Report:** §5/§6.
+
+### E103 — Ship-challenger arm screens (bmargin, plant-esc, flee-lock, combo) ❌ all parity-minus (ship unchanged)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-13
+- **Motivation:** after E88/E97-E99 exhausted retraining levers, screen
+  ship-side arbitration knobs aimed at the own-bomb death share (E90
+  attribution: 66% of deaths own-bomb; second plants sealing our escape
+  corridor).
+- **Arms (G1 40x2 paired, fresh ctl s0/s1):** `ARBITER_BOMB_SCORE_MARGIN`
+  0.30/0.45; `ARBITER_PLANT_ESC=2`; `ARBITER_FLEE_LOCK=1` (new: veto
+  BOMB while fleeing own bomb, tactical + search); combo (m0.45 +
+  PLANT_ESC2 + FLEE_LOCK).
+- **Results (pooled 40x2):** ctl 3.900/4.800 = 4.350; bmargin030 3.663;
+  bmargin045 4.213; plantesc2 4.088; fleelock 4.063; combo 3.875 —
+  **every arm at/below control** (bmargin 0.3 hits −0.69).
+- **Verdict:** ship unchanged (E88 defaults). Margin/plant-esc lines are
+  closed for the third time (E87/E88 follow-up, E103). FLEE_LOCK stays
+  default-off.
+- **Artifacts:** `results/tourney_arbiter_e103{ctl,bmargin030,bmargin045,
+  plantesc2,fleelock,combo}_g1_s{0,1}.json`, `logs/e103_*.log`.
+  **Report:** §6.
+
+### E104 — NG RL legs b1/b2 (league field, bomb-trace) ✅ b1 gate-positive, ❌ b2 collapse
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-12/13
+- **Setup:** E102 stable machinery (STABLE adaptive-beta + revert guard)
+  on `agent_code/arbiter_ng` with `BOMB_TRACE` (search/tactical BOMB
+  steps enter the REINFORCE trace), trained **vs a league field**
+  (rule_based x2 + warden_v2, 300 eps GPU): b1 = plain L2 config;
+  b2 = b1 + `ARBITER_RL_BOMB_SURVIVE_BONUS` (terminal survived-round
+  bonus when bombs were planted, counter-weights KILLED_SELF -8).
+- **Screens (G1 40x1 s0):** b1 ep050 4.975/0.450, ep100 4.575/0.400,
+  ep150 4.700/0.562, ep200 3.625/0.400; b2 ep050 3.375/0.425,
+  ep100 5.575/0.475, ep150 4.425/0.425, ep200 4.825/0.375.
+- **Gates (G1 100x2 CPU, fresh same-session ctl 4.055/0.410):**
+  b1e050 4.285/0.385 (+0.230, win parity-minus); **b1e150 4.660/0.430
+  (+0.605/+0.020 — top screen)**; **b2e100 1.795/0.090, b2e200
+  1.775/0.075 — CATASTROPHIC REJECT**: the terminal survive bonus
+  destabilizes the KL-anchored trace (policy collapses to bomb-dodging;
+  kill volume dies). b2 line closed.
+- **Verdict:** b1e150 + ng20 (E104-battery) advance to the confirm
+  batteries; b2 dead. Per-gate deltas ~3x the last successful promotion
+  (E80 +0.45) — strongest honest RL result of the project.
+- **Artifacts:** `results/e104_{b1,b2}.{pt,csv}` (+ep snapshots),
+  `results/tourney_p0gate_*.json`, `logs/e104_*.log`. **Report:** §5/§6.
+
+### E105 — NGQ offline Double-DQN ❌ REJECT (below ship)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-13
+- **Vehicle:** `scripts/build_ngq_dataset.py` + `scripts/train_ngq_dqn.py`:
+  offline (x, a, r, n-step-r3, next, done) from the NG-1 cache + apex
+  corpus (296,022 rows / 1,236 files); Double-DQN (AdamW, gamma 0.99,
+  n-step 3, target-refresh/epoch) into the NG model's pi slot (trunk
+  warm-started from NG-1 ep04; Q head zero-init).
+- **Result:** G1 40x2 screens 3.975/0.300 (s0) and 3.725/0.275 (s1) —
+  pooled ~3.85, far below the ship-era control (~4.35). Dataset build
+  also hit ENOSPC mid-run (disk hygiene fixed separately).
+- **Verdict:** offline DQN on demo-corpus returns adds no signal beyond
+  the BC prior on this corpus (returns are imitation-flow, not
+  counterfactual). REJECT; final weights kept for the report ablation.
+- **Artifacts:** `results/arbiter_ngq.pt` (+ep01-09 archived off-repo),
+  `results/ngq_ds*`, `logs/e105_build.log`. **Report:** §5.
+
+### E106 — P0 cash-in batteries: b1e150 vs ng20 vs ship 🚧 (G1 gates in; confirm batteries in flight)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-13
+- **Protocol (new, user-confirmed):** promotion bar = **pooled
+  multi-battery** — G1 100x2 + STRONG 40x10 (X warden_v2 overlord
+  sentinel) + UNSEEN battery (UMIX `X coward bomber rusher` 100x2 +
+  archetype legs 3x{coward,bomber,rusher,racer} 40x2) + G1 re-legs for a
+  same-session-clean pooled metric; all CPU, tournament conditions;
+  fresh ship control on every battery.
+- **Unseen sparring agents** (`outsiders/unseen_*`, eval-only, never
+  shipped or used as teachers): coward (never bombs, distance-maximizing
+  flee), bomber (plant-on-cooldown with <=3-step exit path + flee),
+  rusher (BFS chase + adjacency plant + flee), racer (coin-only BFS).
+  Probe: 10-round lobby clean (0 tracebacks), distinct archetypes
+  verified (bomber crates+kills, rusher kills, racer coins, coward
+  survival). Registry: `outsiders/README.md`.
+- **Infra for the freeze:** concurrent runs now use per-game engine-log
+  dirs on local disk (`/tmp/opencode/p0bat/`), `tournament_eval` patches
+  settings to WARNING (wrapper logger was 2 DEBUG lines per callback
+  call — NFS saturation froze interactive sessions), jobs `nice -n 10`,
+  max 8 concurrent. Box-sequential spirit restored with bounded
+  parallelism.
+- **G1 gates (15-wide session, CPU):** see E104 table — b1e150 +0.605,
+  ng20 +0.650 vs ctl 4.055/0.410 (both seeds positive).
+- **Confirm batteries (8-wide, CPU, 1120 rounds/model, 0 failures):**
+
+| model | g1 | strong | umix | ucow | ubom | urus | urac | POOLED | win |
+|---|---|---|---|---|---|---|---|---|---|
+| ctl (E88 arbiter) | 4.435 | 4.595 | 8.570 | 8.600 | 7.213 | 6.475 | 6.100 | **5.991** | 0.633 |
+| b1e150 | 4.580 | **5.200** | **10.490** | 9.738 | 8.363 | 7.463 | 7.213 | **6.889** | **0.669** |
+| ng20 | 4.370 | 4.750 | 9.815 | 8.850 | 7.963 | 6.750 | 6.737 | 6.394 | 0.630 |
+
+- **Decision: b1e150 PROMOTED** (+0.898 pooled score AND +0.036 pooled
+  win — beats control on both metrics). ng20 rejected (win parity-minus
+  −0.003 despite +0.403 score). The RL leg's generalization lift is the
+  headline: +1.9 on the chaotic unseen lobby, +0.6 on the hunter field
+  (largest chunk of the warden_v2 gap closed), all four unseen archetype
+  legs +1.0 to +1.1, and G1 parity-plus (+0.145, no regression).
+- **Ship ops:** `results/e104_b1.pt.ep150` -> `agent_code/arbiter_ng/
+  my-saved-model.pt` (default load path smoke-verified: 0 tracebacks, 0
+  think-time violations, max single step 0.40 s < 0.5 s cap, p50 0.02-
+  0.03 s); meta `my-saved-model.meta.json`; `__shared/arbiter_ship.zip`
+  rebuilt (arbiter_ng, 11 files); old E88 ship preserved as
+  `__shared/arbiter_ship_e88.zip`.
+- **Verdict:** **new ship = arbiter_ng (b1e150)**. First-promoted RL
+  artifact of the project; the E102 machinery (adaptive KL anchor +
+  revert guard) + bomb-trace + league field is what finally extracted
+  signal beyond the BC prior. Next levers (Phase 2/3): league-diversified
+  prior retrain on top of b1e150, plan-level flee upgrade, wardenlite
+  re-screen on STRONG/UNSEEN.
+- **Artifacts:** `results/tourney_{ctl,b1e150,ng20}_{g1,strong,umix,
+  ucow,ubom,urus,urac}_s*.json`, `scripts/run_p0_battery.sh`,
+  `scripts/tally_p0_battery.py`, `scripts/tally_p0_gate.py`,
+  `logs/p0_battery*.log`, `outsiders/unseen_*/`. **Report:** §5/§6.
