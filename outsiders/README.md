@@ -48,3 +48,15 @@ files into `outsiders/<name>/`, symlink, and cite the source in the report.
 |---|---|---|---|
 | warden_v1 | own work (this repo) | heuristic, wall-aware escape + bomb discipline (frozen reference) | 2026-09 |
 | warden_v2 | own work (this repo) | v1 + corrected escape solver (E88 semantics), 8-step danger horizon, deterministic RNG; active sparring/teacher reference | 2026-09 |
+| unseen_coward | own work (this repo) | eval-only sparring: never bombs, maximizes opponent/bomb distance, edge-seeking (passive-defensive archetype) | 2026-09-13 |
+| unseen_bomber | own work (this repo) | eval-only sparring: bombs on cooldown under a cheap escape guard, random walk otherwise (reckless volume-bomber archetype) | 2026-09-13 |
+| unseen_rusher | own work (this repo) | eval-only sparring: BFS chase + adjacency plant under escape guard, ignores coins (opponent-obsessed archetype) | 2026-09-13 |
+| unseen_racer | own work (this repo) | eval-only sparring: BFS coin-runner, never bombs, ignores opponents (pure-economy archetype) | 2026-09-13 |
+
+### Unseen-battery note (E103+ session)
+
+The four `unseen_*` agents are **held-out behavior proxies**: their policies
+are deliberately absent from every training corpus (demos, league
+recordings) and are never to be used as BC teachers or demo sources.
+They exist to measure generalization to unseen agents/behaviors
+(Phase-1 gate: pooled G1 + STRONG + UNSEEN batteries).
