@@ -3861,3 +3861,48 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   ucow,ubom,urus,urac}_s*.json`, `scripts/run_p0_battery.sh`,
   `scripts/tally_p0_battery.py`, `scripts/tally_p0_gate.py`,
   `logs/p0_battery*.log`, `outsiders/unseen_*/`. **Report:** §5/§6.
+
+### E107 — Ship iteration round 1: attribution, RL continuation, rollout model, flee-lookahead 🚧→✅ (C1 PROMOTED)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-13
+- **A1 death attribution (new ship, 200 diag rounds):** 85 deaths
+  (KILLED_SELF 45 / GOT_KILLED 40). Causes: **corner_pin 44%**
+  (own-bomb 13 / enemy-bomb 24), **own_bomb_chain 36%**,
+  enemy_lucky 15%, enemy_trap 4%, sim_miss 1%. Own-bomb-involved share
+  **52%** (down from 66% on E88 weights — the RL leg helped, not fixed).
+  Kill certificates: 74 trap events, 14 from our bombs, **0 realized
+  kills** (conversion still nil). Artifacts:
+  `results/diag_e107b1_{s0_deaths.jsonl,attribution.csv,deaths.md,
+  missedkills.csv}` (diag dispatch ported into arbiter_ng/train.py —
+  it was missing, so ARBITER_DIAG never fired for the NG agent).
+- **B1 RL continuation (+300 eps from ep150):** ❌ REJECT — G1 40x1
+  screens: ctl (ship) 4.800/0.450 vs ep150 4.450, ep200 4.125,
+  ep250 4.175, ep300 4.275 — all below control; the E106 promote point
+  is a local optimum and fresh-Adam REINFORCE drifts down from it.
+  Artifacts: `results/e107b1.{pt,csv}` (+ep025..ep300 snapshots),
+  `results/tourney_e107{ctl40,b1c*}_s0.json`.
+- **C1 rollout opponent model (ARBITER_OPPMODEL):** ✅ **PROMOTED** —
+  E83 rejected wardenlite on G1 (wrong battery for a hunter-pricing
+  lever); on the full battery vs the E106 control (1120 rds each):
+  **pooled 6.388/0.640 vs 5.991/0.633 (+0.397 score, +0.007 win)**;
+  STRONG +0.670 (400 rds, win +0.020), UNSEEN pool +0.285, G1 +0.145
+  (win −0.015, pooled bar holds), ucow −0.188 (win equal — trivial
+  farm). Hunter-realistic arbitration pricing transfers to
+  unseen-archetype fields. Ship default flipped to `wardenlite`
+  (`ARBITER_OPPMODEL=random` restores the old model). Artifacts:
+  `results/tourney_e107wl_*.json`, `scripts/run_e107_session1.sh`,
+  `scripts/run_e107_wl_battery.sh`.
+- **C2 flee-lookahead (ARBITER_FLEE_LOOK):** ❌ REJECT both variants —
+  (v1, must_flee+flee_locked trigger) survival lookahead hijacks all
+  post-plant moves: economy collapse (STRONG −1.8, ucow −5.5, urus
+  −4.2, urac −3.6; win rates UP = pure-survival mode); (v2 retune,
+  must_flee-only) mixed: STRONG −0.750, ubom −0.463 vs ucow +1.5,
+  urac +0.9 — STRONG regression violates the bar. Line closed; the
+  myopic flee stays. Corner-pin (44%) remains the top death cause —
+  future lever: RL shaping on pinned states or a plan-space escape
+  search, not a vote-level filter. Artifacts:
+  `results/tourney_e107fl_*.json`, `scripts/run_e107_fl_screens.sh`,
+  `scripts/probe_arbiter_fleelook.py` (4/4 gates).
+- **Ship ops:** search.py default flipped, `my-saved-model.meta.json`
+  updated, `__shared/arbiter_ship.zip` rebuilt, default-env smoke
+  clean (2 rds, 0 tracebacks). **Report:** §5/§6.

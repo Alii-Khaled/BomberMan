@@ -194,6 +194,11 @@ TTA = os.environ.get('ARBITER_TTA', '1') == '1'
 # feature-neutral (state_to_features is untouched). Default 0 =
 # ship-identical.
 FLEE_Q = os.environ.get('ARBITER_FLEE_Q', '0') == '1'
+# E107 C2: 7-tick exact-sim survival lookahead on survival-critical moves
+# (must_flee / flee_locked). Each admissible successor is rolled out with
+# the search's own opponent model; only moves whose rollout survives are
+# eligible (pi order wins). Default 0 = ship behavior (myopic flee).
+FLEE_LOOK = os.environ.get('ARBITER_FLEE_LOOK', '0') == '1'
 _DELTAS = {'UP': (0, -1), 'DOWN': (0, 1), 'LEFT': (-1, 0),
            'RIGHT': (1, 0), 'WAIT': (0, 0), 'BOMB': (0, 0)}
 _DIRS4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -355,6 +360,81 @@ def _must_flee(game_state, danger):
     except Exception:
         pass
     return False
+
+
+def _flee_lookahead_choice(game_state, valid, safe, pi, x, y):
+    """E107 C2: exact-sim survival lookahead for survival-critical moves.
+
+    For each admissible successor (pi order), roll out ~7 ticks with the
+    search's own opponent model (CRN-style shared per-tick draws) and a
+    danger-aware continuation for us. Returns the first move whose
+    rollout survives, else None (caller falls back to the myopic rank).
+    """
+    import copy as _copy
+    try:
+        from .sim import from_game_state, step as sim_step, valid_actions
+        from .search import _opp_move, _continuation, _sim_bombs
+        from .safety import future_danger
+    except Exception:
+        return None
+    cands = [a for a in ('UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT')
+             if valid.get(a) and (a == 'WAIT' or safe.get(a))]
+    if not cands:
+        return None
+    cands.sort(key=lambda a: -float(pi[ACTION_TO_IDX.get(a, 0)]))
+    try:
+        st0 = from_game_state(game_state)
+    except Exception:
+        return None
+    base_seed = 1000 * int(game_state.get('round', 0)) \
+        + int(game_state.get('step', 0))
+    best, best_key = None, None
+    for a in cands:
+        st = _copy.deepcopy(st0)
+        alive_ticks = 0
+        try:
+            danger = future_danger(st['arena'], _sim_bombs(st), None, 4)
+        except Exception:
+            danger = None
+        acts = [a]
+        for i in range(1, len(st['agents'])):
+            if st['agents'][i]['alive']:
+                r = np.random.default_rng((base_seed, 0, i))
+                acts.append(_opp_move(r, st, i, danger))
+            else:
+                acts.append('WAIT')
+        try:
+            sim_step(st, acts)
+        except Exception:
+            continue
+        if not st['agents'][0]['alive']:
+            continue
+        alive_ticks = 1
+        while alive_ticks < 7 and st['agents'][0]['alive']:
+            try:
+                danger = future_danger(st['arena'], _sim_bombs(st), None, 4)
+            except Exception:
+                danger = None
+            acts = [_continuation(None, st, 0, danger)]
+            for i in range(1, len(st['agents'])):
+                if st['agents'][i]['alive']:
+                    r = np.random.default_rng(
+                        (base_seed, alive_ticks, i))
+                    acts.append(_opp_move(r, st, i, danger))
+                else:
+                    acts.append('WAIT')
+            try:
+                sim_step(st, acts)
+            except Exception:
+                break
+            if st['agents'][0]['alive']:
+                alive_ticks += 1
+        if st['agents'][0]['alive'] and alive_ticks >= 6:
+            return a  # first (pi-best) surviving rollout wins
+        key = (alive_ticks,)
+        if best_key is None or key > best_key:
+            best, best_key = a, key
+    return best if best is not None else None
 
 
 def _warden_move(self, game_state, valid, safe, threat):
@@ -649,6 +729,18 @@ def _act_impl(self, game_state, t0):
     # Warden semantics (S2 arm1, +0.43 pooled): the mask binds moves only
     # under threat; otherwise every valid move is rankable by pi.
     if must_flee or flee_locked:
+        # E107 C2 retune: survival lookahead only when the tile itself is
+        # lethal (must_flee); flee_timer alone stays on the myopic rank
+        # (the first version hijacked all post-plant moves and collapsed
+        # the economy: -1.8..-5.5 across batteries).
+        if FLEE_LOOK and must_flee:
+            try:
+                _fl = _flee_lookahead_choice(game_state, valid, safe,
+                                             pi, x, y)
+            except Exception:
+                _fl = None
+            if _fl is not None:
+                return _commit(self, _fl, x, y, nxt, bombs_left)
         if FLEE_Q:
             _fa = _flee_quality_choice(
                 arena, game_state.get('bombs') or [],

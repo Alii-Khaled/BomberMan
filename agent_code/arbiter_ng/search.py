@@ -180,13 +180,16 @@ HUNT_DIST = _env_int('ARBITER_HUNT_DIST', 4, 1, 11)
 # unknown and stay certifiable) while keeping the escape check global.
 # Engine-exact semantics; default 0 = validated flow.
 CERT_OWN = os.environ.get('ARBITER_CERT_OWN', '0') == '1'
-# E83b rollout opponent model: 'random' (default = validated:
-# avoid-lethal-myopic + uniform incl. BOMB) or 'wardenlite'
-# (avoid-lethal, then Manhattan-coin-pursuit step, bombs only under a
+# E83b rollout opponent model: 'wardenlite' (E107 C1 SHIP DEFAULT:
+# avoid-lethal, then Manhattan-coin-pursuit step, bombs only under a
 # cheap warden guard: opps_hit > 0 | crates_hit >= 2, and only with a
-# free neighbour outside the new blast). Realism for arbitration
-# pricing vs strong unseen agents; O(1) per opp-tick (no extra BFS).
-OPPMODEL = os.environ.get('ARBITER_OPPMODEL', 'random').strip().lower()
+# free neighbour outside the new blast) or 'random' (avoid-lethal-myopic
+# + uniform incl. BOMB; the E83-era default, restore via
+# ARBITER_OPPMODEL=random). E107 battery: wardenlite beats the random
+# model on STRONG +0.67 (400 rds), UNSEEN pool +0.29, pooled
+# 6.388/0.640 vs 5.991/0.633 — hunter-realistic arbitration pricing
+# transfers to unseen-archetype fields. O(1) per opp-tick (no extra BFS).
+OPPMODEL = os.environ.get('ARBITER_OPPMODEL', 'wardenlite').strip().lower()
 
 
 def _bfs_path(arena, blocked, start, goal, limit=12):

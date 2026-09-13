@@ -4,17 +4,17 @@ Train Reinforcement Learning agents for the classic game Bomberman (course proje
 Tournament inference is CPU-only with a 0.5 s/step budget; training defaults to
 CUDA with AMP (Google Colab ready).
 
-Current ship: **arbiter_ng (b1e150)** — CNN+scalar fused policy
-(3566-dim lossless board tensor + 98 scalars) over the exact-dynamics
-lookahead search, BC warm-start then RL fine-tuned (E104 b1 leg:
-KL-anchored REINFORCE with adaptive anchor + revert guard, bomb-trace,
-trained vs a rule_based x2 + warden_v2 league). Promoted in E106 on the
-pooled multi-battery bar (G1 100x2 + STRONG 40x10 + UNSEEN battery,
-1120 rounds): **pooled 6.889 / win 0.669** vs E88 arbiter 5.991 / 0.633
-— +1.9 on the chaotic unseen lobby, +0.6 vs the hunter field, all four
-unseen-archetype legs +1.0+, G1 parity-plus. Legacy ship **arbiter**
-(E88: learned prior over 98-dim features + exact-dynamics search,
-pooled 4.775 G1 100x2) preserved as `__shared/arbiter_ship_e88.zip`.
+Current ship: **arbiter_ng (b1e150 + wardenlite)** — CNN+scalar fused
+policy (3566-dim lossless board tensor + 98 scalars) over the
+exact-dynamics lookahead search, BC warm-start then RL fine-tuned
+(E104 b1 leg: KL-anchored REINFORCE with adaptive anchor + revert
+guard, bomb-trace, trained vs a rule_based x2 + warden_v2 league).
+E107 promoted the hunter-realistic rollout opponent model
+(`ARBITER_OPPMODEL=wardenlite`, ship default) on the pooled
+multi-battery bar (G1 100x2 + STRONG 40x10 + UNSEEN battery, 1120
+rounds): **pooled 6.388 / win 0.640** vs E106 ship 5.991 / 0.633 —
+STRONG +0.67, UNSEEN pool +0.29. Legacy: E88 arbiter (98-dim prior +
+search, G1 4.775) preserved as `__shared/arbiter_ship_e88.zip`.
 Backup: **overlord** (CNN, 3.79). Report models: **sentinel** (MLP
 Dueling-DQN curriculum), **reaper** (distilled feature-MLP), **apex**
 (synthesis CNN — unshipped: learned Q net-negative, see

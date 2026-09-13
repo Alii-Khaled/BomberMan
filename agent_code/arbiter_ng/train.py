@@ -114,6 +114,14 @@ def end_of_round(self, last_game_state, last_action, events):
     rew = getattr(self, '_rl_rewards', [])
     if step and len(rew) < step:
         rew.append(_reward(events))
+    # E107: diag dispatch (ported from agent_code/arbiter/train.py —
+    # diag_dump_round was missing here so ARBITER_DIAG jsonl never
+    # appeared for the NG agent).
+    try:
+        from .callbacks import diag_dump_round
+        diag_dump_round(self, last_action, events)
+    except Exception:
+        pass
     trace = getattr(self, '_rl_trace', [])
     self._rl_ep = int(getattr(self, '_rl_ep', 0)) + 1
     if trace and rew:
