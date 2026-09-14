@@ -52,6 +52,7 @@ def setup_training(self):
     self._rl_beta = _env('ARBITER_RL_BETA', 0.02)
     self._rl_trunk = os.environ.get('ARBITER_RL_TRUNK', '1') == '1'
     self._rl_save_every = int(_env('ARBITER_RL_SAVE_EVERY', 25, int))
+    self._rl_pin = _env('ARBITER_RL_PIN_PEN', 0.0)
     # E102 RL loop v2 (all env-gated; defaults = E100 behavior):
     # STABLE — adaptive KL anchor + hard revert guard;
     # EPOCHS — extra passes over the round batch; CRITIC — V-as-baseline
@@ -102,6 +103,27 @@ def game_events_occurred(self, old_game_state, self_action, new_game_state,
                          events):
     try:
         self._rl_rewards.append(_reward(events))
+    except Exception:
+        pass
+    # E110 pinned-state shaping: dense small penalty while the tile is
+    # threatened and safe mobility is gone (the corner-pin death mode —
+    # 59% of ship deaths, mostly enemy-bomb pins). Env-gated, default 0.
+    try:
+        pen = getattr(self, '_rl_pin', 0.0)
+        if pen and new_game_state is not None:
+            from .safety import action_safety
+            sf = action_safety(new_game_state)
+            safe = sf.get('safe', {}) if isinstance(sf, dict) else {}
+            d = np.asarray(sf.get('danger')) if isinstance(sf, dict) \
+                else None
+            _, _, _, (px, py) = new_game_state['self']
+            threatened = bool(
+                d is not None and d.ndim == 3 and d.shape[0] > 1
+                and (bool(d[0, int(px), int(py)])
+                     or bool(d[1, int(px), int(py)])))
+            n_safe = sum(1 for k, v in safe.items() if v and k != 'BOMB')
+            if threatened and n_safe <= 1:
+                self._rl_rewards[-1] -= float(pen)
     except Exception:
         pass
 

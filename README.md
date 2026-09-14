@@ -4,7 +4,8 @@ Train Reinforcement Learning agents for the classic game Bomberman (course proje
 Tournament inference is CPU-only with a 0.5 s/step budget; training defaults to
 CUDA with AMP (Google Colab ready).
 
-Current ship: **arbiter_ng (E108: D1-BC + rl225 + wardenlite)** —
+Current ship (FROZEN for the tournament, E111): **arbiter_ng (E108:
+D1-BC + rl225 + wardenlite)** —
 CNN+scalar fused policy (3566-dim lossless board tensor + 98 scalars)
 over the exact-dynamics lookahead search; BC warm-start on the widened
 league corpus (1586 files incl. ship self-play mirror + warden_v1;
@@ -14,6 +15,7 @@ warden_v2), rollout opponent model `wardenlite`. E108 battery (G1
 100x2 + STRONG 40x10 + UNSEEN, 1120 rounds): **pooled 6.650 / win
 0.681** vs E107 ship 6.388/0.640; **beats warden_v2 head-to-head
 5.853 vs 5.065 (win 55%)** in the same lobby (E88 was −0.73 behind).
+Submission-test simulation + probe gates passed (E111).
 Legacy: E88 arbiter preserved as `__shared/arbiter_ship_e88.zip`.
 Backup: **overlord** (CNN, 3.79). Report models: **sentinel** (MLP
 Dueling-DQN curriculum), **reaper** (distilled feature-MLP), **apex**

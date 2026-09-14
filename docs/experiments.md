@@ -3936,3 +3936,70 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   `scripts/run_e108_collect.sh`, `scripts/run_e108_triage.sh`,
   `scripts/run_e108_battery.sh`, `results/apex_ng_demos/` (+850).
   **Report:** §5/§6.
+
+### E109 — Recipe v2 (rotating-league RL) + D1-ship recalibration ❌ REJECTED (continuation line closed)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-14
+- **E109-B fresh attribution (D1 ship, 200 diag rounds):** 82 deaths
+  (KILLED_SELF 32 / GOT_KILLED 50). Causes: **corner_pin 59%** (enemy-
+  bomb 40 / own-bomb 8), own_bomb_chain 28%, enemy_lucky 10%. Own-bomb
+  share **38%** (52% on b1e150 — D1's RL leg genuinely learned own-bomb
+  safety); GOT_KILLED rose (more hunter exposure taken). Kill
+  certificates: 79 events, 22 ours, **0 realized** (conversion still
+  nil). Artifacts: `results/diag_e109d1_*`,
+  `scripts/run_e109_diag.sh` (diag dispatch verified: ARBITER_DIAG now
+  fires for the NG agent in eval+train modes).
+- **Recipe v2 (rotating-league legs from the D1 BC base):** 4 resumed
+  blocks x 75 eps — rb x3 -> rb x2+warden_v2 -> mirror self-play
+  (apex-teacher mirror of the leg policy) -> rb+collector+warden_v1.
+  v1 (beta 0.1) and v2 (beta 0.2, doubled anchor as the replay-mix
+  stability equivalent). Triage (G1 40x1 s0, fresh ctl 5.450/0.525):
+  **all six block finals below control** (best v1b2 4.975/0.625;
+  mirror blocks worst 3.825). The B1 pattern repeats: continuations
+  from a promote point degrade; rotation adds nothing over the fixed
+  league field; self-play blocks degrade fastest. REJECT.
+- **Infra:** `scripts/battery.py` canonical runner (python, no more
+  bash field-splitting bugs) + `scripts/run_e109_leg.sh`/
+  `run_e109_leg234.sh`. Disk: rejected ep-snapshots archived off-repo.
+- **Artifacts:** `results/e109v{1,2}.pt_b{1..4}.pt`, csvs, tourney
+  jsons, `logs/e109_*`. **Report:** §5/§6.
+
+### E110 — Pinned-state shaping leg ❌ REJECT at triage — RECIPE LINE CLOSED, SHIP FROZEN
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-14
+- **Lever:** dense pinned-state penalty (`ARBITER_RL_PIN_PEN=0.5`,
+  env-gated in arbiter_ng/train.py: threatened tile + safe mobility <=1
+  -> -0.5/tick; corner-pin = 59% of ship deaths, mostly enemy-bomb).
+  Fresh leg from the D1 BC base, E108 field (rb x2 + warden_v2),
+  STABLE+BOMB_TRACE, 300 eps.
+- **Triage (G1 40x1 s0, fresh ctl 4.425/0.375):** ep075 4.275/0.450,
+  ep150 4.225/0.425, ep225 3.800/0.325, ep300 4.450/0.475 — all within
+  noise of control, no arm conclusive; per the E102 lesson (40x1
+  overestimates) a battery would land parity-minus. **REJECT.**
+- **Stopping rule exercised:** recipe returns E106 +0.90 -> E107 +0.40
+  -> E108 +0.26 -> E109/E110 nil — below the pre-registered 0.15 bar.
+  **SHIP FROZEN at E108 (D1-BC 0.806 + rl225 + wardenlite).**
+- **Artifacts:** `results/e110rl.pt` (+eps), `results/tourney_e110*_s0
+  .json`, train.py shaping code (default-off, kept for the report).
+  **Report:** §5/§6.
+
+### E111 — Freeze hardening + submission-test simulation ✅ SHIP LOCKED
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-14
+- **Submission-test simulation (MaMPf pre-run flow):** `git archive
+  master` -> pristine tree; unzip `__shared/arbiter_ship.zip` -> first
+  dir with callbacks.py (`agent_code/arbiter_ng`) -> copied in -> 6
+  rounds vs 3x random (train=False): 6/6 clean, 0 tracebacks, 0
+  think-time violations, ~9-11 s/round.
+- **Probe gates:** `probe_arbiter_ng` 10/10 PASS on the frozen weights
+  (act p99 34.5 ms; features <3 ms; model batch1 <2 ms). Max single
+  think in the sim: 0.23 s (< 0.5 s cap, zero exceedances).
+- **Ship zip:** `__shared/arbiter_ship.zip` = arbiter_ng (11 files,
+  b1e150->E108 rl225 weights, wardenlite default); backup
+  `arbiter_ship_e88.zip` retained.
+- **Verdict:** SHIP LOCKED for the tournament: **arbiter_ng (E108)** —
+  pooled 6.650/0.681, beats warden_v2 head-to-head 5.853 vs 5.065
+  (win 55%), dominates the unseen-archetype suite. Remaining known
+  limitations (for the report outlook): corner-pin 59% of deaths
+  (enemy-bomb pins dominant), trap conversion 0/22, G1 within seed
+  noise. **Report:** §4/§5/§6.
