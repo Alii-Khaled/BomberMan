@@ -3906,3 +3906,33 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
 - **Ship ops:** search.py default flipped, `my-saved-model.meta.json`
   updated, `__shared/arbiter_ship.zip` rebuilt, default-env smoke
   clean (2 rds, 0 tracebacks). **Report:** §5/§6.
+
+### E108 — D1 recipe iteration: widened league BC + RL leg ✅ PROMOTED (ship beats warden_v2 head-to-head)
+
+- **Author:** team (AI-assisted session) · **Date:** 2026-09-13/14
+- **Corpus widening (+850 files, apex-format, resume-safe 3-lane
+  collector):** ship self-play mirror 150 (teacher=arbiter_ng vs
+  arbiter_ng+rb+warden_v2 — first self-play corpus of the project) +
+  ship warden-mix/rb top-ups 200; warden_v1 225 (new hunter lineage);
+  collector +150; random +50. Corpus 736 → 1586 files.
+- **NG-1 BC retrain:** val_acc **0.806** (E101 corpus peaked 0.794);
+  14 epochs, best ep14. Artifact `results/arbiter_ng_d1.pt`.
+- **RL leg (E104 recipe: STABLE+BOMB_TRACE, lr 5e-5, beta 0.1, 300 eps
+  vs rb x2 + warden_v2):** KL bounded <=0.35 (STABLE guard); snapshots
+  ep025..ep300. Triage (G1 40x1): ctl 4.400/0.425 vs ep075 4.700/0.550,
+  ep150 4.425/0.500, **ep225 5.075/0.650**, ep300 4.450/0.425.
+- **Battery (vs the e107wl control = current ship, 1120 rds each):**
+  **e108d1(ep225) 6.650/0.681 vs 6.388/0.640 — +0.262 score, +0.041
+  win, beats control on both metrics.** Per battery: STRONG
+  5.853/0.497 vs 5.265/0.398 (+0.59, win +0.10); UNSEEN pool 8.137 vs
+  7.948; UMIX +0.165; ubom +1.10; g1 −0.20/−0.02 (accepted under the
+  pooled bar: G1+STRONG pool still +0.325).
+- **Warden_v2 head-to-head (same-lobby, 400 rds): e108d1 5.853 vs
+  warden_v2 5.065 — WIN 55.2%.** Lineage: E88 −0.73 → b1e150 −0.05 →
+  e107wl −0.04 → e108d1 **+0.79**.
+- **Ship ops:** `results/e108rl.pt.ep225` -> `agent_code/arbiter_ng/
+  my-saved-model.pt`, meta updated, zip rebuilt, default-env smoke
+  clean. Artifacts: `results/tourney_e108{ctl,rl*,d1_*}_s*.json`,
+  `scripts/run_e108_collect.sh`, `scripts/run_e108_triage.sh`,
+  `scripts/run_e108_battery.sh`, `results/apex_ng_demos/` (+850).
+  **Report:** §5/§6.

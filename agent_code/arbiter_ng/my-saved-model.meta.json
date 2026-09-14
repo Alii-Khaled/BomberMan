@@ -1,24 +1,24 @@
 {
   "agent": "arbiter_ng",
   "weights": "my-saved-model.pt",
-  "source": "results/e104_b1.pt.ep150",
-  "experiment": "E107 C1 promotion (rollout opponent model wardenlite default)",
-  "recipe": "NG-1 BC (3566-dim tensor+scalar CNN, ep20 base) -> E104 b1 RL leg (KL-anchored REINFORCE, STABLE adaptive beta + revert guard, BOMB_TRACE, 300 eps vs rule_based x2 + warden_v2 league), ep150 checkpoint; E107: search rollout opponent model default 'wardenlite' (env ARBITER_OPPMODEL=random restores the E83-era model)",
+  "source": "results/e108rl.pt.ep225",
+  "experiment": "E108 D1 recipe iteration (widened league BC + RL leg)",
+  "recipe": "NG-1 BC on the WIDENED league corpus (1586 files: +350 ship self-play mirror, +225 warden_v1, +150 collector, +50 random; val_acc 0.806 vs 0.794 on the E101 corpus) -> E104-recipe RL leg (KL-anchored REINFORCE, STABLE adaptive beta + revert guard, BOMB_TRACE, lr 5e-5 beta 0.1, 300 eps vs rule_based x2 + warden_v2), ep225 checkpoint",
   "decision": {
     "bar": "pooled multi-battery (G1 100x2 + STRONG 40x10 + UNSEEN UMIX 100x2 + archetype legs 40x2)",
-    "pooled_score": 6.388,
-    "pooled_win": 0.640,
-    "control": {"agent": "arbiter_ng b1e150 (E106)", "pooled_score": 5.991, "pooled_win": 0.633},
-    "deltas": {"score": "+0.397", "win": "+0.007"},
-    "strong_lobby": {"wl": 5.265, "ctl": 4.595},
-    "unseen_pool": {"wl": 7.948, "ctl": 7.663}
+    "pooled_score": 6.650,
+    "pooled_win": 0.681,
+    "control": {"agent": "arbiter_ng b1e150+wardenlite (E107)", "pooled_score": 6.388, "pooled_win": 0.640},
+    "deltas": {"score": "+0.262", "win": "+0.041"},
+    "strong_lobby": {"e108d1": 5.853, "ctl": 5.265},
+    "unseen_pool": {"e108d1": 8.137, "ctl": 7.948},
+    "warden_head_to_head": {"e108d1": 5.853, "warden_v2": 5.065, "win": 0.552}
   },
   "history": [
-    {"exp": "E106", "decision": "promoted b1e150 (pooled 6.889/0.669 vs E88 arbiter 5.991/0.633)"},
-    {"exp": "E107 A1", "decision": "death attribution on b1e150: 85 deaths/200rd, corner_pin 44%, own_bomb_chain 36%, own-bomb-involved 52% (was 66% on E88); trap conversion 0/14"},
-    {"exp": "E107 B1", "decision": "RL continuation from ep150 REJECTED (all snapshots below control on G1 40x1: best 4.275 vs ctl 4.800) - promote point is a local optimum"},
-    {"exp": "E107 C2", "decision": "flee-lookahead REJECTED both variants (post-plant trigger: economy collapse -1.8..-5.5; must_flee-only: STRONG -0.75) - line closed"}
+    {"exp": "E106", "decision": "b1e150 promoted (pooled 6.889/0.669 vs E88 arbiter)"},
+    {"exp": "E107", "decision": "wardenlite rollout model promoted (pooled 6.388/0.640 vs 5.991/0.633)"},
+    {"exp": "E108", "decision": "D1 recipe iteration promoted (pooled 6.650/0.681 vs 6.388/0.640); ship now beats warden_v2 head-to-head 5.853 vs 5.065 (was -0.73 behind at E88)"}
   ],
-  "date": "2026-09-13",
-  "notes": "All batteries CPU, tournament conditions, 1120 rounds/model vs same-session control; default load path + wardenlite default smoke-verified."
+  "date": "2026-09-14",
+  "notes": "All batteries CPU, tournament conditions, 1120 rounds/model vs same-session control; G1 dipped -0.20 (accepted: pooled bar); default load path + wardenlite smoke-verified."
 }
