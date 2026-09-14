@@ -1,4 +1,5 @@
 import contextlib
+import os
 
 
 class QuietFallback:
@@ -16,6 +17,7 @@ try:
     with contextlib.redirect_stdout(None):
         import pygame
         LOADED_PYGAME = True
+    os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
     pygame.init()
 except ModuleNotFoundError:
     pygame = QuietFallback()
