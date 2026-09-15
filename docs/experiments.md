@@ -4146,3 +4146,61 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   40 trap certificates / 0 realized (conversion unchanged). Own-bomb
   involvements down; corner pins remain the dominant cause (E114 arm
   rejected). Artifacts: `results/diag_e112*`. **Report:** §6.
+
+### E116 — Freeze close-out (E112 ship) ✅
+
+- Commit f5e9768: E112 promoted (SOLO_MARGIN 0.15 + LOOP_ESC 2
+  solo-only), E113-E115 rejected arms kept documented/default-off,
+  `scripts/probe_arbiter_solo.py` (22 gates), `agent_code/solo_dagger/`
+  recorder added. Ship zip rebuilt + sha256-verified against the repo
+  (11 files); submission sim 6/6 clean (0 tracebacks, 0 think-time
+  violations); probes: solo 22/22, NG 10/10, sim, CRN all green.
+  Default-env smoke: 8.3 coins/rd vs 3x random (1.98 pre-E112).
+
+### E117 — Corner-pin close-out: pin-formation mining ❌ line closed
+
+- **Author:** Ali Mahbob · **Date:** 2026-09-15
+- **Question:** E109/E112 attribution leaves corner pins as the top death
+  cause (23/34 deaths under the E112 ship, 68%). E114's proximity+mobility
+  guard was parity at the gate — can the diag snapshots tell us whether a
+  movement guard *can* reach the pin formation window at all?
+- **Method:** parsed the 33 terminal-bomb deaths of
+  `results/diag_e112_s0_deaths.jsonl` (carried-forward field for exact
+  blast geometry, contiguous-block plant-tick recovery, safe-mask decode
+  in ACTION_LIST order): per death, the safe-direction count and nearest
+  opponent distance for the 6 ticks before the killer bomb's plant tick.
+- **Findings:**
+  - At the plant tick: safe dirs 0 in 15/33 deaths, 1 in 8, >=2 in 10 —
+    the pin is already formed when the bomb lands in ~70% of cases.
+  - Last tick with >=2 safe dirs: **median -1 tick before the plant**;
+    nearest armed-we-known opponent median distance 2 (within 2 in
+    19/33, within 3 in 28/33).
+  - The pre-plant windows show the agent already contained (safe dirs
+    1-2) with a hunter adjacent for 6+ ticks: these are lost close-range
+    duels, not avoidable pockets — a one-step movement guard has no lead
+    time (consistent with E114's parity gate and E107 C2's rejection).
+- **Conclusion:** the cheap inference levers for this death class are
+  exhausted (E97 plant-shadow, E103 flee-lock/margin, E107 C2 lookahead,
+  E114 anti-pin, E110 RL pin-shaping all rejected). The only remaining
+  path would be a duel/keep-away policy or new demonstrations, i.e. the
+  training lines already closed at E109/E115. **Corner-pin line closed**
+  for the tournament; documented for the report's outlook section.
+  **Report:** §6.
+
+### E118 — CERT_OWN re-screen under wardenlite ❌ REJECTED at screen (kill line fully closed)
+
+- **Author:** Ali Mahbob · **Date:** 2026-09-15
+- **Question:** E83 rejected `CERT_OWN` (restrict certified-kill credit to
+  our own bombs) under the old random opponent model; E107 switched the
+  rollout model to wardenlite (opponents plant under guard), so sim
+  opponents can self-trap and phantom +5 credits could over-price bombs —
+  never re-tested in this combination.
+- **Screen (E2 defaults + `ARBITER_CERT_OWN=1`):** STRONG 40x4
+  **4.78/0.362, kills 55, suic 42** vs E2 base s0-3 5.29/0.391
+  (kills 71, suic 31) — clear regression; G1 40x2 4.81/0.379 vs base
+  4.62/0.392 (noise); L5 40x2 7.66/0.972 vs 7.80/0.97 (parity).
+- **Verdict:** REJECT — the opp-plant certificate credit is load-bearing
+  for contested-ground pricing under wardenlite too (same direction as
+  the E113 KILL_P discount rejection). Kill-pricing and corner-pin lines
+  both closed; ship unchanged (E112). Artifacts: `results/e118_*`.
+  **Report:** §5/§6.
