@@ -4,8 +4,12 @@ Train Reinforcement Learning agents for the classic game Bomberman (course proje
 Tournament inference is CPU-only with a 0.5 s/step budget; training defaults to
 CUDA with AMP (Google Colab ready).
 
-Current ship (FROZEN for the tournament, E111): **arbiter_ng (E108:
-D1-BC + rl225 + wardenlite)** —
+Current ship (E112): **arbiter_ng (E108: D1-BC + rl225 + wardenlite)**
+with the E112 solo/endgame fix promoted (SOLO_MARGIN 0.15 + LOOP_ESC 2;
+pooled battery parity 6.465/0.656 vs 6.466/0.668, but the E108 endgame
+freeze is gone: vs 3x random 2.15 -> 7.80 score/round, solo classic
+5.0 -> 8.2 of 9 coins). See `docs/experiments.md` E112.
+Legacy ship notes (E111, pre-E112): the same weights (E108) —
 CNN+scalar fused policy (3566-dim lossless board tensor + 98 scalars)
 over the exact-dynamics lookahead search; BC warm-start on the widened
 league corpus (1586 files incl. ship self-play mirror + warden_v1;
@@ -127,6 +131,12 @@ improvement, `ep_NNNNNN.pt` snapshots); per-round metrics append to
 | `ARBITER_BOMB_MARGIN` | `0.6` | bomb plan must beat best move by this to execute (legacy alias for `ARBITER_BOMB_SCORE_MARGIN`) |
 | `ARBITER_BOMB_SCORE_MARGIN` | `0.6` | E88 de-conflicted search bomb-vs-move score margin (was 0.2) |
 | `ARBITER_BOMB_ESC_MARGIN` | `1` | E87/E88 post-plant first-step escape-direction count required for the mask's BOMB certificate |
+| `ARBITER_SOLO_MARGIN` | `0.15` | E112 ship: bomb-vs-move score margin while no opponent is alive (`<0` restores the pre-E112 BOMB_MARGIN behavior) |
+| `ARBITER_LOOP_ESC` | `2` | E112 ship: loop tie-break mode (`0` = bounded LOOP3/LOOP2, `1` = escalate everywhere, `2` = escalate solo-only) |
+| `ARBITER_LOOP_ESC_STEP` / `_CAP` | `0.5` / `3.0` | escalation slope / cap for `ARBITER_LOOP_ESC` |
+| `ARBITER_SOLO_TREK` | `0` | E112 rejected arm: solo BFS trek move plans (documented, default off) |
+| `ARBITER_ANTIPIN` (+ `_D`/`_MOB`/`_DEADEND`) | `0` | E114 rejected arm: armed-enemy pocket guard (default off; 40x4 STRONG lift did not survive 40x10) |
+| `ARBITER_KILL_P` | `1.0` | E113 rejected sweep: certified-kill credit scale (0.5/0.25 both below control) |
 | `ARBITER_ESC_DIST` | `3.0` | proven-escape distance gate for bomb tiles |
 | `ARBITER_SEEDS` | `1` | legacy E71 knob (post-E78 no-op: moves use `ARBITER_MOVE_SEEDS`, bombs 1; logged in search debug only) |
 | `ARBITER_CRN` | `1` | common random numbers: all plans share per-tick opponent draws (E88 ship; `0` restores unpaired) |
@@ -171,11 +181,13 @@ python3 scripts/aggregate_eval.py            # tables
 python3 scripts/plot_eval.py                 # figures
 ```
 
-Ship rule (E30): nothing ships without ≥100 rounds × 2 seeds; bar = pooled
-score/round vs 3× rule_based above the incumbent ship. Current standing:
-arbiter **4.775** (E88) > E80 arbiter 4.345 > overlord 3.79.
-Field-proxy + win-rate gates (E88) also on file. Full ledger:
-`docs/experiments.md`.
+Ship rule (E30/E106): nothing ships without the pooled multi-battery
+(G1 100x2 + STRONG 40x10 + UNSEEN 1120 rounds) vs a fresh same-session
+control. Current standing (E112): **arbiter_ng+E112 6.465/0.656 vs
+E108 6.466/0.668** (pooled parity; the E112 solo fix dominates the
+unmodeled weak-field regime: vs 3x random 2.15 -> 7.80, solo classic
+5.0 -> 8.2/9). E113 (kill pricing/tactical), E114 (anti-pin) and E115
+(solo DAgger BC) all rejected. Full ledger: `docs/experiments.md`.
 
 ## Health checks
 
@@ -202,6 +214,7 @@ python3 scripts/probe_reaper_features.py  # reaper feature/escape parity gates (
   `features_mlp.py`, `safety.py`, `device.py`, `checkpointing.py`)
 - `agent_code/overlord/` — CNN agent, backup ship (same structure + `features_cnn.py`)
 - `agent_code/reaper/`, `agent_code/apex/` — report models (distilled MLP, synthesis CNN)
+- `agent_code/solo_dagger/` — training-only solo-DAgger recorder (E115, rejected arm; never ships)
 - `agent_code/{rule_based,coin_collector,peaceful,random}_agent/` — scripted opponents
 - `dml_trainkit.py` — shared kit: update config, CUDA device picker, duty timer,
   checkpoint store, metrics logging, AMP flag

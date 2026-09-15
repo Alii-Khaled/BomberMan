@@ -157,6 +157,13 @@ CHAIN_GUARD = os.environ.get('ARBITER_CHAIN_GUARD', '0') == '1'
 # bombs/rd), and strict certification vetoes contested bombs.
 TRAP_HARD = _env_float('ARBITER_TRAP_HARD', 0.0)
 TRAP_P = _env_float('ARBITER_TRAP_P', 0.5)
+# E113 (P1) certified-kill credit scale. The certificate (opponent cannot
+# escape under optimal flight, with static agent blockers) realizes ~never
+# in the engine (E109: 79 trap events, 0 converted), so +5 per certificate
+# makes trap bombs systematically overpriced vs crate/coin bombs. Scales
+# the credited payoff only — rollout dynamics (certified opponents removed
+# from the sim) stay exactly as shipped. 1.0 = ship; swept at screen.
+KILL_P = _env_float('ARBITER_KILL_P', 1.0)
 # E82 hunt-intent (W1): pursuit bomb plans. When the warden hunt
 # trigger holds (opponents present AND [loot <= 6 | step > 200 | opp
 # within Manhattan 3]), each opponent gets ONE bomb plan at the best
@@ -190,6 +197,29 @@ CERT_OWN = os.environ.get('ARBITER_CERT_OWN', '0') == '1'
 # 6.388/0.640 vs 5.991/0.633 — hunter-realistic arbitration pricing
 # transfers to unseen-archetype fields. O(1) per opp-tick (no extra BFS).
 OPPMODEL = os.environ.get('ARBITER_OPPMODEL', 'wardenlite').strip().lower()
+# E112 (P0) solo/endgame unfreeze. With all opponents dead the BC prior
+# is OOD (league demos end with opponents alive): verified freeze = a
+# 363-step UP/DOWN ping-pong at the seed-3 solo state, 0 coins, 0 bombs;
+# the 0.6 margin prices 1-3-crate bombs out and the S0 loop tie-break is
+# an order of magnitude below the pi logit gaps. These knobs apply ONLY
+# when game_state['others'] is empty, so opponent-ful play is
+# bit-identical either way.
+#   SOLO_TREK: add exact BFS move plans toward reachable visible coins,
+#     the best-yield bomb tile board-wide (not radius-capped), and the
+#     nearest crate-adjacent tile as a thin-board fallback. When no bomb
+#     plan clears the margin, the best trek plans execute (the search
+#     temporarily owns moves in the solo state only).
+#   SOLO_MARGIN: bomb-vs-move score margin while solo (< 0 = off, i.e.
+#     use BOMB_MARGIN; junk-bomb risk is nil with nobody alive to punish).
+# E112 ship: SOLO_MARGIN 0.15 + LOOP_ESC '2' promoted (pooled 6.465/0.656
+# vs 6.466/0.668 control = parity, G1 variance removed; L5 vs 3x random
+# 2.15 -> 7.80, solo classic 5.0 -> 8.2/9; E112 ledger). SOLO_TREK lost
+# its marginal screen (7.83 vs 8.67 solo) and stays default-off.
+SOLO_TREK = os.environ.get('ARBITER_SOLO_TREK', '0') == '1'
+SOLO_MARGIN = _env_float('ARBITER_SOLO_MARGIN', 0.15)
+SOLO_TREK_COINS = _env_int('ARBITER_SOLO_TREK_COINS', 2, 1, 4)
+SOLO_TREK_YIELD_N = _env_int('ARBITER_SOLO_TREK_YIELD_N', 3, 1, 8)
+SOLO_TREK_YIELD_MIN = _env_float('ARBITER_SOLO_TREK_YIELD_MIN', 2.0)
 
 
 def _bfs_path(arena, blocked, start, goal, limit=12):
@@ -601,6 +631,77 @@ def gen_plans(game_state, safety, K=K, radius=RADIUS):
                                 danger, plans, x, y, _tx, _ty,
                                 tile_yield):
                             break
+    # E112 (P0) solo trek: no opponents alive -> the pi prior is OOD and
+    # the ship freezes (see knobs). Append exact BFS move plans toward
+    # reachable coins first, then the top-N best-yield bomb tiles
+    # board-wide (a radius-4 walk never finds them once frozen in a
+    # cleared pocket), then the nearest crate-adjacent tile as a
+    # thin-board fallback. Pure max-addition AFTER every validated plan
+    # (E72b seed-index discipline: rank order of the validated plans is
+    # untouched) and gated on `others` empty -> opponent-ful behavior is
+    # bit-identical.
+    if SOLO_TREK and not others_xy:
+        try:
+            from .sim import yield_field as _solo_yf
+            try:
+                _yf = _solo_yf(arena)
+            except Exception:
+                _yf = None
+            _solo_coins = [(int(c[0]), int(c[1])) for c in
+                           (game_state.get('coins', []) or [])]
+            _solo_coins.sort(key=lambda c: abs(c[0] - x) + abs(c[1] - y))
+            _n_coin = 0
+            for (_tx, _ty) in _solo_coins:
+                if _n_coin >= SOLO_TREK_COINS:
+                    break
+                _path = _bfs_path(arena, blocked, (x, y), (_tx, _ty),
+                                  limit=12)
+                if _path:
+                    plans.append({'first': _path[0], 'prefix': _path,
+                                  'bomb_at': None, 'trek': 'coin',
+                                  'trek_target': (_tx, _ty)})
+                    _n_coin += 1
+            if _yf is not None:
+                _dist = _bfs_dist(arena, blocked, (x, y))
+                W, Hh = arena.shape[0], arena.shape[1]
+                _yield_c = []
+                _crate_c = []
+                for cx in range(W):
+                    for cy in range(Hh):
+                        if arena[cx, cy] != 0 or (cx, cy) in blocked:
+                            continue
+                        dd = int(_dist[cx, cy])
+                        if dd <= 0 or dd >= 10 ** 9:
+                            continue
+                        yv = float(_yf[cx, cy])
+                        if yv >= SOLO_TREK_YIELD_MIN:
+                            _yield_c.append((-yv, dd, (cx, cy)))
+                        elif yv >= 1.0:
+                            _crate_c.append((dd, (cx, cy)))
+                _yield_c.sort()
+                for _neg, _dd, (_tx, _ty) in \
+                        _yield_c[:SOLO_TREK_YIELD_N]:
+                    _path = _bfs_path(arena, blocked, (x, y), (_tx, _ty),
+                                      limit=12)
+                    if not _path:
+                        continue
+                    plans.append({'first': _path[0], 'prefix': _path,
+                                  'bomb_at': None, 'trek': 'yield',
+                                  'trek_target': (_tx, _ty),
+                                  'trek_yield': -_neg})
+                if not _yield_c:
+                    _crate_c.sort()
+                    for _dd, (_tx, _ty) in _crate_c[:1]:
+                        _path = _bfs_path(arena, blocked, (x, y),
+                                          (_tx, _ty), limit=12)
+                        if _path:
+                            plans.append({'first': _path[0],
+                                          'prefix': _path,
+                                          'bomb_at': None,
+                                          'trek': 'crate',
+                                          'trek_target': (_tx, _ty)})
+        except Exception:
+            pass
     return plans
 
 
@@ -865,7 +966,7 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
         if info['died'][0]:
             payoff -= w_death
             break
-    payoff += 5.0 * certified_kills
+    payoff += KILL_P * 5.0 * certified_kills
     payoff += margin(st) - m0 - (st['agents'][0]['score'] - st0['agents'][0]['score'])
     # NOTE: margin() already includes score deltas; the last line adds the
     # OPPONENT-score movement only (own score counted once via margin).
@@ -964,9 +1065,39 @@ def search_action(game_state, safety, model, t0, budget):
             _y = float(bombs[0][1].get('tile_yield', 2.0))
         except Exception:
             _y = 2.0
-        margin_eff = BOMB_MARGIN + YIELD_GAMMA * max(0.0, 2.0 - _y)
+        _solo = not (game_state.get('others') or [])
+        if _solo and SOLO_MARGIN >= 0.0:
+            # E112: no opponents alive -> junk-bomb risk is nil; a crate
+            # bomb only needs to beat the move baseline by SOLO_MARGIN.
+            margin_eff = SOLO_MARGIN
+        else:
+            margin_eff = BOMB_MARGIN + YIELD_GAMMA * max(0.0, 2.0 - _y)
         dbg['margin_eff'] = float(margin_eff)
         dbg['best_yield'] = float(_y)
         if (bombs[0][0] - best_move) > margin_eff:
             return bombs[0][1]['first'], dbg
+    # E112 (P0) solo arbitration: with no opponents alive the pi prior is
+    # OOD and the S0 fallback freezes (verified ping-pong). When no bomb
+    # plan cleared the bar, let the exact search pick the move from the
+    # trek plans: highest exact payoff first, then highest target yield.
+    # Mask-SAFE required (not just valid): a trek first step into a
+    # ticking blast is exactly the own-bomb death class the mask exists
+    # for; unsafe treks fall through to the S0 flee semantics.
+    if SOLO_TREK and not (game_state.get('others') or []):
+        treks = [r for r in scored if r[1].get('trek')]
+        if treks:
+            treks.sort(key=lambda r: (r[0],
+                                      r[1].get('trek_yield', 0.0)),
+                       reverse=True)
+            for _r in treks:
+                _a = _r[1]['first']
+                if not isinstance(_a, str):
+                    continue
+                if not safety.get('valid', {}).get(_a, False):
+                    continue
+                if not safety.get('safe', {}).get(_a, False):
+                    continue
+                dbg['solo_trek'] = _r[1].get('trek')
+                dbg['solo_trek_target'] = _r[1].get('trek_target')
+                return _a, dbg
     return None, dbg

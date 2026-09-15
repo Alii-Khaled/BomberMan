@@ -181,6 +181,31 @@ V_OFF = os.environ.get('ARBITER_V_OFF', '0') == '1'
 LOOP3 = _env_float('ARBITER_LOOP3', 0.45)
 LOOP2 = _env_float('ARBITER_LOOP2', 0.15)
 BOMB_REPEAT = _env_float('ARBITER_BOMB_REPEAT', 0.9)
+# E112 (P0) escalating loop penalty. Modes: '0' = ship (bounded
+# LOOP3/LOOP2), '1' = escalate everywhere, '2' = escalate ONLY when no
+# opponent is alive. The ship's bounded tie-breaks are an order of
+# magnitude below the pi logit gaps on OOD solo states (verified: a
+# 363-step UP/DOWN ping-pong with pi gaps > 1.0). G1 screens: mode 1
+# costs kills/suicides in opponent-ful play (4.40 -> 3.98, suic 8 -> 12),
+# so opponent-ful behavior keeps the validated bounded pair; the solo
+# freeze gets the escalation (L5 screen 6.38 -> 7.72). E112 promotion:
+# default '2'; '0' restores ship behavior (+ ARBITER_SOLO_MARGIN=-1).
+LOOP_ESC = os.environ.get('ARBITER_LOOP_ESC', '2').strip() or '0'
+LOOP_ESC_STEP = _env_float('ARBITER_LOOP_ESC_STEP', 0.5)
+LOOP_ESC_CAP = _env_float('ARBITER_LOOP_ESC_CAP', 3.0)
+# E114 (P2) anti-pin guard (default off). E109 death attribution: 59% of
+# deaths are corner pins, 40/48 from ENEMY bombs with esc=0 at the plant
+# tick — we are already standing in a pocket an armed enemy can seal.
+# Survival-content steering only (E62): when an armed opponent is within
+# ANTIPIN_D Manhattan steps and our own safe-mobility is <= ANTIPIN_MOB,
+# re-rank the safe moves by open-space + distance to the armed opponent
+# (the validated _flee_quality_choice recipe, here triggered by pin risk
+# instead of a live flee). Never selects an unsafe move; never vetoes a
+# certified bomb.
+ANTIPIN = _env_float('ARBITER_ANTIPIN', 0.0) > 0.0
+ANTIPIN_D = int(_env_float('ARBITER_ANTIPIN_D', 2))
+ANTIPIN_MOB = int(_env_float('ARBITER_ANTIPIN_MOB', 1))
+ANTIPIN_DEADEND = _env_float('ARBITER_ANTIPIN_DEADEND', 0.0) > 0.0
 TRAP_BONUS = _env_float('ARBITER_TRAP_BONUS', 0.0)
 # Dihedral TTA for pi (E74, SHIP default — best config on primary +
 # warden-mix + collectors simultaneously): average the prior over the
@@ -245,6 +270,24 @@ def _flee_quality_choice(arena, bombs, others_xy, x, y, valid, safe, pi):
         return best_a
     except Exception:
         return None
+
+
+def _loop_penalty(cnt, solo=False):
+    """E112 tie-break loop penalty for a destination visited `cnt` times.
+
+    Pure and directly probed. LOOP_ESC '1' escalates always, '2' escalates
+    only in solo states (no opponent alive), '0' keeps the validated
+    bounded LOOP3/LOOP2 pair.
+    """
+    if (LOOP_ESC == '1') or (LOOP_ESC == '2' and solo):
+        if cnt >= 2:
+            return -min(LOOP_ESC_STEP * (cnt - 1), LOOP_ESC_CAP)
+        return 0.0
+    if cnt >= 3:
+        return -LOOP3
+    if cnt == 2:
+        return -LOOP2
+    return 0.0
 
 
 def setup(self):
@@ -706,14 +749,49 @@ def _act_impl(self, game_state, t0):
             pass
 
     # --- rank: pi, warden filter semantics, bounded tie-breaks only ---
+    # E114 (P2) anti-pin guard: leave a pocket BEFORE an armed opponent
+    # can seal it. Survival content only: re-ranks valid+safe moves,
+    # never overrides a live flee and never picks an unsafe tile.
+    if ANTIPIN and not must_flee and not flee_locked:
+        try:
+            _armed = [(int(o[3][0]), int(o[3][1]))
+                      for o in (game_state.get('others') or []) if o[2]]
+            _near = [(ox, oy) for (ox, oy) in _armed
+                     if abs(ox - x) + abs(oy - y) <= ANTIPIN_D]
+            if _near:
+                _n_safe = 0
+                for _d in ('UP', 'DOWN', 'LEFT', 'RIGHT'):
+                    if valid.get(_d) and safe.get(_d):
+                        _n_safe += 1
+                _pocket = _n_safe <= ANTIPIN_MOB
+                if _pocket and ANTIPIN_DEADEND:
+                    _free = 0
+                    for _dx, _dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        _nx, _ny = x + _dx, y + _dy
+                        if 0 <= _nx < arena.shape[0] and \
+                                0 <= _ny < arena.shape[1] and \
+                                arena[_nx, _ny] == 0:
+                            _free += 1
+                    _pocket = _free <= 1
+                if _pocket:
+                    _v2 = dict(valid)
+                    _v2['WAIT'] = False
+                    _s2 = dict(safe)
+                    _s2['WAIT'] = False
+                    _pa = _flee_quality_choice(
+                        arena, game_state.get('bombs') or [], _near,
+                        x, y, _v2, _s2, pi)
+                    if _pa is not None:
+                        return _commit(self, _pa, x, y, nxt, bombs_left)
+        except Exception:
+            pass
+    _solo_now = not (game_state.get('others') or [])
+
     def tiebreak(a):
         t = 0.0
         try:
             cnt = list(self.coord_history).count(nxt[a])
-            if cnt >= 3:
-                t -= LOOP3
-            elif cnt == 2:
-                t -= LOOP2
+            t += _loop_penalty(cnt, solo=_solo_now)
             if a == 'BOMB' and (x, y) in list(self.bomb_history)[-3:]:
                 t -= BOMB_REPEAT
             if flee_locked and a == 'BOMB':

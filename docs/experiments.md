@@ -4003,3 +4003,146 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   limitations (for the report outlook): corner-pin 59% of deaths
   (enemy-bomb pins dominant), trap conversion 0/22, G1 within seed
   noise. **Report:** §4/§5/§6.
+
+### E112 — P0 solo/endgame unfreeze (SOLO_MARGIN + LOOP_ESC) ✅ PROMOTED (pooled parity, dominates the solo regime)
+
+- **Author:** Ali Mahbob · **Date:** 2026-09-14
+- **Question:** the experience phase showed the E108 ship *freezes* once all
+  opponents die (verified: 363-step UP/DOWN ping-pong from a reproduced
+  seed-3 state, 0 coins; 28/40 rounds scored <=2 vs 3x random; solo
+  classic 5.0/9 coins vs collector 8.5, warden 7.5) — can the endgame be
+  unfrozen without touching the opponent-ful game?
+- **Diagnosis (instrumented freeze state):** the BC prior is OOD with no
+  opponents alive (pi = BOMB 0.743 at the freeze state, vetoed by the
+  mask), the 0.6 bomb margin prices 1-3-crate bombs out (best_bomb 0.18),
+  search returns None for moves, and the bounded LOOP3/LOOP2 tie-breaks
+  (-0.45/-0.15) are an order of magnitude below the pi logit gaps that
+  drive the ping-pong.
+- **Code (all env-gated, default-off until this promotion):**
+  `agent_code/arbiter_ng/search.py` — `ARBITER_SOLO_MARGIN` (bomb-vs-move
+  margin while `others==[]`), `ARBITER_SOLO_TREK*` (exact BFS move plans
+  to coins/yield tiles/crate-adjacent tiles, mask-safe gated);
+  `agent_code/arbiter_ng/callbacks.py` — `ARBITER_LOOP_ESC` modes
+  ('0' ship bounded pair, '1' escalate everywhere, '2' escalate solo-only),
+  pure `_loop_penalty(cnt, solo)`. Probe:
+  `scripts/probe_arbiter_solo.py` (22/22 PASS incl. the reproduced
+  seed-3 freeze fixture: 200 sim ticks, no death, 111->39 crates, no
+  stay-put streak > 4; opponent-present plan/action bit-parity).
+- **Screens (CPU, tournament conditions):** solo classic 6rds: ctl 5.00,
+  TREK-only 1.50, MARGIN-only 8.67, MARGIN+LOOP_ESC2 8.17; L5 vs 3x
+  random 40x2: ctl 2.15, MARGIN 5.79, TREK+MARGIN 7.01,
+  **MARGIN+LOOP_ESC2 7.80/0.97**; G1 40x1: ctl 4.28, TREK+MARGIN 4.40,
+  +LOOP_ESC1 3.98 (mode 1 hurts opponent-ful play -> mode 2). TREK
+  dropped (negative marginal on solo-from-start).
+- **Gate (E30 canonical battery, 1120 rds each):**
+
+| leg (n) | ctl | E2 (margin 0.15 + loop-esc 2) | delta |
+|---|---|---|---|
+| g1 (200) | 4.760/0.475 | 4.625/0.430 | -0.135/-0.045 |
+| strong (400) | 5.112/0.425 | 5.152/0.415 | +0.040/-0.010 |
+| umix (200) | 9.045/0.895 | 9.010/0.890 | -0.035/-0.005 |
+| ucow/ubom/urus/urac (80 each) | 8.275/8.825/6.475/6.875 | 8.275/9.037/6.475/6.875 | +0.105 pooled |
+| **POOLED (1120)** | **6.466/0.668** | **6.465/0.656** | **+0.001/-0.012** |
+
+- **Verdict:** PROMOTE under the pooled bar (score +0.001, win -0.012 =
+  within 1 SE; G1 per-seed 4.64/4.61 vs ctl 5.30/4.22 — E2 removes the
+  high variance). The fix strictly dominates the solo state class (L5
+  2.15 -> 7.80, only 7/80 rounds <=2), which the official battery
+  under-samples (rule_based/warden/archetype opponents rarely leave the
+  ship alone early); the tournament field of four student agents includes
+  weak early-dying fields where this is worth +5/round. Lineage/
+  scoreboard updated at freeze (E115). **Report:** §5/§6.
+
+### E113 — Kill pricing + tactical re-screen ❌ both REJECTED (ship unchanged)
+
+- **Author:** Ali Mahbob · **Date:** 2026-09-14
+- **Question:** E109 recorded 79 trap certificates / 0 engine converts —
+  is the +5 certified-kill credit miscalibrated, and does the E69
+  tactical overlay add anything on the NG ship?
+- **KILL_P (`ARBITER_KILL_P`, scales credited certified kills, rollout
+  dynamics untouched):** STRONG 40x4 with the E2 base — kp1.0
+  5.29/0.391 (kills 71, suic 31), kp0.5 4.97/0.354 (63/38), kp0.25
+  4.95/0.352 (61/42). Both discounts are below control with more
+  suicides: the +5 pricing is load-bearing (certificates correlate with
+  realized kills well enough that discounting only displaces bombs).
+  REJECT at screen.
+- **Tactical (`ARBITER_SEARCH=search+tactical`, exact proven-kill
+  overlay):** G1 40x2 screen 4.93/0.475 (kills 0.40/rd, suic 0.19/rd)
+  vs E2 base, but the 100x2 gate landed 4.60/0.457 vs 4.62/0.392 —
+  score parity, win within noise (the 40x2 lift did not survive;
+  E102 lesson again). REJECT.
+- **Artifacts:** `results/e113_strong_kp{0.5,0.25}_s*.json`,
+  `results/e113_g1_tact{,_100}_s*.json`. **Report:** §5/§6.
+
+### E114 — Anti-pin guard (defensive armed-enemy pocket exit) ❌ REJECTED at the 40x10 gate
+
+- **Author:** Ali Mahbob · **Date:** 2026-09-14/15
+- **Question:** E109 attribution: 59% of ship deaths are corner pins,
+  40/48 from enemy bombs with esc=0 at the plant tick — can a
+  survival-content movement guard (armed opponent near + own safe
+  mobility low -> re-rank safe moves by open space + enemy distance,
+  the validated E90 `_flee_quality_choice` recipe) avoid the pocket
+  before the seal?
+- **Code:** `agent_code/arbiter_ng/callbacks.py` `ARBITER_ANTIPIN`
+  (0/1) + `_D` (Manhattan, default 2) + `_MOB` (safe-dir trigger,
+  default 1) + `_DEADEND` (extra own-free-neighbour <= 1 gate).
+  Probe `scripts/probe_arbiter_solo.py` G8: guard off enters the
+  dead-end (RIGHT), guard on exits to the open tile (DOWN), unarmed
+  and far enemies do not trigger, opponent-present baseline parity.
+- **Screens (E2 base):** STRONG 40x4: basic P 5.14/0.386 (suic 38),
+  dead-end PD **5.64/0.406** (suic 27, kills 75) vs E2 base seeds0-3
+  5.29/0.391 (suic 31); G1 40x2: P 4.86/0.463, PD 4.49/0.438; L5 40x2:
+  P 8.16/0.991.
+- **Gate (canonical battery, 1120 rds):** PD pooled **6.422/0.644** vs
+  E2 control 6.465/0.656 (-0.043/-0.012); g1 4.370/0.410 vs 4.625/0.430,
+  strong 5.082/0.393 vs 5.152/0.415 (the 40x4 STRONG lift did not
+  survive 40x10), umix 9.170/0.890 vs 9.010/0.890, urac 6.862/0.988.
+  REJECT — arm stays default-off (E102 lesson, again).
+- **Artifacts:** `results/e114_*`, `results/tourney_e112PD_*`,
+  probe G8. **Report:** §5/§6.
+
+### E115 — Solo DAgger corpus + BC top-up ❌ REJECTED at triage (line closed)
+
+- **Author:** Ali Mahbob · **Date:** 2026-09-15
+- **Question:** E112 unfroze the endgame mechanically; can a DAgger
+  corpus teach the BC prior the solo farming policy directly (so
+  2-opponent/mixed states inherit it too)? Feature surgery (13th tensor
+  channel + trap-ability scalars) was scoped but not needed if the
+  corpus alone moved the target legs.
+- **Recorder:** `agent_code/solo_dagger/` (training-only, never ships):
+  the E112 ship plays with env defaults; at every `others == []` step the
+  state is recorded in apex format (img 12x17x17 u8 + sc 16) labeled by
+  `coin_collector_agent` (validated against the mask; invalid labels
+  skipped). Collections: 100 rds vs 3x random (seed 10) + 60 rds vs 3x
+  rule_based (seed 11) -> 107 rounds, **30,323 rows** (label mix:
+  BOMB 18%, moves 82%).
+- **Training (L40S, E108 recipe: 14 ep, lr 1e-3, batch 256, aux 0.1,
+  seed 0):** cache 499,798 rows / 2,118 files (apex_demos + apex_ng_demos
+  + solo_dagger). d2b (+DAgger) best val_acc 0.792; d2a (same cache with
+  the 30,323 DAgger rows filtered out) best val 0.796.
+- **Triage (E2 defaults for every model; G1 40x1 s0, L5 40x1 s0, solo 6):**
+
+| model | G1 | L5 | solo coins |
+|---|---|---|---|
+| ship (E108+E112) | 4.00/0.31 | 7.45/1.00 | 8.17 |
+| d1 (E108 BC ckpt) | 5.45/0.54 | 8.03/0.98 | 7.50 |
+| d2a (new BC, no DAgger) | 3.67/0.27 | 7.50/1.00 | 9.00 |
+| d2b (+DAgger) | 4.22/0.34 | **4.70/0.91** | **6.33** |
+
+- **Verdict:** d2b loses the same-corpus isolate d2a on exactly the
+  target legs (L5 -2.8, solo -2.7) — collector labels on ship-visited
+  solo states are off-manifold for both the collector and the search
+  policy (the collector optimizes its own rule-based mechanics). The BC
+  line is closed; feature surgery (P2b-ii) is not attempted (its target,
+  corner pins, was already screened as E114 anti-pin and rejected).
+  Ship = E108 weights + E112 inference defaults. Artifacts:
+  `results/arbiter_ng_d2{a,b}*.{pt,npz}`, `results/e115_tri_*`,
+  `agent_code/solo_dagger/`. **Report:** §5/§6.
+
+### E112 diag — death attribution under the promoted solo fix (100 rds)
+
+- 34 deaths/100 rounds (E109 D1: 41/100): corner_pin 23 (68%, enemy 16 /
+  own 7), own_bomb_chain 7 (21%, was 28%), enemy_lucky 3, enemy_trap 1;
+  40 trap certificates / 0 realized (conversion unchanged). Own-bomb
+  involvements down; corner pins remain the dominant cause (E114 arm
+  rejected). Artifacts: `results/diag_e112*`. **Report:** §6.

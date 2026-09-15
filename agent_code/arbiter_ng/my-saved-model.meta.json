@@ -6,19 +6,56 @@
   "recipe": "NG-1 BC on the WIDENED league corpus (1586 files: +350 ship self-play mirror, +225 warden_v1, +150 collector, +50 random; val_acc 0.806 vs 0.794 on the E101 corpus) -> E104-recipe RL leg (KL-anchored REINFORCE, STABLE adaptive beta + revert guard, BOMB_TRACE, lr 5e-5 beta 0.1, 300 eps vs rule_based x2 + warden_v2), ep225 checkpoint",
   "decision": {
     "bar": "pooled multi-battery (G1 100x2 + STRONG 40x10 + UNSEEN UMIX 100x2 + archetype legs 40x2)",
-    "pooled_score": 6.650,
+    "pooled_score": 6.65,
     "pooled_win": 0.681,
-    "control": {"agent": "arbiter_ng b1e150+wardenlite (E107)", "pooled_score": 6.388, "pooled_win": 0.640},
-    "deltas": {"score": "+0.262", "win": "+0.041"},
-    "strong_lobby": {"e108d1": 5.853, "ctl": 5.265},
-    "unseen_pool": {"e108d1": 8.137, "ctl": 7.948},
-    "warden_head_to_head": {"e108d1": 5.853, "warden_v2": 5.065, "win": 0.552}
+    "control": {
+      "agent": "arbiter_ng b1e150+wardenlite (E107)",
+      "pooled_score": 6.388,
+      "pooled_win": 0.64
+    },
+    "deltas": {
+      "score": "+0.262",
+      "win": "+0.041"
+    },
+    "strong_lobby": {
+      "e108d1": 5.853,
+      "ctl": 5.265
+    },
+    "unseen_pool": {
+      "e108d1": 8.137,
+      "ctl": 7.948
+    },
+    "warden_head_to_head": {
+      "e108d1": 5.853,
+      "warden_v2": 5.065,
+      "win": 0.552
+    }
   },
   "history": [
-    {"exp": "E106", "decision": "b1e150 promoted (pooled 6.889/0.669 vs E88 arbiter)"},
-    {"exp": "E107", "decision": "wardenlite rollout model promoted (pooled 6.388/0.640 vs 5.991/0.633)"},
-    {"exp": "E108", "decision": "D1 recipe iteration promoted (pooled 6.650/0.681 vs 6.388/0.640); ship now beats warden_v2 head-to-head 5.853 vs 5.065 (was -0.73 behind at E88)"}
+    {
+      "exp": "E106",
+      "decision": "b1e150 promoted (pooled 6.889/0.669 vs E88 arbiter)"
+    },
+    {
+      "exp": "E107",
+      "decision": "wardenlite rollout model promoted (pooled 6.388/0.640 vs 5.991/0.633)"
+    },
+    {
+      "exp": "E108",
+      "decision": "D1 recipe iteration promoted (pooled 6.650/0.681 vs 6.388/0.640); ship now beats warden_v2 head-to-head 5.853 vs 5.065 (was -0.73 behind at E88)"
+    }
   ],
   "date": "2026-09-14",
-  "notes": "All batteries CPU, tournament conditions, 1120 rounds/model vs same-session control; G1 dipped -0.20 (accepted: pooled bar); default load path + wardenlite smoke-verified."
+  "notes": "All batteries CPU, tournament conditions, 1120 rounds/model vs same-session control; G1 dipped -0.20 (accepted: pooled bar); default load path + wardenlite smoke-verified.",
+  "inference_flags": {
+    "note": "E112 solo/endgame fix promoted after this weights export",
+    "ARBITER_SOLO_MARGIN": 0.15,
+    "ARBITER_LOOP_ESC": "2",
+    "ship_switch_params": [
+      "agent_code/arbiter_ng/search.py",
+      "agent_code/arbiter_ng/callbacks.py"
+    ],
+    "restore_pre_e112": "ARBITER_SOLO_MARGIN=-1 ARBITER_LOOP_ESC=0",
+    "evidence": "E112 ledger: pooled 6.465/0.656 vs 6.466/0.668; L5 2.15->7.80; solo 5.0->8.2/9"
+  }
 }
