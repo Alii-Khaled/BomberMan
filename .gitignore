@@ -131,3 +131,5 @@ agent_code/*/logs/
 logs/*
 !logs/.gitkeep
 *.log.[0-9]*
+# Local agent session dirs (opencode; contains node_modules — never ship)
+.opencode/
