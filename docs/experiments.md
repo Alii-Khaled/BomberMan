@@ -4443,3 +4443,58 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   pooled movement needs the heavy closed lines reopened. Artifacts:
   `results/diag_e128_*.{jsonl,md}`, `results/tourney_e129*`,
   `results/gaps_findings.md`. **Report:** §5/§6.
+
+### E130 — opening-flicker fix (opponent-ful): COMMIT_OPP + BACKTRACK_OPP ✅ PROMOTED
+
+- **Author:** opencode (gap-fix session 2) · **Date:** 2026-09-16
+- **User report:** the ship "fluctuates left and right in the early
+  rounds while others collect coins or get kills; fewer bombs to clear
+  crates early". **Phase 0 (E128 diag re-analysis):** 27-32% of opening
+  (<100) move-ticks are immediate reversals (median alternation streak
+  6, 56-63% of rounds >= 6); only ~15-18% are bomb-cycle movement —
+  **~82-89% happen in free space with no own bomb and no flee**;
+  opening bombs 5.3-5.8/rd (E128 runs).
+- **Phase 1 classification (G1 80 rds, gap recorder on the current
+  stack):** reversals split **s0_flicker 1,066 (63%** — search returns
+  None on 0.6-margin states; opponent-ful tie-breaks are bounded weak
+  LOOP2 -0.15 / LOOP3 -0.45 and the E123 backtrack penalty is
+  solo-gated) and **decided flips 611 (36%** — a bomb plan wins the
+  arbitration but the committed approach is solo-gated, so the top
+  plan's first step still flips per position); flee 43 (1%).
+- **Arms (single gate sites each, both opponent-ful-gated so the E125
+  solo state class is untouched):**
+  - `ARBITER_COMMIT_OPP=1` (search.py): the E125 committed approach
+    forms/executes with opponents alive (per-tick mask-valid+safe
+    first step, path <= SOLO_COMMIT_MAX, bombs_left, age cap; the
+    E75 blind-prefix risk is bounded by the per-tick survival gate).
+  - `ARBITER_BACKTRACK_OPP=0.5` (callbacks tiebreak): the immediate-
+    reversal penalty un-gated to opponent-ful S0 ticks —
+    state-dependent by design (fires only on returning to the tile
+    just left), unlike blanket loop escalation which hurt G1 (E112
+    mode-1). Sweep rejected values documented; 0.5 chosen.
+- **Probes:** `scripts/probe_arbiter_early.py` (9/9): opponent-ful S0
+  flicker reproduced on a no-plan corridor; BACKTRACK_OPP flips it;
+  COMMIT_OPP completes approaches with opponents present (11 bombs /
+  120 ticks on the freeze fixture); abandon on a live own bomb; solo
+  untouched; benign-state determinism.
+- **Screens (280 rds, fresh same-session ctl):** e130a pooled +0.03
+  (G1 +0.375/+0.275, L5 -0.2/-0.18, STRONG +0.58/-0.63); e130b pooled
+  **+0.26** (G1 +0.08/+0.58, STRONG +0.53/+1.23, L5 -0.5/-0.05);
+  solo bit-parity both; kills/suicides within noise.
+- **Mechanism verification (composed, 19 rds with the recorder):**
+  opening reversals 20.7 -> **12.4/rd (-40%)**, early bombs
+  7.6 -> 8.2/rd.
+- **Canonical gate (1120 rds, composed config, fresh same-session
+  ctl):** **pooled 7.116/0.641 vs 7.031/0.652 (+0.085,
+  CI [-0.328, +0.490])**; **g1 4.710/0.455 vs 4.070/0.390 (+0.64,
+  +6.5% round-win — the target class)**; strong 5.305 vs 5.388
+  (parity); umix+archetypes bit-identical. Post-promotion spot-check
+  (40 rds): reversals 20.7 -> **12.6/rd**, early bombs -> 8.4/rd.
+- **Verdict:** PROMOTE both defaults (`ARBITER_COMMIT_OPP=1`,
+  `ARBITER_BACKTRACK_OPP=0.5`; `ARBITER_COMMIT_OPP=0` /
+  `ARBITER_BACKTRACK_OPP=0` restore). E130c (OPEN_MARGIN re-screen)
+  stayed conditional and was not triggered (the veto share did not
+  dominate). Artifacts: `results/e130diag_s{0,1}_gap.jsonl`,
+  `results/e130comp_gap.jsonl`, `results/e130post_gap.jsonl`,
+  `results/tourney_e130*`, `scripts/probe_arbiter_early.py`.
+  **Report:** §5/§6.

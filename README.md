@@ -4,15 +4,17 @@ Train Reinforcement Learning agents for the classic game Bomberman (course proje
 Tournament inference is CPU-only with a 0.5 s/step budget; training defaults to
 CUDA with AMP (Google Colab ready).
 
-Current ship (E125): **arbiter_ng (E108: D1-BC + rl225 + wardenlite)**
-with the E112 solo/endgame fix (SOLO_MARGIN 0.15 + LOOP_ESC 2), the
-E119 inference fast path, the E122/E123 gap fixes (certified coin-take
-d=3, solo bomb radius 8), and **E125: committed solo bomb-approach**
-(ARBITER_SOLO_COMMIT=6): the verified freeze class (K-cap membership
-flipping with the agent's position, 6/100 solo rounds <= 2 pts) is gone
-— solo screens 8.95 vs 8.15 coins/rd with a 0/40 tail, L5 +0.84, G1
-4-seed +0.04 parity, pooled canonical within 1 SE. E125 hysteresis arm
-rejected (G1 -0.89). See `docs/experiments.md` E125 and
+Current ship (E130): **arbiter_ng (E108: D1-BC + rl225 + wardenlite)**
+with the E112 solo/endgame fix, the E119 inference fast path, the
+E122/E123 gap fixes (certified coin-take d=3, solo bomb radius 8),
+E125 (committed solo bomb-approach — the verified K-cap membership
+flip freeze is gone: solo 8.94/9, tail 0/100), and **E130: the
+opening-flicker fix** (ARBITER_COMMIT_OPP=1 + ARBITER_BACKTRACK_OPP=0.5:
+the opponent-ful opening reversals 27-32% of move-ticks drop ~40%,
+early bombs 7.6 -> 8.4/rd, composed canonical gate **g1 +0.64 / +6.5%
+round-win**, pooled +0.085 within 1 SE). E125 hysteresis arm, E129
+PLANT_OPP and the E124 opening margins all rejected at their gates.
+See `docs/experiments.md` E125/E128/E129/E130 and
 `results/gaps_findings.md`.
 Legacy ship notes (E111, pre-E112): the same weights (E108) —
 CNN+scalar fused policy (3566-dim lossless board tensor + 98 scalars)
@@ -147,6 +149,8 @@ improvement, `ep_NNNNNN.pt` snapshots); per-round metrics append to
 | `ARBITER_SOLO_COMMIT_MAX` | `6` | E125 max committed-approach age in ticks |
 | `ARBITER_BOMB_HYST` | `0` | E125 rejected arm: sticky-target arbitration bonus (G1 screens -0.89; off) |
 | `ARBITER_BACKTRACK` | `0` | E123 rejected arm: solo immediate-reversal penalty (binds, no score lift; off) |
+| `ARBITER_COMMIT_OPP` | `1` | E130 ship: committed bomb-approach in opponent-ful play (opening reversals -40%, early bombs 7.6 -> 8.4/rd; `0` = solo-only commit) |
+| `ARBITER_BACKTRACK_OPP` | `0.5` | E130 ship: opponent-ful immediate-reversal penalty (composed gate g1 +0.64; `0` restores) |
 | `ARBITER_OPEN_MARGIN` | `-1` | E124 rejected arm: opening phase bomb margin (no visible coins, step<`ARBITER_OPEN_T`; off) |
 | `ARBITER_OPEN_T` | `100` | E124 opening window length (steps) |
 | `ARBITER_HUNT_OPEN` | `0` | E124 rejected arm: opening-only pursuit plans (E82 lesson reconfirmed; off) |
@@ -198,11 +202,12 @@ python3 scripts/plot_eval.py                 # figures
 
 Ship rule (E30/E106): nothing ships without the pooled multi-battery
 (G1 100x2 + STRONG 40x10 + UNSEEN 1120 rounds) vs a fresh same-session
-control. Current standing (E125): **arbiter_ng+E125 6.355/0.654 vs
-same-session ship control 6.401/0.661 (pooled within 1 SE; G1 resolved
-across 4 seed pairs +0.04 parity)** with the solo class 8.95 vs 8.15
-coins/rd and a 0/40 tail; the E124 opening arms and the E125 hysteresis
-arm are rejected. Full ledger: `docs/experiments.md`.
+control. Current standing (E130): **arbiter_ng+E130 7.116/0.641 vs
+same-session control 7.031/0.652 (pooled +0.085 within 1 SE; the target
+class g1 +0.64 / +6.5% round-win, strong parity, umix+archetypes
+bit-identical)**. E128 death attribution: the corner-pin class (68%,
+unchanged) is the binding loss source; E129 PLANT_OPP and the E124
+opening margins are rejected. Full ledger: `docs/experiments.md`.
 
 ## Health checks
 
