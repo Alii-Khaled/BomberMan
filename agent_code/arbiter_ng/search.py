@@ -220,6 +220,27 @@ SOLO_MARGIN = _env_float('ARBITER_SOLO_MARGIN', 0.15)
 SOLO_TREK_COINS = _env_int('ARBITER_SOLO_TREK_COINS', 2, 1, 4)
 SOLO_TREK_YIELD_N = _env_int('ARBITER_SOLO_TREK_YIELD_N', 3, 1, 8)
 SOLO_TREK_YIELD_MIN = _env_float('ARBITER_SOLO_TREK_YIELD_MIN', 2.0)
+# E123 (P0) solo radius: when no opponent is alive the rollouts are fully
+# deterministic (dead opponents WAIT), so the E70 noise caveat for wider
+# candidate pools does not apply. E123 ship: default 8 (solo screens
+# +0.40 coins/rd, tail rounds <=2 down 4->3; composed canonical gate
+# +0.054/+0.008 vs fresh control = pooled parity, E112 precedent:
+# the pooled battery under-samples the solo-heavy weak-field regime).
+# ARBITER_SOLO_RADIUS=0 restores the ship RADIUS 4; 12 was rejected
+# (long truncated prefixes). Opponent-ful play is bit-identical.
+SOLO_RADIUS = _env_int('ARBITER_SOLO_RADIUS', 8, 0, 16)
+# E124 (P0) opening-tempo arms. OPEN_MARGIN: bomb-vs-move score margin
+# while the board has NO visible coins and step < OPEN_T (pure crate-farm
+# phase; E88 swept unconditional margins only). < 0 = off (ship 0.6).
+# HUNT_OPEN: opening-only pursuit plans (one per opponent, existing
+# _try_bomb_plan gate) while step < HUNT_OPEN_STEP and an armed opponent
+# is within HUNT_OPEN_D Manhattan steps — E82's hunt was global-trigger;
+# this bounds the displacement window to the opening.
+OPEN_MARGIN = _env_float('ARBITER_OPEN_MARGIN', -1.0)
+OPEN_T = _env_int('ARBITER_OPEN_T', 100, 0, 400)
+HUNT_OPEN = os.environ.get('ARBITER_HUNT_OPEN', '0') == '1'
+HUNT_OPEN_STEP = _env_int('ARBITER_HUNT_OPEN_STEP', 150, 0, 400)
+HUNT_OPEN_D = _env_int('ARBITER_HUNT_OPEN_D', 5, 1, 11)
 # E120 duel-adaptive envelope (Inc 2): when an ARMED opponent is within
 # ARBITER_DUEL_D Manhattan steps of us, the search widens — more bomb
 # candidates (ARBITER_DUEL_K), more scored plans (ARBITER_DUEL_PLANS)
@@ -680,6 +701,43 @@ def gen_plans(game_state, safety, K=K, radius=RADIUS):
                                 danger, plans, x, y, _tx, _ty,
                                 tile_yield):
                             break
+    # E124 opening-only hunt-lite: while the opening window holds and an
+    # armed opponent is close, add ONE pursuit bomb plan per opponent
+    # (max HUNT_PLANS) through the SAME _try_bomb_plan gate. Pure
+    # max-addition after the ranked walk; ship (default off) is untouched.
+    # Requires the ranked-walk block to have run (dist/danger/tile_yield).
+    if HUNT_OPEN and others_xy and step < HUNT_OPEN_STEP \
+            and yf is not None:
+        try:
+            _near = sorted(((abs(ox - x) + abs(oy - y), ox, oy)
+                            for (ox, oy) in others_xy
+                            if abs(ox - x) + abs(oy - y) <= HUNT_OPEN_D))
+            _n0 = len([p for p in plans if p['bomb_at']])
+            for (_hd, ox, oy) in _near:
+                if len([p for p in plans if p['bomb_at']]) - _n0 \
+                        >= HUNT_PLANS:
+                    break
+                _cand = [t for t in hunt_tiles(arena, blocked, ox, oy)
+                         if int(dist[t]) <= HUNT_DIST
+                         and t not in [p['bomb_at'] for p in plans
+                                       if p['bomb_at']]]
+                _cand.sort(key=lambda t: int(dist[t]))
+                for (_tx, _ty) in _cand:
+                    try:
+                        _hb = set(blast_coords(arena, _tx, _ty))
+                        tile_yield[(_tx, _ty)] = float(sum(
+                            1 for (bx, by) in _hb
+                            if arena[bx, by] == 1)) \
+                            + 2.0 * float(sum(1 for o in others_xy
+                                              if o in _hb))
+                    except Exception:
+                        pass
+                    if _try_bomb_plan(arena, blocked, bombs, others_xy,
+                                      danger, plans, x, y, _tx, _ty,
+                                      tile_yield):
+                        break
+        except Exception:
+            pass
     # E112 (P0) solo trek: no opponents alive -> the pi prior is OOD and
     # the ship freezes (see knobs). Append exact BFS move plans toward
     # reachable coins first, then the top-N best-yield bomb tiles
@@ -1038,7 +1096,9 @@ def search_action(game_state, safety, model, t0, budget):
     k_eff = DUEL_K if _duel else K
     plan_cap = DUEL_PLAN_CAP if _duel else PLAN_CAP
     mv_seeds = DUEL_MOVE_SEEDS if _duel else MOVE_SEEDS
-    plans = gen_plans(game_state, safety, K=k_eff)[:plan_cap]
+    _solo_board = not (game_state.get('others') or [])
+    r_eff = SOLO_RADIUS if (SOLO_RADIUS > 0 and _solo_board) else RADIUS
+    plans = gen_plans(game_state, safety, K=k_eff, radius=r_eff)[:plan_cap]
     if not plans:
         return None, dbg
     rnd = int(game_state.get('round', 0))
@@ -1133,10 +1193,21 @@ def search_action(game_state, safety, model, t0, budget):
             # E112: no opponents alive -> junk-bomb risk is nil; a crate
             # bomb only needs to beat the move baseline by SOLO_MARGIN.
             margin_eff = SOLO_MARGIN
+        elif OPEN_MARGIN >= 0.0 \
+                and not (game_state.get('coins') or []) \
+                and int(game_state.get('step', 0)) < OPEN_T:
+            # E124: opening crate-farm phase (no visible coins): a softer
+            # bar admits 1-2-crate bombs; reverts to the calibrated 0.6
+            # the moment any coin is visible or the window passes.
+            margin_eff = OPEN_MARGIN
         else:
             margin_eff = BOMB_MARGIN + YIELD_GAMMA * max(0.0, 2.0 - _y)
         dbg['margin_eff'] = float(margin_eff)
         dbg['best_yield'] = float(_y)
+        dbg['phase'] = ('solo' if (_solo and SOLO_MARGIN >= 0.0)
+                        else ('open' if (OPEN_MARGIN >= 0.0
+                                         and margin_eff == OPEN_MARGIN)
+                              else 'ship'))
         if (bombs[0][0] - best_move) > margin_eff:
             return bombs[0][1]['first'], dbg
     # E112 (P0) solo arbitration: with no opponents alive the pi prior is

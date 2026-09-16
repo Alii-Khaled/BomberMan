@@ -349,6 +349,78 @@ WC.ANTIPIN = False
 WC._SEARCH_ON = True
 WC._TACTICAL_ON = True
 
+# G10 solo radius (E123) -----------------------------------------------------
+set_flags(trek=False, margin=0.15, loop_esc='2')
+S.SOLO_RADIUS = 0
+arena = open_arena()
+for (cx, cy) in [(2, 8), (3, 8)]:          # 2-crate cluster at BFS 5-6
+    arena[cx, cy] = 1
+pos = (8, 8)
+gs_far = mk_gs(arena.copy(), pos, step=200)
+sf_far = action_safety(gs_far)
+plans0 = S.gen_plans(gs_far, sf_far)
+bombs0 = [p['bomb_at'] for p in plans0 if p['bomb_at']]
+check('G10 radius off: far crates out of range', all(
+    abs(b[0] - pos[0]) + abs(b[1] - pos[1]) <= 4 for b in bombs0) or
+    not bombs0, 'tiles=%s' % bombs0)
+S.SOLO_RADIUS = 8
+plans1 = S.gen_plans(gs_far, sf_far)
+bombs1 = [p['bomb_at'] for p in plans1 if p['bomb_at']]
+check('G10 radius on: far crate tile admitted', any(
+    abs(b[0] - 2) + abs(b[1] - 8) <= 3 for b in bombs1),
+    'tiles=%s' % bombs1)
+a_r, dbg_r = S.search_action(gs_far, sf_far, None,
+                             time.perf_counter(), 0.30)
+ok = a_r is None or a_r in _DELTA
+check('G10 radius on: legal action', ok, 'action=%s' % a_r)
+dmap0 = S._bfs_dist(arena, set(), (2, 8))
+if a_r in _DELTA:
+    dx, dy = _DELTA[a_r]
+    ok = int(dmap0[(pos[0] + dx, pos[1] + dy)]) < int(dmap0[pos])
+    check('G10 radius on: steps toward the far cluster', ok,
+          'action=%s' % a_r)
+S.SOLO_RADIUS = 8  # E123 ship default
+
+# G11 backtrack penalty (E123, default off; binding check only) --------------
+pkt = open_arena()
+pkt[9, 8] = -1
+pkt[8, 9] = -1
+pkt[7, 8] = -1            # two-tile pocket: B=(8,8), A=(8,7) only
+pkt_gs = mk_gs(pkt, (8, 8), step=100)
+
+
+def pocket_agent():
+    o = types.SimpleNamespace()
+    o.logger = logging.getLogger('probe-solo-bt')
+    o.logger.setLevel(logging.WARNING)
+    o.train = False
+    o.model = None
+    o.coord_history = collections.deque([], 24)
+    o.bomb_history = collections.deque([], 5)
+    o.current_round = 1
+    o.flee_timer = 0
+    o._device = None
+    return o
+
+
+WC._SEARCH_ON = True
+WC._TACTICAL_ON = True
+WC.COINTAKE = False
+WC.ANTIPIN = False
+bt_agent = pocket_agent()
+bt_agent.coord_history = collections.deque([(8, 7), (8, 8)] * 8, 24)
+WC.BACKTRACK = 0.0
+a_bt0 = WC.act(bt_agent, pkt_gs)
+bt_agent2 = pocket_agent()
+bt_agent2.coord_history = collections.deque([(8, 7), (8, 8)] * 8, 24)
+WC.BACKTRACK = 3.0
+a_bt1 = WC.act(bt_agent2, pkt_gs)
+WC.BACKTRACK = 0.0
+WC.COINTAKE = True
+check('G11 backtrack penalty discriminates the reversal',
+      a_bt0 == 'UP' and a_bt1 == 'WAIT',
+      'off=%s on=%s' % (a_bt0, a_bt1))
+
 # G9 latency -----------------------------------------------------------------
 t0 = time.perf_counter()
 for _ in range(5):

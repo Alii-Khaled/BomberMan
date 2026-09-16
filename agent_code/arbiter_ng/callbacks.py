@@ -78,6 +78,15 @@ _PERF_ON = bool(_PERF)
 # ARBITER_DEVICE=cpu pins the ship CPU behavior.
 DEVICE_NAME = os.environ.get('ARBITER_DEVICE', 'cuda:0').strip() or 'cuda:0'
 
+# Gap diagnostics (E122 Phase 0): ARBITER_GAP_DIAG=path prefix records a
+# compact per-tick trace aimed at the three observed behavior gaps
+# (adjacent-coin misses, opening tempo, solo endgame waste). Purely
+# additive logging; unset = no-op, zero behavior change. The buffer
+# flushes on round change and from train.py end_of_round.
+_GAP_RAW = os.environ.get('ARBITER_GAP_DIAG', '').strip()
+_GAP = os.path.abspath(_GAP_RAW) if _GAP_RAW else ''
+_GAP_ON = bool(_GAP)
+
 # E102: trace search/tactical-committed BOMB steps into the RL trace
 # (ARBITER_RL_BOMB_TRACE=1) so the move policy gets a gradient on the
 # states where bombs are planted (66% of deaths were own-bomb).
@@ -242,6 +251,207 @@ def perf_flush_round(self):
         pass
 
 
+def gap_flush_round(self):
+    """Dump accumulated gap-diagnosis records (ARBITER_GAP_DIAG only).
+
+    Writes a round_meta line + the tick buffer for the round that just
+    ended (or is about to be replaced). Called from the round-change
+    block of _act_impl and from train.py end_of_round.
+    """
+    if not _GAP_ON:
+        return
+    try:
+        buf = getattr(self, '_gap_buf', None) or []
+        meta = getattr(self, '_gap_meta', None) or {}
+        if not buf and not meta:
+            return
+        with open(_GAP + '_gap.jsonl', 'a') as f:
+            m = dict(meta)
+            m['type'] = 'round_meta'
+            f.write(json.dumps(m) + '\n')
+            for rec in buf:
+                try:
+                    f.write(json.dumps(rec) + '\n')
+                except Exception:
+                    try:
+                        f.write(json.dumps(rec, default=str) + '\n')
+                    except Exception:
+                        pass
+        self._gap_buf = []
+        self._gap_meta = {}
+    except Exception:
+        pass
+
+
+def _gap_bfs_from(arena, blocked, start):
+    """BFS distance map from (start) over free tiles (engine blocking:
+    non-floor + bombs + other agents). Reused by the gap recorder and
+    the certified coin-take overlay."""
+    from .search import _bfs_dist
+    return _bfs_dist(arena, blocked, start)
+
+
+def _cointake_step(game_state, safety, d_cap):
+    """Exact certified coin-take (E122): first step onto the shortest
+    mask-safe path to the nearest visible collectable coin reachable
+    within d_cap steps. Returns the action or None. Exact +1 when it
+    fires: the coin tile is free, so reaching it collects deterministically.
+    """
+    try:
+        arena = np.asarray(game_state['field'])
+        _, _, _, (x, y) = game_state['self']
+        x, y = int(x), int(y)
+        bombs = game_state.get('bombs') or []
+        bomb_set = set((int(b[0][0]), int(b[0][1])) for b in bombs)
+        others_xy = [(int(o[3][0]), int(o[3][1]))
+                     for o in (game_state.get('others') or [])]
+        blocked = bomb_set | (set(others_xy) - {(x, y)})
+        coins = [(int(c[0]), int(c[1]))
+                 for c in (game_state.get('coins') or [])]
+        if not coins:
+            return None
+        coins.sort(key=lambda c: abs(c[0] - x) + abs(c[1] - y))
+        W, H = arena.shape[0], arena.shape[1]
+        dist = _gap_bfs_from(arena, blocked, (x, y))
+        best = None
+        for (cx, cy) in coins:
+            if not (0 <= cx < W and 0 <= cy < H):
+                continue
+            d = int(dist[cx, cy])
+            if d > d_cap:
+                continue
+            if best is None or d < best[0]:
+                best = (d, cx, cy)
+            if best[0] <= 1:
+                break
+        if best is None:
+            return None
+        d, cx, cy = best
+        dc = _gap_bfs_from(arena, blocked, (cx, cy))
+        dself = int(dc[x, y])
+        if dself != d:
+            return None
+        for act, (dx, dy) in (('UP', (0, -1)), ('DOWN', (0, 1)),
+                              ('LEFT', (-1, 0)), ('RIGHT', (1, 0))):
+            nx, ny = x + dx, y + dy
+            if not (0 <= nx < W and 0 <= ny < H):
+                continue
+            if int(dc[nx, ny]) != d - 1:
+                continue
+            if not (safety.get('valid', {}).get(act, False)
+                    and safety.get('safe', {}).get(act, False)):
+                continue
+            return act
+    except Exception:
+        return None
+    return None
+
+
+def _gap_record(self, game_state, action):
+    """Compact per-tick gap record (ARBITER_GAP_DIAG only)."""
+    if not _GAP_ON:
+        return
+    try:
+        _, score, _, (x, y) = game_state['self']
+        x, y = int(x), int(y)
+        rnd = int(game_state.get('round', 0))
+        step = int(game_state.get('step', 0))
+        arena = np.asarray(game_state['field'])
+        W, H = arena.shape[0], arena.shape[1]
+        coins_now = [(int(c[0]), int(c[1]))
+                     for c in (game_state.get('coins') or [])]
+        seen = getattr(self, '_gap_seen', None)
+        if seen is None:
+            seen = self._gap_seen = set()
+        seen.update(coins_now)
+        coll = len(seen) - len([c for c in coins_now if c in seen])
+        hidden = max(0, 9 - len(seen))
+        bombs = game_state.get('bombs') or []
+        others = game_state.get('others') or []
+        others_xy = [(int(o[3][0]), int(o[3][1])) for o in others]
+        blocked = set((int(b[0][0]), int(b[0][1])) for b in bombs) \
+            | (set(others_xy) - {(x, y)})
+        dist = _gap_bfs_from(arena, blocked, (x, y))
+        coin_rec = None
+        d_cap = 2
+        if coins_now:
+            bd, bc = None, None
+            for (cx, cy) in coins_now:
+                if 0 <= cx < W and 0 <= cy < H:
+                    d = int(dist[cx, cy])
+                    if d < (10 ** 9) and d <= d_cap \
+                            and (bd is None or d < bd):
+                        bd, bc = d, (cx, cy)
+            if bd is not None:
+                # dirs on a shortest self->coin path: neighbor n of self
+                # with coin-rooted BFS dc[n] == dc[self] - 1 (the overlay's
+                # own derivation; the self-rooted map cannot certify this).
+                dc = _gap_bfs_from(arena, blocked, bc)
+                dirs = []
+                for act, (dx, dy) in (('UP', (0, -1)), ('DOWN', (0, 1)),
+                                      ('LEFT', (-1, 0)), ('RIGHT', (1, 0))):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < W and 0 <= ny < H \
+                            and int(dc[nx, ny]) == bd - 1:
+                        dirs.append(act)
+                ok = any(
+                    getattr(self, '_gap_valid', {}).get(a2, False)
+                    and getattr(self, '_gap_safe', {}).get(a2, False)
+                    for a2 in dirs) if dirs else False
+                cnt = list(getattr(self, 'coord_history', [])).count(bc) \
+                    if bd > 0 else None
+                coin_rec = {'d': int(bd), 'dirs': dirs, 'ok': bool(ok),
+                            'cnt': cnt}
+        pi = getattr(self, '_gap_pi', None)
+        act_rank = coin_rank = -1
+        if pi is not None:
+            order = sorted(range(len(pi)), key=lambda i: -float(pi[i]))
+            act_rank = order.index(ACTION_TO_IDX.get(action, 5)) \
+                if action in ACTION_TO_IDX else -1
+            if coin_rec and coin_rec['dirs']:
+                cr = min(order.index(ACTION_TO_IDX[d2])
+                         for d2 in coin_rec['dirs'] if d2 in ACTION_TO_IDX)
+                coin_rank = int(cr)
+        dbg = getattr(self, '_last_search', None)
+        srch = None
+        if isinstance(dbg, dict):
+            srch = {'plans': dbg.get('plans'),
+                    'exh': int(bool(dbg.get('exhausted'))),
+                    'bm': dbg.get('best_move'),
+                    'bb': dbg.get('best_bomb'),
+                    'me': dbg.get('margin_eff'),
+                    'y': dbg.get('best_yield')}
+        rec = {
+            'type': 'tick', 't': step, 'pos': [x, y], 'act': action,
+            'crates': int((arena == 1).sum()),
+            'coins_now': len(coins_now), 'seen': len(seen),
+            'coll': int(coll), 'hidden': int(max(0, 9 - len(seen))),
+            'nb': len(bombs), 'nopp': len(others),
+            'bl': int(bool(game_state['self'][2])),
+            'dopp': min((abs(ox - x) + abs(oy - y) for (ox, oy)
+                         in others_xy), default=-1),
+            'flee': int(getattr(self, 'flee_timer', 0) > 0),
+            'mf': int(bool(getattr(self, '_gap_mf', False))),
+            'decided': int(bool(getattr(self, '_search_decided', False))),
+            'srch': srch,
+            'coin': coin_rec,
+            'act_rank': act_rank, 'coin_rank': coin_rank,
+        }
+        buf = getattr(self, '_gap_buf', None)
+        if buf is None:
+            buf = self._gap_buf = []
+        buf.append(rec)
+        if not getattr(self, '_gap_meta', None):
+            self._gap_meta = {'round': rnd, 'start_crates':
+                              int((arena == 1).sum())}
+        # MAX_STEPS==400 (settings.py): flush the final round of a frozen
+        # eval battery (no end_of_round dispatch in eval mode).
+        if step >= 400:
+            gap_flush_round(self)
+    except Exception:
+        pass
+
+
 # S0 knobs. ARBITER_SEARCH: search (SHIP default — validated G1 3.95)
 # | tactical (proven-kill overlay, inference only) | off (S0 fallback)
 # | search+tactical (E69: exact forced-kill overlay runs first, search
@@ -304,6 +514,36 @@ FLEE_Q = os.environ.get('ARBITER_FLEE_Q', '0') == '1'
 # the search's own opponent model; only moves whose rollout survives are
 # eligible (pi order wins). Default 0 = ship behavior (myopic flee).
 FLEE_LOOK = os.environ.get('ARBITER_FLEE_LOOK', '0') == '1'
+# E122 (P0) certified coin-take overlay. The search owns bombs (and solo
+# trek plans when SOLO_TREK is on) but never moves outside that; the move
+# fallback is the pi rank, whose bounded tie-breaks can reject a coin tile
+# that was recently visited and whose prior is OOD in solo/thin states.
+# When a visible collectable coin is reachable within COINTAKE_D steps of
+# mask-safe BFS path and the first step is mask-valid+safe, take it:
+# exact certified +1 (E69 tactical precedent; 1-step replan-every-step,
+# E75 lesson). Default 0 = ship behavior; d is swept {1,2,3}.
+# E122 (P0) certified coin-take overlay. The search owns bombs (and solo
+# trek plans when SOLO_TREK is on) but never moves outside that; the move
+# fallback is the pi rank, whose bounded tie-breaks can reject a coin tile
+# that was recently visited and whose prior is OOD in solo/thin states.
+# When a visible collectable coin is reachable within COINTAKE_D steps of
+# mask-safe BFS path and the first step is mask-valid+safe, take it:
+# exact certified +1 (E69 tactical precedent; 1-step replan-every-step,
+# E75 lesson). E122 ship: default 1 with d=3 (pooled canonical gate
+# +0.097/+0.015 win vs fresh control, no leg regression; d sweep 1/2/3
+# picked 3: +80 vs +26/+21 pooled screen points). ARBITER_COINTAKE=0
+# restores pre-E122 behavior.
+COINTAKE = os.environ.get('ARBITER_COINTAKE', '1') == '1'
+COINTAKE_D = int(_env_float('ARBITER_COINTAKE_D', 3))
+# E123 (P0) solo backtrack penalty. The E112 escalation saturates: once
+# both ping-pong endpoints sit at the cap (-3.0), their penalties cancel
+# and the pi gaps dominate again (the residual endgame A<->B / WAIT
+# waste). The backtrack term is state-DEPENDENT: it fires only when the
+# destination is the tile we just came from (immediate reversal),
+# escalating with recent re-visits, so it keeps discriminating where the
+# visit-count penalty cannot. Solo-gated and skipped while fleeing.
+# 0 = off (ship); suggested sweep {0.5, 1.5, 3.0}.
+BACKTRACK = _env_float('ARBITER_BACKTRACK', 0.0)
 _DELTAS = {'UP': (0, -1), 'DOWN': (0, 1), 'LEFT': (-1, 0),
            'RIGHT': (1, 0), 'WAIT': (0, 0), 'BOMB': (0, 0)}
 _DIRS4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -628,6 +868,8 @@ def act(self, game_state):
         a = _act_impl(self, game_state, t0)
         if _PERF_ON:
             _perf_record(self, game_state, a, t0)
+        if _GAP_ON:
+            _gap_record(self, game_state, a)
         if _DIAG:
             rec = _diag_snapshot(self, game_state)
             if rec is not None:
@@ -658,6 +900,8 @@ def _act_impl(self, game_state, t0):
     if rnd != getattr(self, 'current_round', 0):
         if _PERF_ON:
             perf_flush_round(self)
+        if _GAP_ON:
+            gap_flush_round(self)
         self.coord_history = deque([], 24)
         self.bomb_history = deque([], 5)
         self.current_round = rnd
@@ -665,6 +909,8 @@ def _act_impl(self, game_state, t0):
         if _DIAG:
             self._diag_buf = []
             self._diag_field_hash = -1
+        if _GAP_ON:
+            self._gap_seen = set()
     arena = np.asarray(game_state['field'])
     _, _, bombs_left, (x, y) = game_state['self']
     x, y = int(x), int(y)
@@ -795,6 +1041,18 @@ def _act_impl(self, game_state, t0):
         self._last_v = float(v)
     except Exception:
         pass
+    if _GAP_ON:
+        try:
+            self._gap_pi = np.asarray(pi, dtype=np.float64).copy()
+        except Exception:
+            pass
+    if _GAP_ON:
+        try:
+            self._gap_mf = bool(must_flee)
+            self._gap_valid = valid
+            self._gap_safe = safe
+        except Exception:
+            pass
 
     # --- epsilon-greedy exploration during training (masked pool) ---
     try:
@@ -863,6 +1121,24 @@ def _act_impl(self, game_state, t0):
     except Exception:
         pass
 
+    # --- E122 certified coin-take overlay (default off) ---
+    # The search never owns moves outside the solo trek; the move fallback
+    # is the pi rank, whose tie-breaks can reject a coin tile that was
+    # recently visited. When a visible collectable coin is reachable in
+    # <= COINTAKE_D steps and the first step of the shortest path is
+    # mask-valid + mask-safe, take it: an exact certified +1 (same class
+    # as the E69 tactical overlay; 1-step, replan-every-step per E75).
+    # Never overrides a live must-flee or a search/tactical commit.
+    if COINTAKE and not must_flee and not getattr(self, '_search_decided',
+                                                  False) \
+            and (time.perf_counter() - t0) < TIME_BUDGET * 0.6:
+        try:
+            _ca = _cointake_step(game_state, safety, COINTAKE_D)
+        except Exception:
+            _ca = None
+        if _ca is not None:
+            return _commit(self, _ca, x, y, nxt, bombs_left)
+
     # --- S0 policy: warden_v2 move prior (E97 hybrid, default off) ---
     # Search/tactical above may already have committed a BOMB or plan;
     # this only replaces the pi-ranked move fallback.
@@ -929,6 +1205,13 @@ def _act_impl(self, game_state, t0):
         try:
             cnt = list(self.coord_history).count(nxt[a])
             t += _loop_penalty(cnt, solo=_solo_now)
+            if BACKTRACK > 0 and _solo_now and a in ('UP', 'DOWN',
+                                                     'LEFT', 'RIGHT') \
+                    and not (flee_locked or must_flee):
+                h = list(self.coord_history)
+                if len(h) >= 2 and nxt[a] == h[-2]:
+                    n_recent = h[-8:].count(nxt[a])
+                    t -= BACKTRACK * (1.0 + 0.5 * max(0, n_recent - 1))
             if a == 'BOMB' and (x, y) in list(self.bomb_history)[-3:]:
                 t -= BOMB_REPEAT
             if flee_locked and a == 'BOMB':
