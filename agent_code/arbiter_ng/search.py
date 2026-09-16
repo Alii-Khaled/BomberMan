@@ -220,6 +220,55 @@ SOLO_MARGIN = _env_float('ARBITER_SOLO_MARGIN', 0.15)
 SOLO_TREK_COINS = _env_int('ARBITER_SOLO_TREK_COINS', 2, 1, 4)
 SOLO_TREK_YIELD_N = _env_int('ARBITER_SOLO_TREK_YIELD_N', 3, 1, 8)
 SOLO_TREK_YIELD_MIN = _env_float('ARBITER_SOLO_TREK_YIELD_MIN', 2.0)
+# E120 duel-adaptive envelope (Inc 2): when an ARMED opponent is within
+# ARBITER_DUEL_D Manhattan steps of us, the search widens — more bomb
+# candidates (ARBITER_DUEL_K), more scored plans (ARBITER_DUEL_PLANS)
+# and more move-plan seeds (ARBITER_DUEL_MOVE_SEEDS). DEFAULT 0 (OFF):
+# screens rejected all three arms (full envelope -0.55/-0.10; K-only
+# -0.50/-0.013; seeds-only -0.58/-0.15 vs the same-code control on
+# G1+STRONG 40x1) — the ship's single-seed bounded pool is already
+# calibrated; extra candidates/seeds add noise, not signal. The knobs
+# stay available for future sweeps; ARBITER_DUEL_D=0 is ship-exact.
+DUEL_D = _env_int('ARBITER_DUEL_D', 0, 0, 11)
+DUEL_K = _env_int('ARBITER_DUEL_K', 12, 0, 32)
+DUEL_PLAN_CAP = _env_int('ARBITER_DUEL_PLANS', 96, 1, 256)
+DUEL_MOVE_SEEDS = _env_int('ARBITER_DUEL_MOVE_SEEDS', 3, 1, 8)
+
+
+def duel_state(game_state):
+    """True iff an armed opponent is within DUEL_D Manhattan steps."""
+    if DUEL_D <= 0:
+        return False
+    try:
+        _mx, _my = game_state['self'][3]
+        for o in (game_state.get('others') or []):
+            if o[2] and abs(int(o[3][0]) - int(_mx)) \
+                    + abs(int(o[3][1]) - int(_my)) <= DUEL_D:
+                return True
+    except Exception:
+        return False
+    return False
+
+
+def _snap(st):
+    """Fast structural copy of a SimState (deepcopy is ~10x slower).
+
+    Copies every container sim.step mutates: arena, coins, agents,
+    bombs, explosions list + entries. explosion['coords'] is shared —
+    step() only ever REPLACES coords (fresh blast_coords list), never
+    mutates one in place (verified across step/certification reads).
+    """
+    return {
+        'arena': st['arena'].copy(),
+        'coins': [c[:] for c in st['coins']],
+        'agents': [dict(a) for a in st['agents']],
+        'bombs': [b[:] for b in st['bombs']],
+        'explosions': [{'coords': e['coords'], 'timer': e['timer'],
+                        'stage': e['stage'], 'owner': e['owner']}
+                       for e in st['explosions']],
+        'step': st['step'],
+        'total_coins': st['total_coins'],
+    }
 
 
 def _bfs_path(arena, blocked, start, goal, limit=12):
@@ -859,13 +908,12 @@ def _continuation(game_state, st, i, danger=None):
 
 def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
                w_death=W_DEATH):
-    """Exact rollout of a plan. Returns (margin_delta, end_state, info).
+    """Exact rollout of a plan.     Returns (margin_delta, end_state, info).
     Kills count only when certified against optimal flight."""
-    import copy
     from .sim import step as sim_step, margin, to_game_state
     from .safety import opp_can_escape, future_danger
     rng = None if CRN else np.random.default_rng(seed)
-    st = copy.deepcopy(st0)
+    st = _snap(st0)
     m0 = margin(st)
     prefix = list(plan['prefix'])
     payoff = 0.0
@@ -983,7 +1031,14 @@ def search_action(game_state, safety, model, t0, budget):
         st0 = from_game_state(game_state)
     except Exception:
         return None, dbg
-    plans = gen_plans(game_state, safety)[:PLAN_CAP]
+    # E120 duel-adaptive envelope: armed opponent within DUEL_D -> wider
+    # candidate pool + plan cap + move-seed averaging; trek keeps ship.
+    _duel = duel_state(game_state)
+    dbg['duel'] = _duel
+    k_eff = DUEL_K if _duel else K
+    plan_cap = DUEL_PLAN_CAP if _duel else PLAN_CAP
+    mv_seeds = DUEL_MOVE_SEEDS if _duel else MOVE_SEEDS
+    plans = gen_plans(game_state, safety, K=k_eff)[:plan_cap]
     if not plans:
         return None, dbg
     rnd = int(game_state.get('round', 0))
@@ -991,7 +1046,7 @@ def search_action(game_state, safety, model, t0, budget):
     scored = []
     v_batch, v_idx = [], []
     dbg['seeds'] = SEEDS
-    dbg['move_seeds'] = MOVE_SEEDS
+    dbg['move_seeds'] = mv_seeds
     base_seed = 1000 * rnd + stp
     for pi_, plan in enumerate(plans):
         if (time.perf_counter() - t0) >= budget:
@@ -1001,10 +1056,11 @@ def search_action(game_state, safety, model, t0, budget):
         # rollouts (opponent RNG is the noise source). MOVE plans use
         # MOVE_SEEDS rollouts (coin-side variance reduction); BOMB
         # plans stay single-seed (E71b: W_DEATH veto calibration).
-        # Death is NOT averaged: a plan that kills us in ANY seed
-        # takes the full W_DEATH veto — ruin is not compensable by
-        # upside. V prices the primary rollout's leaf only.
-        n_seeds = MOVE_SEEDS if plan['bomb_at'] is None else 1
+        # E120: in duel states the move-seed count widens
+        # (DUEL_MOVE_SEEDS). Death is NOT averaged: a plan that kills
+        # us in ANY seed takes the full W_DEATH veto — ruin is not
+        # compensable by upside. V prices the primary rollout's leaf.
+        n_seeds = mv_seeds if plan['bomb_at'] is None else 1
         pay_sum, end = 0.0, None
         died_any = False
         for j in range(n_seeds):
@@ -1057,6 +1113,13 @@ def search_action(game_state, safety, model, t0, budget):
     bombs = [r for r in scored if r[1]['bomb_at'] is not None]
     moves = [r for r in scored if r[1]['bomb_at'] is None]
     best_move = max([r[0] for r in moves], default=float('-inf'))
+    # E121: ExIt label — the top-scoring move plan's first step (the
+    # exact-rollout improver pi gets distilled toward). Debug-only;
+    # zero behavior change.
+    if moves:
+        _bm = max(moves, key=lambda r: r[0])
+        dbg['best_move_first'] = _bm[1]['first']
+        dbg['best_move_score'] = float(_bm[0])
     bombs.sort(key=lambda r: r[0], reverse=True)
     dbg['best_move'] = float(best_move) if moves else None
     dbg['best_bomb'] = float(bombs[0][0]) if bombs else None
