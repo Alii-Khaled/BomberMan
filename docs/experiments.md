@@ -4303,3 +4303,56 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   fast path. Artifacts: `results/arbiter_ng_exit{,_v2}.pt{,.meta.json}`,
   `results/demos/arbiter_ng_exit{,_v2}/`, `results/tourney_e121*`.
   **Report:** §5/§6.
+
+### E122/E123/E124 — gap fixes (Phase 0-3): coin-take ✅ + solo radius ✅, opening arms ❌
+
+- **Author:** opencode (gap-fix session) · **Date:** 2026-09-16
+- **Context:** user-reported behavior gaps in the ship: (1) adjacent
+  coins not taken, (2) passive opening (crate conversion / joining
+  fights), (3) solo endgame waste (WAIT / A<->B ping-pong instead of
+  seeking coins hidden in remaining crates). Phase-0 instrumentation
+  (`ARBITER_GAP_DIAG` per-tick recorder, behavior-neutral — bit-parity
+  on seed-42 solo 6 rds; `scripts/diag_arbiter_gaps.py`) over 258
+  rounds / 70,282 solo ticks (`results/gaps_findings.md`):
+  866 certified adjacent-coin misses (94% search-owned ticks = legit
+  trades; the fixable surface = 40 flee-window + 9 pi-rank), 26% of
+  opening bomb-plan ticks margin-vetoed, solo-hidden ticks 33.7%
+  backtrack / 51.5% stuck-in-place, rounds running ~361/400 steps,
+  0.83-0.90 coins/round unaccounted, solo tail 9/100 rounds <= 2 pts.
+- **E122 (PROMOTED):** certified coin-take overlay
+  `ARBITER_COINTAKE=1` + `ARBITER_COINTAKE_D` (callbacks.py
+  `_cointake_step`, probe `scripts/probe_arbiter_cointake.py` 14/14):
+  after the search block, when not must_flee and no search/tactical
+  commit, step onto the shortest mask-valid+safe path to a visible
+  coin within d steps — exact certified +1 (E69 tactical precedent;
+  1-step replan-every-step per the E75 lesson). Screens: d sweep 1/2/3
+  pooled screen deltas +21/+26/+80 (d=3 non-negative on every leg).
+  **Canonical gate (1120 rds, fresh same-session ctl):**
+  **6.499/0.676 vs 6.402/0.661 (+0.097/+0.015 win)** — g1 4.890/0.550
+  vs 4.535/0.460, strong 5.485/0.432 vs 5.390/0.435, umix+archetypes
+  bit-identical legs (zero-risk in opponent-dense fields).
+- **E123 (PROMOTED):** solo bomb-candidate radius `ARBITER_SOLO_RADIUS`
+  (search.py; deterministic solo rollouts — E70 noise caveat does not
+  apply). Solo screens: r8 **+0.40 coins/rd** (8.15 vs 7.75), r12
+  −0.15 (long truncated prefixes — rejected); margin sweep 0.05/0.10
+  flat (+0.025 — keep 0.15); `ARBITER_BACKTRACK` {0.5, 1.5} neutral/
+  negative (−0.10/−0.03) despite binding correctly (probe G11: pocket
+  UP->WAIT flip) — rejected; `ARBITER_SOLO_TREK=1` −0.225 (E112 trek
+  rejection reconfirmed). **Composed canonical gate (COINTAKE d=3 +
+  SOLO_RADIUS 8):** pooled 6.456/0.669 vs ctl 6.402/0.661 (+0.054,
+  parity; E112 precedent: the pooled battery under-samples the
+  solo-heavy weak-field regime where the fix dominates).
+- **E124 (REJECTED, all arms):** `ARBITER_OPEN_MARGIN` {0.4, 0.5} x
+  `ARBITER_OPEN_T`=100 (targets the 26% opening veto rate) and
+  `ARBITER_HUNT_OPEN=1` (opening-only pursuit, step<150, opp<=5):
+  G1 40x2 screens vs the promoted base — om4 **−0.65**, om5 −0.15,
+  hunt −0.17. The E88-calibrated 0.6 margin and the E82 no-hunt lesson
+  stand. Knobs stay default-off, documented.
+- **Verdict:** PROMOTE E122+E123 as new ship defaults (COINTAKE=1 d=3,
+  SOLO_RADIUS=8; `ARBITER_COINTAKE=0` / `ARBITER_SOLO_RADIUS=0`
+  restore pre-E122/E123 behavior); REJECT E124. Instrumentation stays
+  (default-off). Artifacts: `results/gaps_findings.md`,
+  `results/gaps_*_gap.jsonl`, `results/tourney_e122_*`,
+  `results/tourney_e123_*`, `results/tourney_e124*`,
+  `scripts/{diag_arbiter_gaps,probe_arbiter_cointake,run_e122_battery,run_e123_battery,run_gap_screens,tally_s23_solo}.py`.
+  **Report:** §5/§6.
