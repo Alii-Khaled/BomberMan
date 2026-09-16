@@ -4356,3 +4356,61 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   `results/tourney_e123_*`, `results/tourney_e124*`,
   `scripts/{diag_arbiter_gaps,probe_arbiter_cointake,run_e122_battery,run_e123_battery,run_gap_screens,tally_s23_solo}.py`.
   **Report:** §5/§6.
+
+### E125 — solo approach-oscillation fix: committed approach ✅ PROMOTED, hysteresis ❌ rejected
+
+- **Author:** opencode (gap-fix session 2) · **Date:** 2026-09-16
+- **Question:** the post-E123 solo re-diagnosis left 6/100 rounds <= 2
+  pts with one signature: solo from step 1, 400 steps, 3-14 bombs with
+  60-110 crates and 5-7 hidden coins left, the agent ping-ponging
+  between exactly two tiles while the search commits every tick with a
+  margin-clearing bomb plan (bb 2.48 vs bm 0.00, never vetoed) — the
+  bomb never drops. Why?
+- **Forensics (deterministic replay, seed-0 solo round 18; the engine is
+  reproducible per (seed, round) once agent RNG is session-fixed):**
+  at (11,8) the committed plan targets (15,8) @2.48 (first DOWN);
+  at (11,9) the SAME tile scores 2.48 with first RIGHT but is NOT in
+  the plan pool: the K=8 candidate cap fills with 8 higher-ranked
+  tiles ((9,15)@6.0 enters) because the -dd (position-dependent BFS
+  distance) tie-break reorders the equal-yield candidates. The plan
+  pool membership flips every step -> the approach never converges.
+  NOT a radius-threshold effect (dist 5-6, within both radii) and NOT
+  a rollout-death veto (plan alive both sides). Root: **K-cap
+  membership flip driven by position-dependent candidate ordering**,
+  which the E123 radius-8 widening made reachable (far high-yield
+  tiles eligible) — and which the S0 backtrack/loop tie-breaks cannot
+  see (the oscillation lives inside search-committed move steps).
+- **Arms (search.py, both solo-gated, state dict passed from the
+  agent, reset per round):**
+  - **Arm B `ARBITER_SOLO_COMMIT=6` (PROMOTED, ship default 6):**
+    when a bomb plan wins the solo arbitration, commit the approach;
+    for <= SOLO_COMMIT_MAX ticks return the next step of the
+    recomputed BFS path to the committed target under cheap validity
+    (target free, path <= 6, mask-valid+safe step) — deliberately NOT
+    the full escape re-gate (that certifies the target tile, not the
+    walk; re-running it per position is the bug). Probe
+    `scripts/probe_arbiter_solo_freeze.py` (fixture = the captured
+    round-18 board): ship 0 bombs/60 ticks (freeze reproduced),
+    Arm B 11 bombs/120 ticks, crates 100 -> 65, no death; abandons on
+    unsafe first step; opponent-ful state dict parity.
+  - **Arm A `ARBITER_BOMB_HYST=0.25` (REJECTED):** sticky-target
+    bonus before the bomb-vs-move margin. Cannot fix membership
+    flips (the target is absent from the pool at the flip position —
+    fixture: 0 bombs/120 ticks) and G1 screens regress -0.89 pooled
+    (3.83 vs base 4.72); L5 score-tie classes alone do not pay for
+    it. Knob stays default-off.
+- **Screens (40-rd legs vs the promoted base e122/e123):**
+  Arm B: solo **8.95 vs 8.15 (tail 0/40)**, L5 8.65 vs 7.81 (**+0.84**),
+  G1 4.66 vs 4.715 (noise). Arm A: solo parity, G1 **-0.89**.
+- **Canonical gate (1120 rds, fresh same-session ctl):** arm
+  **6.355/0.654 vs ctl 6.401/0.661** (-0.046, CI [-0.394, +0.304] =
+  within 1 SE); g1 arm 4.270 vs ctl 4.960 (-0.69) but resolved across
+  4 fresh seed pairs (400 rds): **+0.037 [-0.445, +0.498] = parity**
+  (the E121-documented per-run +-6 pt lobby noise flips seed-pair
+  signs); strong +0.22; umix+archetypes bit-identical legs.
+- **Verdict:** PROMOTE Arm B as ship default (`ARBITER_SOLO_COMMIT=6`,
+  `ARBITER_SOLO_COMMIT=0` restores); REJECT Arm A. Artifacts:
+  `results/e125_arena.npy`, `results/e125_snap.json`,
+  `results/tourney_e125_*`, `results/tourney_e125x_*`,
+  `scripts/{diag_e125_repro,probe_arbiter_solo_freeze}.py`.
+  **Report:** §5/§6.

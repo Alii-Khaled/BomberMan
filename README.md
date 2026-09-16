@@ -4,17 +4,16 @@ Train Reinforcement Learning agents for the classic game Bomberman (course proje
 Tournament inference is CPU-only with a 0.5 s/step budget; training defaults to
 CUDA with AMP (Google Colab ready).
 
-Current ship (E123): **arbiter_ng (E108: D1-BC + rl225 + wardenlite)**
+Current ship (E125): **arbiter_ng (E108: D1-BC + rl225 + wardenlite)**
 with the E112 solo/endgame fix (SOLO_MARGIN 0.15 + LOOP_ESC 2), the
-E119 inference fast path, and the E122/E123 gap fixes promoted:
-**certified coin-take overlay** (ARBITER_COINTAKE=1, d=3: exact +1
-when a visible coin is reachable via a mask-safe path — pooled canonical
-gate +0.097/+0.015 win vs fresh control, no leg regression) and
-**solo bomb radius 8** (ARBITER_SOLO_RADIUS=8: endgame crate clusters
-beyond BFS 4 now farmable; solo screens +0.40 coins/rd, composed gate
-pooled parity +0.054). E124 opening arms (conditional margin 0.4/0.5,
-opening hunt-lite) all REJECTED — the 0.6 margin stands. See
-`docs/experiments.md` E122/E123/E124 and `results/gaps_findings.md`.
+E119 inference fast path, the E122/E123 gap fixes (certified coin-take
+d=3, solo bomb radius 8), and **E125: committed solo bomb-approach**
+(ARBITER_SOLO_COMMIT=6): the verified freeze class (K-cap membership
+flipping with the agent's position, 6/100 solo rounds <= 2 pts) is gone
+— solo screens 8.95 vs 8.15 coins/rd with a 0/40 tail, L5 +0.84, G1
+4-seed +0.04 parity, pooled canonical within 1 SE. E125 hysteresis arm
+rejected (G1 -0.89). See `docs/experiments.md` E125 and
+`results/gaps_findings.md`.
 Legacy ship notes (E111, pre-E112): the same weights (E108) —
 CNN+scalar fused policy (3566-dim lossless board tensor + 98 scalars)
 over the exact-dynamics lookahead search; BC warm-start on the widened
@@ -144,6 +143,9 @@ improvement, `ep_NNNNNN.pt` snapshots); per-round metrics append to
 | `ARBITER_SOLO_RADIUS` | `8` | E123 ship: bomb-tile candidate BFS radius while no opponent is alive (`0` = ship RADIUS 4; 12 rejected) |
 | `ARBITER_COINTAKE` | `1` | E122 ship: certified coin-take overlay (exact +1, first step of the shortest mask-safe path to a visible coin) |
 | `ARBITER_COINTAKE_D` | `3` | E122 coin-take reach in BFS steps (sweep 1/2/3 picked 3) |
+| `ARBITER_SOLO_COMMIT` | `6` | E125 ship: committed bomb-approach while solo (fixes the verified position-dependent K-cap membership flip that ping-ponged the endgame; `0` restores pre-E125) |
+| `ARBITER_SOLO_COMMIT_MAX` | `6` | E125 max committed-approach age in ticks |
+| `ARBITER_BOMB_HYST` | `0` | E125 rejected arm: sticky-target arbitration bonus (G1 screens -0.89; off) |
 | `ARBITER_BACKTRACK` | `0` | E123 rejected arm: solo immediate-reversal penalty (binds, no score lift; off) |
 | `ARBITER_OPEN_MARGIN` | `-1` | E124 rejected arm: opening phase bomb margin (no visible coins, step<`ARBITER_OPEN_T`; off) |
 | `ARBITER_OPEN_T` | `100` | E124 opening window length (steps) |
@@ -196,10 +198,11 @@ python3 scripts/plot_eval.py                 # figures
 
 Ship rule (E30/E106): nothing ships without the pooled multi-battery
 (G1 100x2 + STRONG 40x10 + UNSEEN 1120 rounds) vs a fresh same-session
-control. Current standing (E123): **arbiter_ng+E122+E123 6.499/0.676 vs
-ship control 6.402/0.661** (pooled +0.10, no negative leg; solo class
-8.15 vs 7.75 coins/rd, tail rounds 3 vs 4; E124 arms rejected). Full
-ledger: `docs/experiments.md`.
+control. Current standing (E125): **arbiter_ng+E125 6.355/0.654 vs
+same-session ship control 6.401/0.661 (pooled within 1 SE; G1 resolved
+across 4 seed pairs +0.04 parity)** with the solo class 8.95 vs 8.15
+coins/rd and a 0/40 tail; the E124 opening arms and the E125 hysteresis
+arm are rejected. Full ledger: `docs/experiments.md`.
 
 ## Health checks
 
