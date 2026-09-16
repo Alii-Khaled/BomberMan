@@ -420,7 +420,11 @@ def _gap_record(self, game_state, action):
                     'bm': dbg.get('best_move'),
                     'bb': dbg.get('best_bomb'),
                     'me': dbg.get('margin_eff'),
-                    'y': dbg.get('best_yield')}
+                    'y': dbg.get('best_yield'),
+                    'ba': dbg.get('committed_bomb_at'),
+                    'bf': dbg.get('committed_first'),
+                    'b2a': dbg.get('bomb2_at'),
+                    'b2s': dbg.get('bomb2_score')}
         rec = {
             'type': 'tick', 't': step, 'pos': [x, y], 'act': action,
             'crates': int((arena == 1).sum()),
@@ -911,6 +915,7 @@ def _act_impl(self, game_state, t0):
             self._diag_field_hash = -1
         if _GAP_ON:
             self._gap_seen = set()
+        self._search_state = {}
     arena = np.asarray(game_state['field'])
     _, _, bombs_left, (x, y) = game_state['self']
     x, y = int(x), int(y)
@@ -1105,9 +1110,10 @@ def _act_impl(self, game_state, t0):
             remaining = TIME_BUDGET - (time.perf_counter() - t0)
             if remaining > 0.05:
                 _pt = time.perf_counter() if _PERF_ON else 0.0
-                a, dbg = search_action(game_state, safety,
-                                       getattr(self, 'model', None),
-                                       t0, remaining)
+                a, dbg = search_action(
+                    game_state, safety, getattr(self, 'model', None),
+                    t0, remaining,
+                    state=getattr(self, '_search_state', None))
                 _perf_acc(self, 'search', _pt)
                 try:
                     self._last_search = dbg

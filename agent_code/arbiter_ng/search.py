@@ -229,6 +229,30 @@ SOLO_TREK_YIELD_MIN = _env_float('ARBITER_SOLO_TREK_YIELD_MIN', 2.0)
 # ARBITER_SOLO_RADIUS=0 restores the ship RADIUS 4; 12 was rejected
 # (long truncated prefixes). Opponent-ful play is bit-identical.
 SOLO_RADIUS = _env_int('ARBITER_SOLO_RADIUS', 8, 0, 16)
+# E125 (P0) solo approach-oscillation fix arms. Verified freeze class
+# (solo seed-0 round 18): the K-cap candidate membership flips with the
+# agent's position (-dd tie-break reorders equal-yield tiles; a dist-6
+# yield-3 tile is admitted from one corridor tile and capped out from
+# the adjacent one), so the winning bomb plan's first step alternates
+# UP/DOWN every tick and the bomb never drops (327-tick ping-pong, 6/100
+# solo rounds <= 2 pts). Two independent arms, both solo-gated:
+#   ARBITER_SOLO_COMMIT (Arm B, default 6, E125 ship): when a bomb plan
+#     wins the solo arbitration, commit its approach: for at most N ticks
+#     return the next step of the recomputed BFS path to the committed
+#     target (cheap validity only: target free, path <= N, mask-valid+safe
+#     step; NOT the full escape re-gate — that certifies the target tile,
+#     not the walk, and re-running it per position is what breaks the
+#     approach). Cleared on bomb placement, mask failure, must-flee via
+#     S0, or stale age. E125 gate: solo 8.95 vs 8.15 (tail 0/40), L5
+#     +0.84, G1 4-seed +0.04 parity, pooled -0.046 within 1 SE.
+#   ARBITER_BOMB_HYST (Arm A, default 0.0, REJECTED): sticky-target bonus
+#     added to the previous committed bomb target's arbitration score
+#     before the bomb-vs-move margin (fixes score-tie flips; cannot fix
+#     membership flips — the plan is absent from the pool; G1 screens
+#     -0.89, rejected).
+SOLO_COMMIT = _env_int('ARBITER_SOLO_COMMIT', 6, 0, 8)
+SOLO_COMMIT_MAX = _env_int('ARBITER_SOLO_COMMIT_MAX', 6, 1, 12)
+BOMB_HYST = _env_float('ARBITER_BOMB_HYST', 0.0)
 # E124 (P0) opening-tempo arms. OPEN_MARGIN: bomb-vs-move score margin
 # while the board has NO visible coins and step < OPEN_T (pure crate-farm
 # phase; E88 swept unconditional margins only). < 0 = off (ship 0.6).
@@ -1079,8 +1103,13 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
     return payoff, st
 
 
-def search_action(game_state, safety, model, t0, budget):
-    """Bounded best-first over plans. Returns (action|None, debug)."""
+def search_action(game_state, safety, model, t0, budget, state=None):
+    """Bounded best-first over plans. Returns (action|None, debug).
+
+    `state` (E125): optional dict persisted by the caller across ticks
+    for the solo-gated fix arms (commit approach / sticky target).
+    None or empty dict = ship behavior.
+    """
     import torch
     from .sim import from_game_state, to_game_state, margin
     from .features import state_to_features
@@ -1098,6 +1127,53 @@ def search_action(game_state, safety, model, t0, budget):
     mv_seeds = DUEL_MOVE_SEEDS if _duel else MOVE_SEEDS
     _solo_board = not (game_state.get('others') or [])
     r_eff = SOLO_RADIUS if (SOLO_RADIUS > 0 and _solo_board) else RADIUS
+    # E125 Arm B (committed approach): if a solo bomb target is already
+    # committed, continue its approach without re-arbitration. The
+    # membership flip that created the oscillation cannot break this:
+    # the target stays fixed; only the recomputed path evolves. The
+    # escape certificate was formed by the full gate at commitment time
+    # (a property of the tile + board, not of our position), so per-tick
+    # validation is deliberately cheap: target free, path short enough,
+    # step mask-valid + mask-safe, bombs still available.
+    if state is not None and SOLO_COMMIT > 0 and _solo_board:
+        try:
+            _tgt = state.get('commit')
+            if _tgt is not None:
+                _age = int(state.get('commit_age', 0)) + 1
+                state['commit_age'] = _age
+                if _age > SOLO_COMMIT_MAX:
+                    state['commit'] = None
+                else:
+                    arena_c = np.asarray(st0['arena'])
+                    cx, cy = int(_tgt[0]), int(_tgt[1])
+                    _bl = bool(game_state['self'][2])
+                    _bombs = game_state.get('bombs') or []
+                    _bomb_set = set((int(b[0][0]), int(b[0][1]))
+                                    for b in _bombs)
+                    _others = [(int(o[3][0]), int(o[3][1]))
+                               for o in (game_state.get('others') or [])]
+                    _blk = _bomb_set | (set(_others) -
+                                        {(int(game_state['self'][3][0]),
+                                          int(game_state['self'][3][1]))})
+                    if not _bl or arena_c[cx, cy] != 0 or (cx, cy) in _blk:
+                        state['commit'] = None
+                    else:
+                        _path = _bfs_path(arena_c, _blk,
+                                          (int(game_state['self'][3][0]),
+                                           int(game_state['self'][3][1])),
+                                          (cx, cy))
+                        _act = _path[0] if _path else 'BOMB'
+                        _ok = (bool(safety.get('valid', {})
+                                    .get(_act, False))
+                               and bool(safety.get('safe', {})
+                                        .get(_act, False)))
+                        if _ok:
+                            dbg['commit'] = [cx, cy]
+                            dbg['commit_age'] = _age
+                            return _act, dbg
+                        state['commit'] = None
+        except Exception:
+            state['commit'] = None
     plans = gen_plans(game_state, safety, K=k_eff, radius=r_eff)[:plan_cap]
     if not plans:
         return None, dbg
@@ -1183,12 +1259,25 @@ def search_action(game_state, safety, model, t0, budget):
     bombs.sort(key=lambda r: r[0], reverse=True)
     dbg['best_move'] = float(best_move) if moves else None
     dbg['best_bomb'] = float(bombs[0][0]) if bombs else None
+    bombs = [r for r in scored if r[1]['bomb_at'] is not None]
+    moves = [r for r in scored if r[1]['bomb_at'] is None]
+    best_move = max([r[0] for r in moves], default=float('-inf'))
+    # E121: ExIt label — the top-scoring move plan's first step (the
+    # exact-rollout improver pi gets distilled toward). Debug-only;
+    # zero behavior change.
+    if moves:
+        _bm = max(moves, key=lambda r: r[0])
+        dbg['best_move_first'] = _bm[1]['first']
+        dbg['best_move_score'] = float(_bm[0])
+    bombs.sort(key=lambda r: r[0], reverse=True)
+    dbg['best_move'] = float(best_move) if moves else None
+    dbg['best_bomb'] = float(bombs[0][0]) if bombs else None
     if bombs:
         try:
             _y = float(bombs[0][1].get('tile_yield', 2.0))
         except Exception:
             _y = 2.0
-        _solo = not (game_state.get('others') or [])
+        _solo = _solo_board
         if _solo and SOLO_MARGIN >= 0.0:
             # E112: no opponents alive -> junk-bomb risk is nil; a crate
             # bomb only needs to beat the move baseline by SOLO_MARGIN.
@@ -1208,8 +1297,41 @@ def search_action(game_state, safety, model, t0, budget):
                         else ('open' if (OPEN_MARGIN >= 0.0
                                          and margin_eff == OPEN_MARGIN)
                               else 'ship'))
-        if (bombs[0][0] - best_move) > margin_eff:
-            return bombs[0][1]['first'], dbg
+        # E125 telemetry: the winning bomb plan's target + first step
+        # (top-2 too, for oscillation forensics). Zero behavior change.
+        try:
+            dbg['committed_bomb_at'] = bombs[0][1].get('bomb_at')
+            dbg['committed_first'] = bombs[0][1].get('first')
+            if len(bombs) > 1:
+                dbg['bomb2_at'] = bombs[1][1].get('bomb_at')
+                dbg['bomb2_score'] = float(bombs[1][0])
+        except Exception:
+            pass
+        # E125 Arm A (sticky target): add the hysteresis bonus to the
+        # previous committed target's plan before the arbitration pick.
+        _pick = bombs[0]
+        if state is not None and BOMB_HYST > 0.0 and _solo_board:
+            try:
+                sticky = state.get('last_target')
+                if sticky is not None:
+                    for _r in bombs:
+                        if _r[1].get('bomb_at') == sticky:
+                            if _r[0] + BOMB_HYST > _pick[0]:
+                                _pick = _r
+                            break
+            except Exception:
+                pass
+        if (_pick[0] - best_move) > margin_eff:
+            if state is not None and _solo_board:
+                try:
+                    state['last_target'] = _pick[1].get('bomb_at')
+                    if SOLO_COMMIT > 0:
+                        state['commit'] = _pick[1].get('bomb_at')
+                        state['commit_age'] = 0
+                except Exception:
+                    pass
+            dbg['commit'] = None
+            return _pick[1]['first'], dbg
     # E112 (P0) solo arbitration: with no opponents alive the pi prior is
     # OOD and the S0 fallback freezes (verified ping-pong). When no bomb
     # plan cleared the bar, let the exact search pick the move from the
