@@ -440,6 +440,7 @@ def _gap_record(self, game_state, action):
             'srch': srch,
             'coin': coin_rec,
             'act_rank': act_rank, 'coin_rank': coin_rank,
+            'tb': getattr(self, '_gap_tb', None),
         }
         buf = getattr(self, '_gap_buf', None)
         if buf is None:
@@ -548,6 +549,18 @@ COINTAKE_D = int(_env_float('ARBITER_COINTAKE_D', 3))
 # visit-count penalty cannot. Solo-gated and skipped while fleeing.
 # 0 = off (ship); suggested sweep {0.5, 1.5, 3.0}.
 BACKTRACK = _env_float('ARBITER_BACKTRACK', 0.0)
+# E130 (P0) opponent-ful backtrack penalty: the E123 solo backtrack arm
+# was neutral (solo ticks are search-owned post-E125), but the opening
+# flicker lives in opponent-ful S0-ranked ticks (E128/E130 telemetry:
+# 27-32% of opening move-ticks are immediate reversals, ~82-89% with no
+# own bomb nearby and no flee). State-dependent by design: fires only
+# when the destination is the tile just left (the flicker signature),
+# unlike blanket loop escalation which hurt G1 (E112 mode-1). Solo
+# behavior untouched (this knob only binds when opponents are alive).
+# E130 ship: default 0.5 (screens G1 +0.075/+0.575, STRONG +0.525/
+# +1.225; composed canonical gate g1 +0.64, pooled +0.085 within 1 SE;
+# opening reversals -40%). ARBITER_BACKTRACK_OPP=0 restores.
+BACKTRACK_OPP = _env_float('ARBITER_BACKTRACK_OPP', 0.5)
 _DELTAS = {'UP': (0, -1), 'DOWN': (0, 1), 'LEFT': (-1, 0),
            'RIGHT': (1, 0), 'WAIT': (0, 0), 'BOMB': (0, 0)}
 _DIRS4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -1211,13 +1224,13 @@ def _act_impl(self, game_state, t0):
         try:
             cnt = list(self.coord_history).count(nxt[a])
             t += _loop_penalty(cnt, solo=_solo_now)
-            if BACKTRACK > 0 and _solo_now and a in ('UP', 'DOWN',
-                                                     'LEFT', 'RIGHT') \
+            _bt = BACKTRACK if _solo_now else BACKTRACK_OPP
+            if _bt > 0 and a in ('UP', 'DOWN', 'LEFT', 'RIGHT') \
                     and not (flee_locked or must_flee):
                 h = list(self.coord_history)
                 if len(h) >= 2 and nxt[a] == h[-2]:
                     n_recent = h[-8:].count(nxt[a])
-                    t -= BACKTRACK * (1.0 + 0.5 * max(0, n_recent - 1))
+                    t -= _bt * (1.0 + 0.5 * max(0, n_recent - 1))
             if a == 'BOMB' and (x, y) in list(self.bomb_history)[-3:]:
                 t -= BOMB_REPEAT
             if flee_locked and a == 'BOMB':
@@ -1230,6 +1243,14 @@ def _act_impl(self, game_state, t0):
                    key=lambda i: (pi[i] + tiebreak(ACTION_LIST[i]),
                                   -i),
                    reverse=True)
+    # E130 Phase 1: stash the S0 tie-break composition for the gap
+    # recorder (logging only, _GAP_ON-gated) so flicker ticks are
+    # attributable to loop/backtrack vs pi ranks.
+    if _GAP_ON:
+        try:
+            self._gap_tb = {a: tiebreak(a) for a in ACTION_LIST}
+        except Exception:
+            pass
     # Warden semantics (S2 arm1, +0.43 pooled): the mask binds moves only
     # under threat; otherwise every valid move is rankable by pi.
     if must_flee or flee_locked:

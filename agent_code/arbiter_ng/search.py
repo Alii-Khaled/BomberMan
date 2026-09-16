@@ -253,6 +253,22 @@ SOLO_RADIUS = _env_int('ARBITER_SOLO_RADIUS', 8, 0, 16)
 SOLO_COMMIT = _env_int('ARBITER_SOLO_COMMIT', 6, 0, 8)
 SOLO_COMMIT_MAX = _env_int('ARBITER_SOLO_COMMIT_MAX', 6, 1, 12)
 BOMB_HYST = _env_float('ARBITER_BOMB_HYST', 0.0)
+# E130 (P0) opponent-ful commit extension: the E125 committed approach
+# was solo-gated, but the E128/E130 telemetry shows the same flicker
+# class in the opponent-ful opening (27-32% of opening move-ticks are
+# immediate reversals, ~82-89% with no own bomb nearby and no flee;
+# 5.3-5.8 bombs/rd early). ARBITER_COMMIT_OPP=1 lets the committed
+# approach form and execute whenever a bomb plan wins the arbitration
+# (opponents included). The per-tick protections are unchanged and are
+# the E75 mitigation: target free, path <= SOLO_COMMIT_MAX, first step
+# mask-valid+safe, bombs_left, age cap — a live must-flee still owns
+# survival through the mask, and formation already runs the full
+# opponent-aware escape gate + margin. E130 ship: default 1 (screens
+# G1 +0.375/+0.275; composed canonical gate g1 +0.64/+6.5% win, pooled
+# +0.085 within 1 SE, umix+archetypes bit-identical; the opening
+# reversal rate drops ~40% and early bombs rise 7.6 -> 8.2/rd).
+# ARBITER_COMMIT_OPP=0 restores the solo-only commit.
+COMMIT_OPP = os.environ.get('ARBITER_COMMIT_OPP', '1') == '1'
 # E124 (P0) opening-tempo arms. OPEN_MARGIN: bomb-vs-move score margin
 # while the board has NO visible coins and step < OPEN_T (pure crate-farm
 # phase; E88 swept unconditional margins only). < 0 = off (ship 0.6).
@@ -1135,7 +1151,14 @@ def search_action(game_state, safety, model, t0, budget, state=None):
     # (a property of the tile + board, not of our position), so per-tick
     # validation is deliberately cheap: target free, path short enough,
     # step mask-valid + mask-safe, bombs still available.
-    if state is not None and SOLO_COMMIT > 0 and _solo_board:
+    # E130 Arm (opponent-ful commit extension): same committed-approach
+    # mechanics as the solo arm, gated by COMMIT_OPP. The solo branch
+    # below keeps the E125 semantics; this branch additionally runs when
+    # opponents are alive (their positions are NOT part of the per-tick
+    # validity — survival is owned by the mask-safe first step, which is
+    # what the E75 lesson demands).
+    _commit_ok = _solo_board or COMMIT_OPP
+    if state is not None and SOLO_COMMIT > 0 and _commit_ok:
         try:
             _tgt = state.get('commit')
             if _tgt is not None:
@@ -1322,7 +1345,7 @@ def search_action(game_state, safety, model, t0, budget, state=None):
             except Exception:
                 pass
         if (_pick[0] - best_move) > margin_eff:
-            if state is not None and _solo_board:
+            if state is not None and (_solo_board or COMMIT_OPP):
                 try:
                     state['last_target'] = _pick[1].get('bomb_at')
                     if SOLO_COMMIT > 0:
