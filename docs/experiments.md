@@ -4414,3 +4414,32 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   `results/tourney_e125_*`, `results/tourney_e125x_*`,
   `scripts/{diag_e125_repro,probe_arbiter_solo_freeze}.py`.
   **Report:** §5/§6.
+
+### E128/E129 — death attribution on the promoted stack + PLANT_OPP re-screen ❌ REJECTED (ship saturated at the inference layer)
+
+- **Author:** opencode (gap-fix session 2) · **Date:** 2026-09-16
+- **E128 attribution (280 instrumented rds, engine-exact terminal-hazard
+  taxonomy; batches G1 s0+s1 200 rds + STRONG wm0+wm1 80 rds, the
+  interference class never diagnosed before):** G1 deaths/round
+  **0.355** (71/200; E112 baseline 0.34 — unchanged), STRONG **0.50**
+  (40/80); causes corner_pin **75 (68%, own 17 / enemy 58, esc=0/1 at
+  the enemy plant tick)**, own_bomb_chain 24 (22%), enemy_lucky 8,
+  enemy_trap 4; trap certificates **104 -> 0 realized** (the E113 line
+  stays closed). The mixed-phase profile is untouched by the
+  solo-gated fixes; the E114 pocket-seal class did not grow (68% ->
+  68%) so its pre-registered re-screen is NOT triggered.
+- **E129 PLANT_OPP=1/K=1 (pre-registered first arm; E97/A6 was neutral
+  on the E88 base):** screens G1 40x2 +0.9/+0.9, solo parity,
+  STRONG +0.10 — canonical gate (1120 rds, fresh ctl): g1 4.605 vs
+  4.880 (-0.28), strong 5.390 vs 5.430 (-0.04), umix+archetypes
+  bit-identical, **pooled 6.591/0.666 vs 6.654/0.673 (-0.063,
+  CI [-0.421, +0.287], no positive leg)**. The 40-rd screen lift did
+  not survive 100x2 (E102 lesson). REJECT; `ARBITER_PLANT_OPP`
+  stays default 0.
+- **Verdict:** ship unchanged (E108 weights + E112/E119/E122/E123/E125
+  defaults = the final inference-layer configuration). Pooled ~6.4
+  +-0.3 canonical, #1 in every simulated lobby class (STRONG h2h vs
+  warden_v2 51.5% of rounds), solo 8.94/9 with a 0/100 tail. Further
+  pooled movement needs the heavy closed lines reopened. Artifacts:
+  `results/diag_e128_*.{jsonl,md}`, `results/tourney_e129*`,
+  `results/gaps_findings.md`. **Report:** §5/§6.
