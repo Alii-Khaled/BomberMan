@@ -149,6 +149,11 @@ def end_of_round(self, last_game_state, last_action, events):
         perf_flush_round(self)
     except Exception:
         pass
+    try:
+        from .callbacks import gap_flush_round
+        gap_flush_round(self)
+    except Exception:
+        pass
     trace = getattr(self, '_rl_trace', [])
     self._rl_ep = int(getattr(self, '_rl_ep', 0)) + 1
     if trace and rew:
