@@ -4204,3 +4204,102 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   the E113 KILL_P discount rejection). Kill-pricing and corner-pin lines
   both closed; ship unchanged (E112). Artifacts: `results/e118_*`.
   **Report:** §5/§6.
+
+### E119 — Inference fast-path: gather-TTA + traced forward ✅ PROMOTED (p99 34.5 -> ~18 ms)
+
+- **Author:** opencode (arbiter enhancement plan Inc 0+1) ·
+  **Date:** 2026-09-16
+- **Question:** the 8x-recompute TTA (transform_state + action_safety +
+  state_to_features per symmetry) accounts for ~60-70% of p99 think time;
+  can it be replaced by an exact gather with provable quality equivalence,
+  and can the forward path drop further (device + trace)?
+- **Probe (`scripts/probe_ng_tta_equiv.py`, 1000 fuzz states stratified
+  solo 249 / post-plant 314 / must-flee 328, ship weights):** divergence
+  vs the recompute path is **confined to the escape-tie-break block
+  f[45..48]** (flat 3513..3516; 124 flipped views / 8000) — root cause:
+  escape_bfs's first-move claim order is not equivariant under the
+  direction relabeling of syms 1/3/6/7, i.e. the old recompute path
+  injected tie-break noise the net never saw in BC training (pretrain
+  augmentation used the gather semantics). Board tensor + all other
+  scalars exactly equivariant; clean-view logit parity EXACT (0); TTA
+  argmax flips 1/1000 (trek-only), **0/328 must-flee**; TTA feature stage
+  28.0 -> 0.3 ms (~100x).
+- **Benchmark (batch 8, 1 thread):** CPU eager 1.85 ms, CPU traced
+  1.43 ms, CUDA eager 0.30 ms, CUDA traced 0.22 ms (trace parity 0).
+  Device default stays cuda:0 (E100's "GPU not faster" applies to the old
+  98-dim MLP, not the NG CNN); jit-trace built in setup() with eager
+  fallback; `torch.inference_mode()`.
+- **Smoke (real games, seed 42, 6 rds vs 3x rule_based):** 5.67 pts/rd,
+  4 kills, 0 suic; avg think 11.6 ms/step; zero think-time violations,
+  zero tracebacks (`results/e119_smoke_game.json`).
+- **Implementation:** callbacks.py TTA block = 1 canonical feature
+  compute + 7 dihedral gathers (map_action accumulation, budget gates,
+  uniform-pi fallback unchanged); new `ARBITER_PERF` per-tick timing
+  buckets (safety/feat/fwd/tac/search + duel-vs-trek + tta_n) to
+  `<path>_perf.jsonl`, default off, zero behavior change.
+- **Verdict:** PROMOTED under the riskier-threshold protocol (confinement
+  + flip-rate gates; canonical 1120-rd battery reserved for ship freeze).
+  Search now sees ~0.28 s/step — envelope scaling is the next increment
+  (E120). Set-semantics escape credit (false-UNSAFE undercount in
+  contested states) queued as a separate quality arm (E119-b).
+  Artifacts: `results/e119_findings.md`, `results/e119_smoke_game.json`,
+  `results/e119_smoke_perf.jsonl`. **Report:** §5/§6.
+
+### E120 — Duel-adaptive search envelope ❌ REJECTED all arms (ship caps are calibrated)
+
+- **Author:** opencode (Inc 2) · **Date:** 2026-09-16
+- **Question:** E119 freed ~0.28 s/step of search budget; does widening
+  the envelope in duel states (armed opponent <= Manhattan 4) convert
+  budget into wins? Arms: full (K 8->12, PLAN_CAP 48->96, MOVE_SEEDS
+  1->3), K-only, seeds-only.
+- **Screens (G1 40x1 + STRONG 40x1, same-code control with
+  ARBITER_DUEL_D=0, ship weights, device cpu):** control 5.263/0.500
+  pooled (80 rds); full envelope **4.713/0.400** (-0.550/-0.100);
+  K-only **4.763/0.487** (-0.500/-0.013); seeds-only **4.688/0.350**
+  (-0.575/-0.150). All three arms negative on both legs.
+- **Verdict:** REJECT — consistent with E71b/E78 (seed averaging dilutes
+  veto/coin calibration) and E72/E77 (extra candidates shift arbitration
+  without better payoffs). The single-seed bounded pool is already
+  well-calibrated; the freed budget does NOT convert through envelope
+  widening. Knobs kept default-off (ARBITER_DUEL_D=0 = ship-exact) for
+  future sweeps. Kept: `_snap` structural copy replacing
+  `copy.deepcopy` in score_plan/flee-lookahead (probe: bit-identical
+  scores 0/120 states differ, ~1.1x faster; note: seed-42 single-game
+  scores vary +-6 pts RUN-TO-RUN on the frozen ship too — the pipeline
+  is per-round noisy, 40x1 screens are thin, the consistent three-arm
+  direction carries the reject). Artifacts:
+  `results/tourney_e120*`, `results/tourney_e2ctl120_*`,
+  `scripts/_dbg_e120_probe.py`. **Report:** §5/§6.
+
+### E121 — ExIt self-distillation (search labels -> pi) ❌ REJECTED at 2x screen (infrastructure kept)
+
+- **Author:** opencode (Inc 3) · **Date:** 2026-09-16
+- **Question:** the ExIt step (distill pi toward the exact-rollout
+  search's own arbitrated first-steps on the ship's visitation) was the
+  strongest un-closed quality arm; can a warm-start BC fit on
+  ship-recorded search labels lift the battery?
+- **Recorder:** `agent_code/exit_recorder/` (training-only): delegates
+  to the ship arbiter_ng; labels = the search's arbitrated choice
+  (executed first-step when the search/tactical owns the decision,
+  else dbg 'best_move_first'); rows skipped when the search exhausted
+  or scored nothing. Flat 3566-dim NG feats with safety, matching
+  inference exactly. New `scripts/pretrain_arbiter_ng_exit.py` (CE on
+  pi only, warm ship start, dihedral augmentation via
+  transform_tensor + AUG_PERMS; L40S, ~1 s/epoch).
+- **Iteration 1 (collided 12,308 rows, G1+STRONG mix):** val_acc 0.597;
+  screen G1+STRONG 40x1 **5.013/0.425** vs control 5.263/0.500
+  (-0.250/-0.075; STRONG 5.575 vs 5.675 near-parity).
+- **Iteration 2 (clean sequential 80 rds, ~25K rows, 10 ep):** val_acc
+  0.612; screen **4.100/0.350** vs control 5.263/0.500
+  (**-1.163/-0.150**) — worse than iteration 1.
+- **Verdict:** REJECT — fitting the prior toward the search's labels
+  dilutes the teacher-calibrated prior (consistent with E115's
+  off-manifold BC lesson and E66/E99's V-representational finding); the
+  search's decision function is not representable by pi at this corpus
+  scale. Line closed for this session; the recorder + trainer stay in
+  the tree for future larger-corpus/teacher-mixed attempts (the correct
+  follow-up is league-scale collection, not another top-up).
+- **Ship unchanged:** E108 weights + E112 inference defaults + E119
+  fast path. Artifacts: `results/arbiter_ng_exit{,_v2}.pt{,.meta.json}`,
+  `results/demos/arbiter_ng_exit{,_v2}/`, `results/tourney_e121*`.
+  **Report:** §5/§6.
