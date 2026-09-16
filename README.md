@@ -4,7 +4,7 @@ Train Reinforcement Learning agents for the classic game Bomberman (course proje
 Tournament inference is CPU-only with a 0.5 s/step budget; training defaults to
 CUDA with AMP (Google Colab ready).
 
-Current ship (E130): **arbiter_ng (E108: D1-BC + rl225 + wardenlite)**
+Current ship (E130): **Harvy (E108: D1-BC + rl225 + wardenlite)**
 with the E112 solo/endgame fix, the E119 inference fast path, the
 E122/E123 gap fixes (certified coin-take d=3, solo bomb radius 8),
 E125 (committed solo bomb-approach — the verified K-cap membership
@@ -202,7 +202,7 @@ python3 scripts/plot_eval.py                 # figures
 
 Ship rule (E30/E106): nothing ships without the pooled multi-battery
 (G1 100x2 + STRONG 40x10 + UNSEEN 1120 rounds) vs a fresh same-session
-control. Current standing (E130): **arbiter_ng+E130 7.116/0.641 vs
+control. Current standing (E130): **Harvy+E130 7.116/0.641 vs
 same-session control 7.031/0.652 (pooled +0.085 within 1 SE; the target
 class g1 +0.64 / +6.5% round-win, strong parity, umix+archetypes
 bit-identical)**. E128 death attribution: the corner-pin class (68%,

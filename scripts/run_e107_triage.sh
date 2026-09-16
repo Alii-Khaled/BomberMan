@@ -14,7 +14,7 @@ run() { # tag seed model
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   nice -n 10 env ARBITER_DEVICE=cpu ARBITER_NG_MODEL="$model" \
     python3 scripts/tournament_eval.py \
-    --agents arbiter_ng rule_based_agent rule_based_agent rule_based_agent \
+    --agents Harvy rule_based_agent rule_based_agent rule_based_agent \
     --n-rounds 40 --seed "$seed" --scenario classic \
     --log-dir "$ldir" --match-name "${tag}_s${seed}" --out "$out" \
     > "logs/tourney_${tag}_s${seed}.log" 2>&1
@@ -22,7 +22,7 @@ run() { # tag seed model
 }
 
 JOBS=(
-  "e107ctl40 0 $PWD/agent_code/arbiter_ng/my-saved-model.pt"
+  "e107ctl40 0 $PWD/agent_code/Harvy/my-saved-model.pt"
   "e107b1c150 0 $PWD/results/e107b1.pt.ep150"
   "e107b1c200 0 $PWD/results/e107b1.pt.ep200"
   "e107b1c250 0 $PWD/results/e107b1.pt.ep250"

@@ -23,7 +23,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-import agent_code.arbiter_ng.model as M
+import agent_code.Harvy.model as M
 
 
 def main():

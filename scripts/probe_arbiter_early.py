@@ -33,10 +33,10 @@ os.environ.setdefault('OMP_NUM_THREADS', '1')
 
 import numpy as np
 
-import agent_code.arbiter_ng.search as S
-import agent_code.arbiter_ng.callbacks as WC
-from agent_code.arbiter_ng.safety import action_safety
-from agent_code.arbiter_ng.sim import (from_game_state, to_game_state,
+import agent_code.Harvy.search as S
+import agent_code.Harvy.callbacks as WC
+from agent_code.Harvy.safety import action_safety
+from agent_code.Harvy.sim import (from_game_state, to_game_state,
                                        step as sim_step)
 
 fails = []

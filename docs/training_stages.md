@@ -348,9 +348,9 @@ The training that exists, with configs, bars, and evidence locations:
   on-policy KL-anchored RL.
 - **Ship protocol:** E30 rule + E106 pooled multi-battery bar
   (G1 100x2 + STRONG 40x10 + UNSEEN battery, fresh same-session control
-  on every battery). Current ship (since 2026-09-13): **arbiter_ng
+  on every battery). Current ship (since 2026-09-13): **Harvy
   (b1e150)** — NG-1 BC then E104 RL leg; pooled 6.889 / win 0.669 vs
   E88 arbiter 5.991 / 0.633 (see E106 in `docs/experiments.md`).
   Legacy arbiter E88 (4.775 G1 100x2) preserved as
   `__shared/arbiter_ship_e88.zip`.
-  Zip: `agent_code/arbiter_ng/` (weights at `my-saved-model.pt`).
+  Zip: `agent_code/Harvy/` (weights at `my-saved-model.pt`).

@@ -27,9 +27,9 @@ sys.path.insert(0, REPO)
 
 import numpy as np
 
-import agent_code.arbiter_ng.features as F
-import agent_code.arbiter_ng.model as M
-import agent_code.arbiter_ng.safety as SAFE
+import agent_code.Harvy.features as F
+import agent_code.Harvy.model as M
+import agent_code.Harvy.safety as SAFE
 
 ACTION_LIST = list(M.ACTION_LIST)
 

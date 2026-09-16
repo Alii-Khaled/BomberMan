@@ -13,7 +13,7 @@ run() { # tag btag seed rounds opponents...
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   nice -n 10 env ARBITER_DEVICE=cpu ARBITER_NG_MODEL="$PWD/results/e108rl.pt.ep225" \
-    python3 scripts/tournament_eval.py --agents arbiter_ng "$@" \
+    python3 scripts/tournament_eval.py --agents Harvy "$@" \
     --n-rounds "$rounds" --seed "$seed" --scenario classic \
     --log-dir "$ldir" --match-name "${tag}_${btag}_s${seed}" --out "$out" \
     > "logs/tourney_${tag}_${btag}_s${seed}.log" 2>&1

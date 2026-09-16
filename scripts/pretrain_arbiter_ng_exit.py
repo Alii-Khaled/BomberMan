@@ -12,7 +12,7 @@ augmentation via transform_tensor + AUG_PERMS + map_action.
 Usage:
   python3 scripts/pretrain_arbiter_ng_exit.py [--epochs 8] [--batch 256]
       [--lr 5e-5] [--out results/arbiter_ng_exit.pt]
-      [--dirs results/demos/arbiter_ng_exit] [--init agent_code/arbiter_ng/my-saved-model.pt]
+      [--dirs results/demos/arbiter_ng_exit] [--init agent_code/Harvy/my-saved-model.pt]
 """
 import argparse
 import glob
@@ -27,8 +27,8 @@ sys.path.insert(0, REPO)
 
 import numpy as np
 
-import agent_code.arbiter_ng.features as F
-import agent_code.arbiter_ng.model as M
+import agent_code.Harvy.features as F
+import agent_code.Harvy.model as M
 
 ACTION_LIST = list(M.ACTION_LIST)
 TENSOR_DIM = F.N_CHANNELS * 17 * 17

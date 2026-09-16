@@ -2,7 +2,7 @@
 """E125 A0: reproduce the round-18 solo approach-oscillation freeze and
 dump the top bomb plans around the flip ticks.
 
-Drives BombeRLeWorld solo (arbiter_ng, classic, seed 0) with the gap
+Drives BombeRLeWorld solo (Harvy, classic, seed 0) with the gap
 recorder on, then analyzes the recorded jsonl: for every round scoring
 <= 2, prints the action histogram, the longest two-tile alternation
 window, and a per-tick plan dump (committed bomb target ba / first bf /
@@ -70,7 +70,7 @@ def main():
         save_stats=False, match_name='e125_repro', seed=a.seed,
         silence_errors=True, scenario='classic')
     os.makedirs('/tmp/opencode/e125', exist_ok=True)
-    world = BombeRLeWorld(args, [('arbiter_ng', False)])
+    world = BombeRLeWorld(args, [('Harvy', False)])
 
     scores = []
     ridx = 0
@@ -107,8 +107,8 @@ def main():
         arena = np.load(os.path.join(REPO, 'results', 'e125_arena.npy'))
         snap = json.load(open(os.path.join(REPO, 'results',
                                            'e125_snap.json')))
-        from agent_code.arbiter_ng.search import _bfs_path, score_plan
-        from agent_code.arbiter_ng.sim import from_game_state
+        from agent_code.Harvy.search import _bfs_path, score_plan
+        from agent_code.Harvy.sim import from_game_state
         for (lbl, pos) in (('snap', tuple(snap['pos'])),
                            ('11,8', (11, 8)), ('11,9', (11, 9))):
             gs = {'round': 1, 'step': snap.get('step', 80), 'field': arena,

@@ -38,10 +38,10 @@ BOMB_IDX = _ACTION_TO_IDX['BOMB']
 def setup(self):
     np.random.seed()
     try:
-        from agent_code.arbiter_ng.features import state_to_features
-        from agent_code.arbiter_ng.safety import action_safety
-        import agent_code.arbiter_ng.callbacks as arb
-        import agent_code.arbiter_ng.model as arbm
+        from agent_code.Harvy.features import state_to_features
+        from agent_code.Harvy.safety import action_safety
+        import agent_code.Harvy.callbacks as arb
+        import agent_code.Harvy.model as arbm
         assert list(arbm.ACTION_LIST) == _ACTION_LIST, arbm.ACTION_LIST
     except Exception as ex:
         raise RuntimeError(f'exit_recorder cannot import arbiter_ng: {ex}')

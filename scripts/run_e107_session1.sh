@@ -15,7 +15,7 @@ diag() { # seed
     ARBITER_DIAG="$PWD/results/diag_e107b1" \
     ARBITER_RL_LR=0 ARBITER_RL_OUT="/tmp/opencode/e107/scratch.pt" \
     python3 main.py play --no-gui \
-    --agents arbiter_ng rule_based_agent rule_based_agent rule_based_agent \
+    --agents Harvy rule_based_agent rule_based_agent rule_based_agent \
     --train 1 --continue-without-training --scenario classic \
     --n-rounds 100 --seed "$seed" --save-stats "$out" \
     > "logs/diagleg_s${seed}.log" 2>&1
@@ -34,7 +34,7 @@ run() { # tag btag seed rounds opponents...
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   nice -n 10 env ARBITER_DEVICE=cpu ARBITER_OPPMODEL=wardenlite \
-    python3 scripts/tournament_eval.py --agents arbiter_ng "$@" \
+    python3 scripts/tournament_eval.py --agents Harvy "$@" \
     --n-rounds "$rounds" --seed "$seed" --scenario classic \
     --log-dir "$ldir" --match-name "${tag}_${btag}_s${seed}" --out "$out" \
     > "logs/tourney_${tag}_${btag}_s${seed}.log" 2>&1

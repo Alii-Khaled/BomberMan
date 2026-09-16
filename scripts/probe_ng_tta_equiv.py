@@ -32,9 +32,9 @@ os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np
 import torch
 
-import arbiter_ng.features as F
-from arbiter_ng.safety import action_safety
-from arbiter_ng.model import build_model
+import Harvy.features as F
+from Harvy.safety import action_safety
+from Harvy.model import build_model
 
 N_STATES = 1000
 for a in sys.argv[1:]:
@@ -131,7 +131,7 @@ def _tta_accum(logits):
 
 def main():
     model = build_model()
-    wpath = os.path.join(REPO, 'agent_code', 'arbiter_ng',
+    wpath = os.path.join(REPO, 'agent_code', 'Harvy',
                          'my-saved-model.pt')
     if os.path.isfile(wpath):
         obj = torch.load(wpath, map_location='cpu', weights_only=True)

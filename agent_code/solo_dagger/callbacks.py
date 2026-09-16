@@ -1,6 +1,6 @@
 """E114 solo-DAgger recorder (training-only, never ships).
 
-The SHIP policy (agent_code.arbiter_ng, env flags apply) plays the game;
+The SHIP policy (agent_code.Harvy, env flags apply) plays the game;
 at every step where no opponent is alive the state is recorded with the
 coin_collector_agent (or ARBITER_SOLO_LABEL teacher) action as the label.
 Output is apex-format npz per round (img 12x17x17 uint8, sc float32[16],
@@ -58,7 +58,7 @@ def _apex_features(game_state):
 def setup(self):
     self.logger.info('solo_dagger setup (label=%s)' % TEACHER)
     # acting policy: the ship itself (same self object, exact behavior)
-    import agent_code.arbiter_ng.callbacks as arb
+    import agent_code.Harvy.callbacks as arb
     arb.setup(self)
     self._dag_arb = arb
     # labeling policy: private namespace so its histories evolve along
@@ -121,7 +121,7 @@ def act(self, game_state):
     try:
         step = int(game_state.get('step', 0))
         if step >= MIN_STEP and not (game_state.get('others') or []):
-            from agent_code.arbiter_ng.safety import action_safety
+            from agent_code.Harvy.safety import action_safety
             lab_a = self._lab_mod.act(self._lab, game_state)
             sf = action_safety(game_state)
             if lab_a in A2I and sf.get('valid', {}).get(lab_a, False):

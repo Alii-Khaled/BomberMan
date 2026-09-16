@@ -1,5 +1,5 @@
 {
-  "agent": "arbiter_ng",
+  "agent": "Harvy",
   "weights": "my-saved-model.pt",
   "source": "results/e108rl.pt.ep225",
   "experiment": "E108 D1 recipe iteration (widened league BC + RL leg)",
@@ -52,8 +52,8 @@
     "ARBITER_SOLO_MARGIN": 0.15,
     "ARBITER_LOOP_ESC": "2",
     "ship_switch_params": [
-      "agent_code/arbiter_ng/search.py",
-      "agent_code/arbiter_ng/callbacks.py"
+      "agent_code/Harvy/search.py",
+      "agent_code/Harvy/callbacks.py"
     ],
     "restore_pre_e112": "ARBITER_SOLO_MARGIN=-1 ARBITER_LOOP_ESC=0",
     "evidence": "E112 ledger: pooled 6.465/0.656 vs 6.466/0.668; L5 2.15->7.80; solo 5.0->8.2/9"

@@ -28,9 +28,9 @@ os.environ.setdefault('OMP_NUM_THREADS', '1')
 
 import numpy as np
 
-import agent_code.arbiter_ng.callbacks as WC
-import agent_code.arbiter_ng.search as S
-from agent_code.arbiter_ng.safety import action_safety
+import agent_code.Harvy.callbacks as WC
+import agent_code.Harvy.search as S
+from agent_code.Harvy.safety import action_safety
 
 fails = []
 

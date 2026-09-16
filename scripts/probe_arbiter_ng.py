@@ -25,10 +25,10 @@ import numpy as np
 import torch
 
 torch.set_num_threads(1)
-import agent_code.arbiter_ng.features as F
-import agent_code.arbiter_ng.safety as SAFE
-import agent_code.arbiter_ng.model as M
-import agent_code.arbiter_ng.callbacks as WC
+import agent_code.Harvy.features as F
+import agent_code.Harvy.safety as SAFE
+import agent_code.Harvy.model as M
+import agent_code.Harvy.callbacks as WC
 
 N = 60
 for a in sys.argv[1:]:

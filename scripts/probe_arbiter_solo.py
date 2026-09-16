@@ -33,9 +33,9 @@ os.environ.setdefault('OMP_NUM_THREADS', '1')
 
 import numpy as np
 
-import agent_code.arbiter_ng.search as S
-import agent_code.arbiter_ng.callbacks as WC
-from agent_code.arbiter_ng.safety import action_safety
+import agent_code.Harvy.search as S
+import agent_code.Harvy.callbacks as WC
+from agent_code.Harvy.safety import action_safety
 
 fails = []
 
@@ -215,7 +215,7 @@ check('G5 trek never returns an unsafe first step', ok,
 # G6 fixture regression ------------------------------------------------------
 set_flags(trek=True, margin=0.15, loop_esc='2')
 agent = mk_agent()
-from agent_code.arbiter_ng.sim import (from_game_state, to_game_state,
+from agent_code.Harvy.sim import (from_game_state, to_game_state,
                                        step as sim_step)
 fixture_gs = mk_gs(FIXTURE, (13, 5), step=60)
 st = from_game_state(fixture_gs)

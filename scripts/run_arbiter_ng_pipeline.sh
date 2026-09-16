@@ -33,7 +33,7 @@ echo "=== NG-1 screens done; starting NG-2 RL (300 rounds, stable HPs)"
 ARBITER_MODEL="$R/results/arbiter_ng_full.pt" \
 ARBITER_RL_OUT=results/arbiter_ng_rl.pt ARBITER_RL_SAVE_EVERY=50 \
 ARBITER_RL_CSV=results/arbiter_ng_rl.csv ARBITER_RL_LR=5e-5 ARBITER_RL_BETA=0.1 \
-  $PY main.py play --no-gui --agents arbiter_ng rule_based_agent \
+  $PY main.py play --no-gui --agents Harvy rule_based_agent \
     rule_based_agent rule_based_agent --train 1 --scenario classic \
     --n-rounds 300 --seed 0 --save-stats results/arbiter_ng_rl_train.json \
     --silence-errors 2>&1 | tail -3

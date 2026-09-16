@@ -9,7 +9,7 @@ for s in 0 1; do
   nice -n 10 env ARBITER_DEVICE=cpu ARBITER_DIAG="$PWD/results/diag_e109d1" \
     ARBITER_RL_LR=0 ARBITER_RL_OUT="/tmp/opencode/e109/scratch.pt" \
     python3 main.py play --no-gui \
-    --agents arbiter_ng rule_based_agent rule_based_agent rule_based_agent \
+    --agents Harvy rule_based_agent rule_based_agent rule_based_agent \
     --train 1 --continue-without-training --scenario classic \
     --n-rounds 100 --seed "$s" --save-stats "$out" \
     > "logs/diagleg_e109_s${s}.log" 2>&1

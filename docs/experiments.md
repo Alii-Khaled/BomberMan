@@ -4498,3 +4498,28 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   `results/e130comp_gap.jsonl`, `results/e130post_gap.jsonl`,
   `results/tourney_e130*`, `scripts/probe_arbiter_early.py`.
   **Report:** §5/§6.
+
+### E131 — ship renamed: `agent_code/arbiter_ng` -> `agent_code/Harvy` ✅ (identity-only, zero behavior change)
+
+- **Author:** Ali Mahbob · **Date:** 2026-09-16
+- **Scope:** pure rename of the ship directory to **Harvy** (the GUI
+  scoreboard displays the directory name via
+  `Agent(name, agent_dir, name, ...)`), plus custom
+  30x30 `avatar.png` / `bomb.png` committed in the agent dir
+  (auto-loaded by `agents.py`; the framework asserts 30x30 and falls
+  back to the robot sprite only when missing). Weights unchanged
+  (sha `1e4ce411...`), no code changes beyond the rename.
+- **References updated:** README (ship line + commands), docs/
+  training_stages pointers, all probe/eval scripts' imports and
+  `--agents` args, the solo_dagger/exit_recorder recorder imports,
+  `my-saved-model.meta.json` "agent" field. Historical ledger entries
+  and result artifact filenames stay verbatim (this ledger is
+  append-only; experiments before E131 ran under the old name).
+  Legacy `agent_code/arbiter` (E88 line) is a different agent —
+  untouched.
+- **Verification:** 6/6 probe suites green post-rename; headless smoke
+  `--agents Harvy rule_based_agent x3` runs clean (agent logs as
+  `<Harvy>`, 18 coin pickups / 2 rds); submission zip manifest now
+  13 files (11 code + 2 sprites), zip-vs-tree byte-identical,
+  bare-tree self-sufficiency smoke green.
+- **Verdict:** SHIP = **Harvy**. **Report:** §5/§6.

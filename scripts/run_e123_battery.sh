@@ -41,7 +41,7 @@ echo "jobs=${#JOBS[@]}"
 for j in "${JOBS[@]}"; do
   IFS='|' read -r leg seed rounds opps <<< "$j"
   # shellcheck disable=SC2086
-  run "$leg" arbiter_ng "$seed" "$rounds" $opps &
+  run "$leg" Harvy "$seed" "$rounds" $opps &
   while [ "$(jobs -rp | wc -l)" -ge "$MAXJOBS" ]; do wait -n || true; done
 done
 wait

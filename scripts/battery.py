@@ -66,7 +66,7 @@ def run_leg(tag, name, seed, rounds, opps, model, jobs_left):
     if model:
         env['ARBITER_NG_MODEL'] = model
     cmd = (['nice', '-n', '10', 'python3', 'scripts/tournament_eval.py',
-            '--agents', 'arbiter_ng'] + opps.split() +
+            '--agents', 'Harvy'] + opps.split() +
            ['--n-rounds', str(rounds), '--seed', str(seed),
             '--scenario', 'classic', '--log-dir', ldir,
             '--match-name', f'{tag}_{name}_s{seed}', '--out', out])
