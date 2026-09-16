@@ -40,9 +40,12 @@ except Exception:
 from .safety import action_safety, bomb_here_traps
 from .features import state_to_features, FEATURE_DIM
 from .features import transform_state, map_action
+from .features import transform_tensor, AUG_PERMS, N_CHANNELS
 from .model import build_model, ACTION_LIST
 
 ACTION_TO_IDX = {a: i for i, a in enumerate(ACTION_LIST)}
+# NG flat layout: raveled board tensor ++ scalars (features.FEATURE_DIM).
+_TENSOR_DIM = N_CHANNELS * 17 * 17
 
 # E86 Phase-A death diagnostics (ARBITER_DIAG=path prefix; unset = no-op,
 # zero behavior change). When set, act() appends a compact per-tick
@@ -59,6 +62,16 @@ _DIAG = os.path.abspath(
 # move fallback changes — search/tactical still own BOMB decisions and
 # action_safety's mask still binds. Default 'pi' == ship behavior.
 POLICY = os.environ.get('ARBITER_POLICY', 'pi').strip().lower()
+
+# ARBITER_PERF: timing-bucket profiler (default off, zero behavior
+# change). When set to a path prefix, act() records one JSONL line per
+# tick with ms buckets (safety / feat(TTA recompute) / fwd / tac /
+# search / total), a duel-vs-trek flag (armed opponent <= Manhattan 4)
+# and the number of TTA symmetries completed; the buffer flushes on
+# round change (and from train.py end_of_round for the final round).
+_PERF_RAW = os.environ.get('ARBITER_PERF', '').strip()
+_PERF = os.path.abspath(_PERF_RAW) if _PERF_RAW else ''
+_PERF_ON = bool(_PERF)
 
 # E100c device knob: 'cuda:0' (main CUDA device) by default when CUDA is
 # available, resolved per-agent in setup() with automatic CPU fallback;
@@ -160,6 +173,73 @@ def _env_float(name, default):
         return float(os.environ.get(name, str(default)))
     except ValueError:
         return default
+
+
+def _perf_acc(self, bucket, t_start):
+    """Add ms to a timing bucket (ARBITER_PERF only; no-op otherwise)."""
+    if not _PERF_ON:
+        return
+    try:
+        acc = getattr(self, '_perf_acc', None)
+        if acc is None:
+            acc = self._perf_acc = {}
+        acc[bucket] = acc.get(bucket, 0.0) + \
+            (time.perf_counter() - t_start) * 1000.0
+    except Exception:
+        pass
+
+
+def _perf_record(self, game_state, action, t0):
+    """Append the per-tick perf record (ARBITER_PERF only)."""
+    if not _PERF_ON:
+        return
+    try:
+        acc = getattr(self, '_perf_acc', None) or {}
+        total = (time.perf_counter() - t0) * 1000.0
+        duel = 0
+        try:
+            _, _, _, (px, py) = game_state['self']
+            for o in (game_state.get('others') or []):
+                if o[2] and abs(int(o[3][0]) - int(px)) \
+                        + abs(int(o[3][1]) - int(py)) <= 4:
+                    duel = 1
+                    break
+        except Exception:
+            pass
+        rec = {
+            'type': 'perf',
+            'round': int(game_state.get('round', 0)),
+            'step': int(game_state.get('step', 0)),
+            'act': action,
+            'duel': duel,
+            'tta_n': int(getattr(self, '_perf_tta_n', 0) or 0),
+            'ms': {'total': round(total, 3),
+                   **{k: round(v, 3) for k, v in sorted(acc.items())}},
+        }
+        buf = getattr(self, '_perf_buf', None)
+        if buf is None:
+            buf = self._perf_buf = []
+        buf.append(rec)
+        self._perf_acc = {}
+        self._perf_tta_n = 0
+    except Exception:
+        pass
+
+
+def perf_flush_round(self):
+    """Dump accumulated perf records (ARBITER_PERF only)."""
+    if not _PERF_ON:
+        return
+    try:
+        buf = getattr(self, '_perf_buf', None) or []
+        if not buf:
+            return
+        with open(_PERF + '_perf.jsonl', 'a') as f:
+            for rec in buf:
+                f.write(json.dumps(rec) + '\n')
+        self._perf_buf = []
+    except Exception:
+        pass
 
 
 # S0 knobs. ARBITER_SEARCH: search (SHIP default — validated G1 3.95)
@@ -364,6 +444,20 @@ def setup(self):
         self.model.eval()
     except Exception:
         pass
+    # Inc 1 (E119): jit-traced fast path — bit-exact vs eager (probe
+    # parity 0), ~20% faster per forward; falls back to eager silently.
+    self._fast = None
+    if _HAS_TORCH and self.model is not None:
+        try:
+            import torch as _t
+            _dev = self._device if self._device is not None \
+                else _t.device('cpu')
+            _dummy = _t.zeros((1, FEATURE_DIM), dtype=_t.float32,
+                              device=_dev)
+            self._fast = _t.jit.trace(self.model, (_dummy,))
+            self._fast.eval()
+        except Exception:
+            self._fast = None
     if not loaded:
         try:
             self.logger.info('arbiter: no weights, pi uniform + V zero '
@@ -413,10 +507,9 @@ def _flee_lookahead_choice(game_state, valid, safe, pi, x, y):
     danger-aware continuation for us. Returns the first move whose
     rollout survives, else None (caller falls back to the myopic rank).
     """
-    import copy as _copy
     try:
         from .sim import from_game_state, step as sim_step, valid_actions
-        from .search import _opp_move, _continuation, _sim_bombs
+        from .search import _opp_move, _continuation, _sim_bombs, _snap
         from .safety import future_danger
     except Exception:
         return None
@@ -433,7 +526,7 @@ def _flee_lookahead_choice(game_state, valid, safe, pi, x, y):
         + int(game_state.get('step', 0))
     best, best_key = None, None
     for a in cands:
-        st = _copy.deepcopy(st0)
+        st = _snap(st0)
         alive_ticks = 0
         try:
             danger = future_danger(st['arena'], _sim_bombs(st), None, 4)
@@ -533,6 +626,8 @@ def act(self, game_state):
     t0 = time.perf_counter()
     try:
         a = _act_impl(self, game_state, t0)
+        if _PERF_ON:
+            _perf_record(self, game_state, a, t0)
         if _DIAG:
             rec = _diag_snapshot(self, game_state)
             if rec is not None:
@@ -561,6 +656,8 @@ def _act_impl(self, game_state, t0):
     except Exception:
         self._rl_step = 0
     if rnd != getattr(self, 'current_round', 0):
+        if _PERF_ON:
+            perf_flush_round(self)
         self.coord_history = deque([], 24)
         self.bomb_history = deque([], 5)
         self.current_round = rnd
@@ -572,7 +669,9 @@ def _act_impl(self, game_state, t0):
     _, _, bombs_left, (x, y) = game_state['self']
     x, y = int(x), int(y)
 
+    _pt = time.perf_counter() if _PERF_ON else 0.0
     safety = action_safety(game_state)
+    _perf_acc(self, 'safety', _pt)
     valid, safe = safety.get('valid', {}), safety.get('safe', {})
     if _DIAG:
         self._diag_last_mask = [
@@ -601,35 +700,57 @@ def _act_impl(self, game_state, t0):
                 # V is an invariant scalar, averaged directly. Any
                 # failure or budget pressure falls back to uniform pi
                 # (mask + tie-breaks decide, as in the S0 path).
+                # E74/E119: symmetry-averaged prior. pi[a] = mean_s
+                # fwd(T_s(gs))[T_s(a)]; V is an invariant scalar,
+                # averaged directly. Inc 1 computes the features ONCE
+                # (canonical view) and derives the other 7 views by the
+                # exact dihedral gather (transform_tensor + AUG_PERMS) —
+                # the pretrain-augmentation semantics, ~90x cheaper than
+                # the old 8x state/safety/features recompute. Divergence
+                # vs the old path is confined to the escape-tie-break
+                # block f[45..48] (probe_ng_tta_equiv.py: 0/685
+                # must-flee argmax flips, 0.1% trek-only at n=2000).
+                # Budget gates and the uniform-pi fallback are unchanged.
+                _pt = time.perf_counter() if _PERF_ON else 0.0
                 _pairs = []
-                for _s in range(8):
-                    if (time.perf_counter() - t0) >= TIME_BUDGET * 0.9:
-                        break
-                    try:
+                try:
+                    _f0 = state_to_features(game_state, safety)
+                    _tb0 = _f0[:_TENSOR_DIM].reshape(N_CHANNELS, 17, 17)
+                    _s0 = _f0[_TENSOR_DIM:]
+                    for _s in range(8):
+                        if (time.perf_counter() - t0) \
+                                >= TIME_BUDGET * 0.9:
+                            break
                         if _s == 0:
-                            _gs, _sf = game_state, safety
+                            _pairs.append((_s, _f0))
                         else:
-                            _gs = transform_state(game_state, _s)
-                            _sf = action_safety(_gs)
-                        _pairs.append(
-                            (_s, state_to_features(_gs, _sf)))
-                    except Exception:
-                        continue
+                            _pairs.append((_s, np.concatenate(
+                                [transform_tensor(_tb0, _s).ravel(),
+                                 _s0[AUG_PERMS[_s]]])
+                                .astype(np.float32)))
+                except Exception:
+                    _pairs = []
+                _perf_acc(self, 'feat', _pt)
+                if _PERF_ON:
+                    self._perf_tta_n = len(_pairs)
                 if _pairs and (time.perf_counter() - t0) \
                         < TIME_BUDGET * 0.9:
                     import torch as _t
-                    with _t.no_grad():
+                    _pt = time.perf_counter() if _PERF_ON else 0.0
+                    with _t.inference_mode():
                         _tb = _t.from_numpy(np.stack(
                             [f.astype(np.float32) for (_, f) in _pairs]))
                         _dev = getattr(self, '_device', None)
                         if _dev is not None:
                             _tb = _tb.to(_dev)
-                        _mdl = getattr(self, 'model')
+                        _mdl = getattr(self, '_fast', None) \
+                            or getattr(self, 'model')
                         _lg, _vv = _mdl(_tb)
                         _lg = np.asarray(_lg.cpu().numpy(),
                                           dtype=np.float64)
                         _vv = np.asarray(_vv.cpu().numpy(),
                                           dtype=np.float64)
+                    _perf_acc(self, 'fwd', _pt)
                     _acc = np.zeros(len(ACTION_LIST), dtype=np.float64)
                     for (_s, _), _row in zip(_pairs, _lg):
                         _row = np.nan_to_num(_row, nan=0.0, posinf=50.0,
@@ -645,16 +766,20 @@ def _act_impl(self, game_state, t0):
                     if V_OFF:
                         v = 0.0
             else:
+                _pt = time.perf_counter() if _PERF_ON else 0.0
                 feats = state_to_features(game_state, safety)
+                _perf_acc(self, 'feat', _pt)
                 if (time.perf_counter() - t0) < TIME_BUDGET * 0.9:
                     import torch as _t
-                    with _t.no_grad():
+                    _pt = time.perf_counter() if _PERF_ON else 0.0
+                    with _t.inference_mode():
                         tf = _t.from_numpy(
                             feats.astype(np.float32)).unsqueeze(0)
                         _dev = getattr(self, '_device', None)
                         if _dev is not None:
                             tf = tf.to(_dev)
-                        mdl = getattr(self, 'model')
+                        mdl = getattr(self, '_fast', None) \
+                            or getattr(self, 'model')
                         logits, vv = mdl(tf)
                         pi = np.asarray(logits.squeeze(0).cpu().numpy(),
                                         dtype=np.float64)
@@ -663,6 +788,7 @@ def _act_impl(self, game_state, t0):
                         v = float(np.asarray(vv.squeeze(0).cpu().numpy()))
                         if V_OFF:
                             v = 0.0
+                    _perf_acc(self, 'fwd', _pt)
     except Exception:
         pass
     try:
@@ -696,9 +822,12 @@ def _act_impl(self, game_state, t0):
     try:
         if _TACTICAL_ON and valid.get('BOMB') and safe.get('BOMB') \
                 and (time.perf_counter() - t0) < TIME_BUDGET * 0.95:
+            _pt = time.perf_counter() if _PERF_ON else 0.0
             _traps, _ = bomb_here_traps(game_state, safety)
+            _perf_acc(self, 'tac', _pt)
             if _traps:
                 _rl_trace_bomb(self, game_state, safety, valid)
+                self._search_decided = True
                 self.bomb_history.append((x, y))
                 self.flee_timer = 5
                 return 'BOMB'
@@ -707,14 +836,21 @@ def _act_impl(self, game_state, t0):
     # --- P1 bounded search: exact plans + learned leaves (E62) ---
     # The net never votes on root actions; search selects, V evaluates.
     # Returns None on budget exhaust or failure -> S0 ranking below.
+    # E121: _search_decided marks search/tactical-owned commits for the
+    # ExIt recorder (zero behavior change); _last_search reset to avoid
+    # stale debug leaking between ticks.
+    self._last_search = None
+    self._search_decided = False
     try:
         if _SEARCH_ON:
             from .search import search_action
             remaining = TIME_BUDGET - (time.perf_counter() - t0)
             if remaining > 0.05:
+                _pt = time.perf_counter() if _PERF_ON else 0.0
                 a, dbg = search_action(game_state, safety,
                                        getattr(self, 'model', None),
                                        t0, remaining)
+                _perf_acc(self, 'search', _pt)
                 try:
                     self._last_search = dbg
                 except Exception:
@@ -722,6 +858,7 @@ def _act_impl(self, game_state, t0):
                 if a in ACTION_LIST:
                     if a == 'BOMB':
                         _rl_trace_bomb(self, game_state, safety, valid)
+                    self._search_decided = True
                     return _commit(self, a, x, y, nxt, bombs_left)
     except Exception:
         pass
