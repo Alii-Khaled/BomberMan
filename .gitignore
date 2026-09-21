@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.DS_Store
 
 # C extensions
 *.so
@@ -111,6 +112,8 @@ screenshots/*.webm
 
 replays/
 results/
+output/
+submission/
 
 # Sentinel training artefacts (keep my-saved-model.pt + best.pt export)
 agent_code/sentinel/checkpoints/ep_*.pt

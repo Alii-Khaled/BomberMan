@@ -4,7 +4,7 @@ Train Reinforcement Learning agents for the classic game Bomberman (course proje
 Tournament inference is CPU-only with a 0.5 s/step budget; training defaults to
 CUDA with AMP (Google Colab ready).
 
-Current ship (E130): **Harvy (E108: D1-BC + rl225 + wardenlite)**
+Current ship (E130): **Harvey (E108: D1-BC + rl225 + wardenlite)**
 with the E112 solo/endgame fix, the E119 inference fast path, the
 E122/E123 gap fixes (certified coin-take d=3, solo bomb radius 8),
 E125 (committed solo bomb-approach — the verified K-cap membership
@@ -137,6 +137,12 @@ improvement, `ep_NNNNNN.pt` snapshots); per-round metrics append to
 | `ARBITER_V_BLEND` | `1.0` | leaf-value weight (V null per E66 — 0 also ships) |
 | `ARBITER_BOMB_MARGIN` | `0.6` | bomb plan must beat best move by this to execute (legacy alias for `ARBITER_BOMB_SCORE_MARGIN`) |
 | `ARBITER_BOMB_SCORE_MARGIN` | `0.6` | E88 de-conflicted search bomb-vs-move score margin (was 0.2) |
+| `ARBITER_DUEL_BOMB_MARGIN` / `_D` | `0` / `3` | E132 rejected arm: extra margin for an immediate plant near an opponent; default off |
+| `ARBITER_JOINT_ROUTES` | `0` | Legacy combined switch for both E134 components; E135 four-way ablation rejected the combined arm, so default off |
+| `ARBITER_DYNAMIC_ROUTES` | inherited from `ARBITER_JOINT_ROUTES` | E135 opponent kill certification with moving blockers removed; independent ablation switch, default off |
+| `ARBITER_BODYBLOCK` | inherited from `ARBITER_JOINT_ROUTES` | E135 minimax own-escape check against nearby moving body blockers; independent ablation switch, default off |
+| `ARBITER_ROUTE_DIAG` | unset | Optional JSONL path for route counts, forced-kill certificates, body-block vetoes, and selected actions |
+| `ARBITER_JOINT_HORIZON` / `_BODY_D` | `6` / `3` | E134 route horizon and maximum Manhattan distance for adversarial body-block analysis (used only when `ARBITER_JOINT_ROUTES=1`) |
 | `ARBITER_BOMB_ESC_MARGIN` | `1` | E87/E88 post-plant first-step escape-direction count required for the mask's BOMB certificate |
 | `ARBITER_SOLO_MARGIN` | `0.15` | E112 ship: bomb-vs-move score margin while no opponent is alive (`<0` restores the pre-E112 BOMB_MARGIN behavior) |
 | `ARBITER_LOOP_ESC` | `2` | E112 ship: loop tie-break mode (`0` = bounded LOOP3/LOOP2, `1` = escalate everywhere, `2` = escalate solo-only) |
@@ -163,6 +169,7 @@ improvement, `ep_NNNNNN.pt` snapshots); per-round metrics append to
 | `ARBITER_PI_OFF` / `ARBITER_V_OFF` | `0` | `1` forces uniform prior / zero value (ablations) |
 | `ARBITER_MODEL` | unset | eval-only candidate weights path (gating; tournament default = `my-saved-model.pt`) |
 | `ARBITER_FLEE_Q` | `0` | `1` = post-plant flee moves ranked by open space/opponent distance (E90; rejected, ablation only) |
+| `ARBITER_RL_SELF_DEATH` / `_ENEMY_DEATH` | `-8` / `-6` | Training-only death reward overrides; E132 risk-weighted continuation used `-12` self-death and was rejected |
 | `SENTINEL_DEVICE` / `OVERLORD_DEVICE` | `auto` (CUDA if available, else CPU) | `cpu` forces CPU (tournament condition) |
 | `SENTINEL_AMP` / `OVERLORD_AMP` | `1` | `0` disables AMP autocast + GradScaler (fp32) |
 | `SENTINEL_OPT` / `OVERLORD_OPT` | `adam` | `lion` selects the Lion optimizer |
@@ -202,7 +209,7 @@ python3 scripts/plot_eval.py                 # figures
 
 Ship rule (E30/E106): nothing ships without the pooled multi-battery
 (G1 100x2 + STRONG 40x10 + UNSEEN 1120 rounds) vs a fresh same-session
-control. Current standing (E130): **Harvy+E130 7.116/0.641 vs
+control. Current standing (E130): **Harvey+E130 7.116/0.641 vs
 same-session control 7.031/0.652 (pooled +0.085 within 1 SE; the target
 class g1 +0.64 / +6.5% round-win, strong parity, umix+archetypes
 bit-identical)**. E128 death attribution: the corner-pin class (68%,

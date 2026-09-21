@@ -1,11 +1,11 @@
-"""E100 ARBITER-RL: KL-anchored REINFORCE fine-tune of pi.
+"""Harvey KL-anchored REINFORCE fine-tuning for the policy head.
 
 Only the move fallback is a pi decision (the search owns bombs); steps
 where search/tactical acted carry no trace entry. Rewards are the exact
 engine objective plus reaper's death/invalid/wait terms; returns-to-go
 over the whole round feed the traced steps. KL(pi || frozen BC prior)
 anchors calibration. Runs on the callbacks' device (main CUDA device
-with CPU fallback, E100c); the net is tiny.
+with CPU fallback); the net is small.
 """
 import copy
 import os
@@ -23,10 +23,8 @@ def _env(name, default, cast=float):
 
 
 def _reward(events):
-    # Default values preserve the promoted E108 recipe.  The death terms
-    # are env-overridable for risk-calibrated continuations; BOMB_TRACE
-    # makes the return reach search-selected plant decisions as well as
-    # the learned move fallback.
+    # Death rewards are configurable; BOMB_TRACE also assigns returns to
+    # search-selected plant decisions.
     self_death = _env('ARBITER_RL_SELF_DEATH', -8.0)
     enemy_death = _env('ARBITER_RL_ENEMY_DEATH', -6.0)
     r = 0.0
@@ -59,10 +57,7 @@ def setup_training(self):
     self._rl_trunk = os.environ.get('ARBITER_RL_TRUNK', '1') == '1'
     self._rl_save_every = int(_env('ARBITER_RL_SAVE_EVERY', 25, int))
     self._rl_pin = _env('ARBITER_RL_PIN_PEN', 0.0)
-    # E102 RL loop v2 (all env-gated; defaults = E100 behavior):
-    # STABLE — adaptive KL anchor + hard revert guard;
-    # EPOCHS — extra passes over the round batch; CRITIC — V-as-baseline
-    # advantages + value regression.
+    # Optional stability guard, extra epochs, and value-function baseline.
     self._rl_stable = os.environ.get('ARBITER_RL_STABLE', '0') == '1'
     self._rl_kl_hi = _env('ARBITER_RL_KL_HI', 0.5)
     self._rl_kl_lo = _env('ARBITER_RL_KL_LO', 0.1)
@@ -111,9 +106,7 @@ def game_events_occurred(self, old_game_state, self_action, new_game_state,
         self._rl_rewards.append(_reward(events))
     except Exception:
         pass
-    # E110 pinned-state shaping: dense small penalty while the tile is
-    # threatened and safe mobility is gone (the corner-pin death mode —
-    # 59% of ship deaths, mostly enemy-bomb pins). Env-gated, default 0.
+    # Optional shaping penalty for threatened states with no safe mobility.
     try:
         pen = getattr(self, '_rl_pin', 0.0)
         if pen and new_game_state is not None:
@@ -142,9 +135,7 @@ def end_of_round(self, last_game_state, last_action, events):
     rew = getattr(self, '_rl_rewards', [])
     if step and len(rew) < step:
         rew.append(_reward(events))
-    # E107: diag dispatch (ported from agent_code/arbiter/train.py —
-    # diag_dump_round was missing here so ARBITER_DIAG jsonl never
-    # appeared for the NG agent).
+    # Flush inference diagnostics from the training lifecycle hook.
     try:
         from .callbacks import diag_dump_round
         diag_dump_round(self, last_action, events)
@@ -164,9 +155,7 @@ def end_of_round(self, last_game_state, last_action, events):
     self._rl_ep = int(getattr(self, '_rl_ep', 0)) + 1
     if trace and rew:
         try:
-            # E104 B2 shaping knob: survived a round in which we planted
-            # bombs -> terminal bonus (counter-weights KILLED_SELF -8;
-            # default 0 = ship behavior).
+            # Optional terminal bonus for surviving a round after planting.
             _sb = _env('ARBITER_RL_BOMB_SURVIVE_BONUS', 0.0)
             if _sb > 0 \
                     and 'SURVIVED_ROUND' in ' '.join(
@@ -219,8 +208,7 @@ def _rl_update(self, trace, rew):
     else:
         adv_arr = np.asarray([ret[i] - base for i in steps_k],
                              dtype=np.float64)
-    # E100b stability: unit-variance advantages (raw returns span +-20 and
-    # destabilized the first run: KL blew to 12 and G1 fell to 3.55).
+    # Normalize advantages to prevent large clipped returns dominating KL.
     adv_arr = (adv_arr - adv_arr.mean()) / (adv_arr.std() + 1e-6)
     adv = torch.tensor(adv_arr, dtype=torch.float32, device=dev)
     with torch.no_grad():
@@ -264,7 +252,7 @@ def _rl_update(self, trace, rew):
 
 
 def _rl_stable_post(self, kl_val):
-    """E102 stable mode: revert guard + adaptive beta on the measured KL."""
+    """Apply the revert guard and adapt beta to the measured KL."""
     import torch
     try:
         if kl_val > self._rl_kl_rev and self._rl_good is not None:

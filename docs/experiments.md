@@ -4523,3 +4523,155 @@ Key artifacts: `results/eval_summary.tex` (matrix table), `results/figures/`
   13 files (11 code + 2 sprites), zip-vs-tree byte-identical,
   bare-tree self-sufficiency smoke green.
 - **Verdict:** SHIP = **Harvy**. **Report:** §5/§6.
+
+### E132 — Harvy re-diagnosis + close-duel and risk-RL refinements ❌ REJECTED
+
+- **Author:** Codex-assisted diagnostic session · **Date:** 2026-09-17
+- **Fresh attribution:** 80 G1 rounds (seeds 0/1) with the E130 ship gave
+  39 deaths: 26 `KILLED_SELF`, 13 `GOT_KILLED`; causes were
+  `own_bomb_chain` 16 (41%), `corner_pin` 15 (38%; own 10 / enemy 5),
+  `enemy_trap` 5, and `enemy_lucky` 3. There were 41 sealed-blast trap
+  certificates (7 from our bombs) and 0 realized kills. In every
+  own-bomb-chain case, safe mobility had collapsed to <=1 on the first
+  post-plant tick and an opponent was within distance 3, leaving no useful
+  post-plant action to repair. The `exit_recorder` now flushes Harvy's
+  terminal diagnostics correctly; round IDs were added to diagnostic meta.
+- **Arm A, close-duel plant margin:** added default-off
+  `ARBITER_DUEL_BOMB_MARGIN` / `_D`, applying a soft surcharge only to an
+  immediate BOMB near an opponent (approach moves and solo play untouched).
+  Seed-2 20-round screen: control 5.75/0.600; margin 0.1 4.20/0.275;
+  margin 0.2 3.65/0.375. Rejected; 0.3 skipped by the monotone stopping
+  rule. The aggressive close-range bomb calibration remains load-bearing.
+- **Arm B, risk-weighted RL:** parameterized the default-preserving death
+  rewards (`ARBITER_RL_SELF_DEATH=-8`, `_ENEMY_DEATH=-6`) and trained a
+  150-round STABLE+BOMB_TRACE continuation with self-death -12. Episode 75
+  passed the 20-round screen narrowly (5.85/0.575, 6 suicides vs control
+  5.75/0.600, 7 suicides); episode 150 traded score for survival
+  (4.45/0.425, 4 suicides). The episode-75 40-round seed-0 gate failed:
+  4.275/0.333 vs the clean current-control run 4.700/0.537. Rejected;
+  seed 1 skipped. A later confirmation control was excluded because the
+  host wall clock jumped by 685 s mid-action and triggered a false engine
+  timeout (`agents.py` times callbacks with wall-clock `time()`).
+- **Verdict:** committed Harvy weights and all default inference behavior
+  remain unchanged. The remaining upgrade path is new close-duel/keep-away
+  demonstrations or an opponent-body-aware plan model, not stronger bomb
+  vetoes or scalar death penalties. Artifacts: `results/diag_harvy_*`,
+  `results/duelmargin_*`, `results/harvy_risk12*`. **Report:** §5/§6.
+
+### E133 — current Harvy vs preserved E88 Arbiter: no proven advantage ⚪ INCONCLUSIVE
+
+- **Author:** Codex-assisted evaluation · **Date:** 2026-09-17
+- **Question:** does the current shipped Harvy (E108 weights plus the promoted
+  E112--E130 inference stack) outperform the preserved pre-Harvy `arbiter`
+  checkpoint (E88)? No weights were changed or trained for this test.
+- **Design:** 100 directly paired classic-scenario rounds: 50 with seed 0 and
+  50 with seed 1. Every lobby contained `Harvy`, `arbiter`, and two
+  `rule_based_agent` opponents. This gives both candidates the same maps and
+  opponents in every round. The comparison was fixed before inspecting the
+  results; both seeds were pooled, including the unfavorable replication.
+- **Seed results:** seed 0 favored Harvy (5.26 vs 4.00 points/round; 0.440 vs
+  0.270 fractional round-win rate; mean rank 1.92 vs 2.26). Seed 1 reversed
+  the result (3.76 vs 4.92; 0.323 vs 0.480; rank 2.28 vs 1.83).
+- **Pooled result:** Harvy 4.51 vs Arbiter 4.46 points/round, a paired
+  difference of **+0.05**. A 50,000-resample paired bootstrap 95% interval was
+  **[-0.87, +0.99]**; a 100,000-draw paired sign-flip randomization test gave
+  **p=0.93**. Harvy directly outscored/tied/lost to Arbiter in **46/9/45**
+  rounds. Fractional round wins were 38.17 vs 37.50; pooled mean ranks were
+  2.10 vs 2.045.
+- **Diagnostics:** Harvy collected more coins (276 vs 256) but had fewer kills
+  (35 vs 38) and more suicides (44 vs 39). It also planted more bombs (2,229
+  vs 1,882), consistent with the own-bomb risk identified in E132.
+- **Verdict:** this controlled experiment **does not prove that current Harvy
+  is better than E88 Arbiter**. The observed score advantage is negligible,
+  seed-sensitive, and statistically compatible with a meaningful loss or
+  gain. Claiming improvement from seed 0 alone would be cherry-picking. The
+  appropriate next gate for a future refinement is this same paired protocol
+  with more seeds and a predeclared positive lower confidence bound.
+  Artifacts: `results/e133_headtohead_s0.json`,
+  `results/e133_headtohead_s1.json`.
+
+### E134 — dynamic opponent escape routes + joint body-block planning ⚪ PROMISING, NOT PROMOTED
+
+- **Author:** Codex-assisted implementation/evaluation · **Date:** 2026-09-17
+- **Question:** can Harvy plant more wisely by calculating the opponent's
+  possible escape routes while also checking whether a moving opponent can
+  block Harvy's own escape? E132 had found 41 trap certificates but zero
+  realized kills, indicating that the old static-agent certificate was
+  overconfident.
+- **Implementation:** added default-off `ARBITER_JOINT_ROUTES`. Opponent kill
+  certification now removes live agents as permanent BFS walls and counts
+  time-expanded routes through detonation. Own post-plant safety additionally
+  runs a six-tick minimax game against each nearby moving body blocker;
+  same-destination and edge-swap conflicts are treated conservatively as
+  blocked escapes. `ARBITER_JOINT_HORIZON=6` and `_BODY_D=3` are tunable.
+  The existing 98-feature neural input and shipped weights are unchanged.
+- **Probes:** `scripts/probe_harvy_joint_routes.py` reproduces a false static
+  trap certificate, preserves a genuinely sealed kill, preserves an open-space
+  bomb, and rejects a legacy-admitted close body-block plant. Added cost on the
+  open fixture was median 0.50 ms / p95 0.59 ms, well below the 0.5 s engine
+  limit. Existing E130 early probes remained green.
+- **Planner-only screen (20 rounds, seed 2, vs 3x rule-based):** joint routes
+  6.25/0.650 vs fresh control 5.40/0.675. Kills improved 11 vs 7 and bombs
+  fell 441 vs 556, but suicides increased 5 vs 2, so this was only sufficient
+  to proceed to training/evaluation.
+- **Training:** 150-round KL-anchored REINFORCE continuation from the exact
+  ship checkpoint, with the E108 recipe (lr 5e-5, beta 0.1, STABLE,
+  BOMB_TRACE), route evaluator enabled, and snapshots every 25 rounds. Outputs
+  were isolated under `results/e134_joint_rl.pt*`; the ship checkpoint hash
+  stayed `1e4ce411...`. Seed-3 20-round checkpoint screen: original weights
+  with routes 5.15/0.450; ep25 5.25/0.400 (fewer kills, more suicides); ep75
+  3.85/0.300; ep150 4.40/0.350. **All trained checkpoints rejected.**
+- **Two-seed planner evaluation (original weights, 40 rounds/seed per arm, vs
+  3x rule-based):** seed 0 joint 3.775 vs control 3.525; seed 1 joint 5.250 vs
+  control 4.500. Pooled joint **4.5125/0.4125** vs control **4.0125/0.2938**,
+  score delta **+0.50**. The 100,000-resample paired bootstrap 95% interval
+  was **[-0.425, +1.40]** and paired sign-flip `p=0.30`; joint directly
+  outscored/tied/lost control in 44/7/29 matched-seed rounds. Joint improved
+  kills 27 vs 23, coins 226 vs 206, and mean rank 2.094 vs 2.269 while planting
+  fewer bombs (1,717 vs 1,917), but suicides worsened 28 vs 23.
+- **Verdict:** the user's route-prediction mechanism is technically sound and
+  directionally promising, but this gate does not establish improvement and
+  the suicide regression blocks promotion. Keep the implementation and probe
+  default-off; do not ship the trained weights. A follow-up should record the
+  exact joint-route veto/allow decisions and train on planner labels rather
+  than another scalar REINFORCE continuation. Artifacts:
+  `results/e134_screen_*`, `results/e134_joint_rl*`,
+  `results/e134_ckpt_*`, `results/e134_gate_*`.
+
+### E135 — four-way route/body-block ablation and fixed statistical gate ❌ REJECTED
+
+- **Author:** Codex-assisted validation · **Date:** 2026-09-17
+- **Purpose:** test whether E134's apparent +0.50 score was real and identify
+  which component caused it. Split the legacy combined switch into independent
+  `ARBITER_DYNAMIC_ROUTES` (opponent route certificate) and
+  `ARBITER_BODYBLOCK` (own minimax escape); `ARBITER_JOINT_ROUTES=1` remains a
+  backwards-compatible combined switch. Added `ARBITER_ROUTE_DIAG` mechanism
+  JSONL, `scripts/run_e135_route_ablation.py` (alternating arm order by seed),
+  and `scripts/analyze_route_ablation.py` (paired bootstrap/randomization and
+  fixed promotion gates).
+- **Predeclared gate:** score delta >= +0.25; paired-bootstrap 95% lower bound
+  > 0; win rate not lower; suicides within +5%; kills not lower; positive score
+  delta on at least three of four seeds. A passing qualification arm would run
+  the 400-round held-out battery; a failing arm stops early.
+- **Qualification design:** four arms (control, dynamic-only, body-block-only,
+  combined), 30 classic rounds x seeds 0/1/2/3 = 120 rounds per arm / **480
+  total games**, original shipped weights, 3x rule-based opponents. Even seeds
+  ran control->dynamic->bodyblock->combined; odd seeds reversed the order.
+- **Results:** control **4.750/0.408**, rank 2.10, 45 kills, 43 suicides, 2,905
+  bombs. Dynamic-only **4.592/0.408** (delta -0.158, CI [-1.02,+0.70]), rank
+  2.15, 40 kills, 41 suicides, 2,557 bombs. Body-block-only **4.633/0.396**
+  (delta -0.117, CI [-0.95,+0.73]), rank 2.07, 43 kills, 38 suicides, 2,794
+  bombs. Combined **4.408/0.404** (delta -0.342, CI [-1.22,+0.53]), rank 2.15,
+  38 kills, 37 suicides, 2,708 bombs. No arm improved three seeds; no arm met
+  the score, CI, and kill gates.
+- **Mechanism telemetry:** dynamic/body-block/combined emitted 8,108/7,839/
+  8,582 route-analysis records and 78/77/81 conservative forced-kill
+  certificates. Body-block-only vetoed 30 legacy-safe plants; combined vetoed
+  22. This reduced suicides by 5-6 but also reduced kills and score: the safety
+  mechanism works, but its opportunity cost exceeds its benefit in this field.
+- **Verdict:** **REJECT all route arms; do not run the held-out 400-round gate**
+  because no candidate met qualification. The earlier E134 gain was a
+  small-sample false lead. Keep code and reproducible validation tools
+  default-off; ship weights and defaults remain unchanged. Artifacts:
+  `results/e135_qual_*.json`, `results/e135_qual_*.jsonl`,
+  `results/e135_qual_summary.json`.

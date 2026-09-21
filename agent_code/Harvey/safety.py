@@ -1,23 +1,13 @@
-"""ARBITER vendored copy of agent_code/reaper/safety.py (E48 rule).
-Exact blast + time-expanded escape solver (numpy only, no torch).
-Untouched apart from this header; probe parity vs reaper in
-scripts/probe_arbiter.py.
+"""Harvey blast, danger, and time-expanded escape analysis.
 
-Original docstring follows:
-
-Mirrors items.py:Bomb.get_blast_coords and environment.py movement rules,
-but fixes rule_based_agent flaws:
+The implementation mirrors items.py bomb geometry and environment.py
+movement rules while accounting for:
  - wall-aware blast (rule_based ignores walls in bomb_map)
  - future danger for t=0..H (rule_based only checks timer==0)
  - time-expanded BFS escape (rule_based uses same-row/col heuristic)
 
-Latency (E37/P1): the tournament allows 0.5 s/step on ONE Ryzen 5 2600
-thread and an overrun also costs the NEXT step (environment.py:448-460),
-so the escape solver is written against flat byte/int buffers instead of
-numpy scalar indexing, and the "is this tile lethal at any t >= ct" scan is
-collapsed to an O(1) lookup against a precomputed first-lethal map. Both
-are semantics-preserving: `scripts/probe_reaper_features.py` group 4 still
-asserts exact `valid`/`safe` parity with the frozen overlord copy.
+The hot escape loop uses flat byte/int buffers and a precomputed latest-
+lethal map to stay within the per-step tournament time limit.
 """
 from collections import deque
 import os
@@ -38,24 +28,15 @@ def _env_int(name, default, lo, hi):
     return max(lo, min(hi, v))
 
 
-# Default stays 8 so the overlord parity probe is exact; bombs can only
-# threaten t <= BOMB_TIMER+1 == 5, so REAPER_HORIZON=6 is the A/B candidate.
+# Eight ticks cover every known bomb blast and its lingering explosion.
 HORIZON = _env_int('REAPER_HORIZON', 8, 4, 12)
 
-# E87: minimum post-plant first-step escape directions for BOMB to be
-# certified safe. 1 == ship behavior (any()); the gate run uses 2.
-# E88: de-conflicted from search.py's bomb-vs-move SCORE margin (both used
-# to read ARBITER_BOMB_MARGIN with different types/defaults). This knob is
-# now ARBITER_BOMB_ESC_MARGIN; BOMB_MARGIN kept as an import-compat alias.
+# Minimum distinct first-step escape directions required after planting.
+# BOMB_MARGIN remains an import-compatible alias for older scripts.
 ESC_MARGIN = _env_int('ARBITER_BOMB_ESC_MARGIN', 1, 1, 4)
 BOMB_MARGIN = ESC_MARGIN
 
-# E134 experimental joint-route bomb evaluator.  The shipped default stays
-# off.  When enabled, opponent escape certificates no longer treat the other
-# agents as permanent walls, and an immediate plant is rejected when a nearby
-# opponent can adversarially body-block every one of our escape policies.
-# This is deliberately an inference-layer experiment first: it can supervise
-# a later RL/BC continuation without changing the 98-dimensional model input.
+# Optional joint-route analysis models moving agents and adversarial body blocks.
 JOINT_ROUTES = os.environ.get('ARBITER_JOINT_ROUTES', '0') == '1'
 DYNAMIC_ROUTES = os.environ.get(
     'ARBITER_DYNAMIC_ROUTES', '1' if JOINT_ROUTES else '0') == '1'
@@ -309,7 +290,7 @@ def _joint_bodyblock_survives(arena, bombs, danger, self_pos, opp_pos,
                               horizon=JOINT_HORIZON):
     """Whether self has a survival policy against one moving body blocker.
 
-    This is a small finite-horizon minimax game.  At each tick Harvy chooses a
+    This is a small finite-horizon minimax game.  At each tick Harvey chooses a
     move, then the opponent is allowed the worst survivable simultaneous move.
     Same-destination and edge-swap conflicts are treated as a successful block
     (the conservative engine-order interpretation).  The opponent may move;
@@ -589,10 +570,7 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
     danger_hyp = with_hypothetical_bomb(danger, arena, x, y, horizon, bomb_timer, power)
     bombs_hyp = list(bombs or []) + [((x, y), bomb_timer)]
     safe_hyp, dist_hyp = escape_bfs((x, y), arena, bombs_hyp, others_xy, danger_hyp, horizon)
-    # E87 (ARBITER_BOMB_ESC_MARGIN, default 1 = ship-identical): require at
-    # least M post-plant first-step escape DIRECTIONS (not just one).
-    # Phase A diagnosis: single-escape plants died 18/39 (46%); esc>=2
-    # plants 3/1379 (0.2%). n_esc >= 1 is exactly the legacy any().
+    # Count distinct first moves, not merely the number of complete routes.
     _bomb_dirs = [(0, -1), (0, 1), (-1, 0), (1, 0)]
     n_esc = sum(1 for d in _bomb_dirs if safe_hyp.get(d, False))
     can_escape = n_esc >= ESC_MARGIN
@@ -600,9 +578,7 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
     # so exclude (0,0) from can_escape.
     # BOMB is safe iff valid and escape exists and current tile escapable
     safe['BOMB'] = bool(valid['BOMB'] and can_escape)
-    # Corridor discipline: 1-wide corridor bombings needing long outrun are the
-    # #1 suicide cause. Allow only if quick off-ramp (dist<=2) + crates, or kill.
-    # Compute blast/crates/opps first for this decision.
+    # In a one-wide corridor, require a quick exit plus payoff or a trapped foe.
     blast_tmp = set(true_blast(arena, x, y, power))
     crates_tmp = sum(1 for (cx, cy) in blast_tmp if arena[cx, cy] == 1)
     opps_tmp = sum(1 for (ox, oy) in others_xy if (int(ox), int(oy)) in blast_tmp)
@@ -620,8 +596,7 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                     can_escape = False
     except Exception:
         pass
-    # E14b margin rule (sentinel audit 60rd: dist_hyp 4.0 plants 23/27 fatal
-    # vs 2.4% at <=3.0 — a dist==timer escape always loses the race).
+    # An escape distance equal to the bomb timer is too late in engine order.
     if valid.get('BOMB', False) and can_escape:
         try:
             if float(dist_hyp) > 3:
@@ -629,10 +604,6 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                 can_escape = False
         except Exception:
             pass
-    # NOTE (E21 lesson): a crate-payoff gate was tried on sentinel and
-    # REJECTED after a true live test (200rd pooled neutral-to-negative:
-    # vetoed slots don't convert without a crate-approach pull). Margin gate
-    # only here; payoff stays an open research item, not a mask rule.
     # CRITICAL: staying (WAIT/BOMB) dies if current tile explodes THIS step.
     # Moving away can still save you, but staying cannot.
     try:

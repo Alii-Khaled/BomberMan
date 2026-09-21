@@ -1,0 +1,2 @@
+# No additional packages are required beyond the official tournament image.
+# Inference uses only numpy and pytorch, both installed by the supplied Dockerfile.
