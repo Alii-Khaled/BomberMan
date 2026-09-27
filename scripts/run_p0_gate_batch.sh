@@ -4,7 +4,7 @@
 # Each game gets its own --log-dir (shared game.log rotation races under
 # concurrency); every process is single-threaded (128-core box).
 set -u
-cd /home/jovyan/work/BomberMan
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 mkdir -p logs results
 
 run() { # tag agent model seed

@@ -66,10 +66,10 @@ def main():
     args = WorldArgs(
         no_gui=True, fps=0, turn_based=False, update_interval=0.1,
         save_replay=False, replay=False, make_video=False,
-        continue_without_training=True, log_dir='/tmp/opencode/e125',
+        continue_without_training=True, log_dir=os.path.join(REPO, 'logs', 'e125'),
         save_stats=False, match_name='e125_repro', seed=a.seed,
         silence_errors=True, scenario='classic')
-    os.makedirs('/tmp/opencode/e125', exist_ok=True)
+    os.makedirs(args.log_dir, exist_ok=True)
     world = BombeRLeWorld(args, [('Harvey', False)])
 
     scores = []

@@ -6,9 +6,9 @@
 #   L2: warden_v1 teacher (new hunter lineage) rb + warden-mix
 #   L3: coin_collector top-up + random + collector warden-mix
 set -u
-cd /home/jovyan/work/BomberMan
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 OUT="$(pwd)/results/apex_ng_demos"
-mkdir -p "$OUT" logs /tmp/opencode/e108
+mkdir -p "$OUT" logs logs/e108
 
 collect() { # teacher tag n opponents...
   local t="$1" tag="$2" n="$3"

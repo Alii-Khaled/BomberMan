@@ -3,37 +3,37 @@
 # control legs (results/gaps_* = ship defaults, recorded this session).
 # Usage: bash scripts/run_gap_screens.sh <tag> <env assignments...>
 set -u
-TAG="$1"; shift
-REPO=/home/jovyan/work/BomberMan
-cd "$REPO"
+TAG="${1:?usage: run_gap_screens.sh TAG [NAME=value ...]}"; shift
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO" || exit 1
+ENVV=("$@")
+mkdir -p results
 for s in 0 1; do
-  mkdir -p "/tmp/opencode/gaps/log_${TAG}g1s$s" "/tmp/opencode/gaps/log_${TAG}l5s$s" \
-           "/tmp/opencode/gaps/log_${TAG}solo$s"
+  mkdir -p "$PWD/logs/gaps/log_${TAG}g1s$s" "$PWD/logs/gaps/log_${TAG}l5s$s" \
+           "$PWD/logs/gaps/log_${TAG}solo$s"
 done
-export ENVV
 
 run_g1() { # seed
-  env HARVEY_DEVICE=cpu "$ENVV" python3 scripts/tournament_eval.py \
+  env HARVEY_DEVICE=cpu "${ENVV[@]}" python3 scripts/tournament_eval.py \
     --agents Harvey rule_based_agent rule_based_agent rule_based_agent \
     --n-rounds 40 --seed "$1" --out "results/tourney_${TAG}g1_s$1.json" \
-    --log-dir "/tmp/opencode/gaps/log_${TAG}g1s$1" \
-    > "/tmp/opencode/gaps/${TAG}g1_s$1.out" 2>&1 &
+    --log-dir "$PWD/logs/gaps/log_${TAG}g1s$1" \
+    > "$PWD/logs/gaps/${TAG}g1_s$1.out" 2>&1 &
 }
 run_l5() { # seed
-  env HARVEY_DEVICE=cpu "$ENVV" python3 scripts/tournament_eval.py \
+  env HARVEY_DEVICE=cpu "${ENVV[@]}" python3 scripts/tournament_eval.py \
     --agents Harvey random_agent random_agent random_agent \
     --n-rounds 40 --seed "$1" --out "results/tourney_${TAG}l5_s$1.json" \
-    --log-dir "/tmp/opencode/gaps/log_${TAG}l5s$1" \
-    > "/tmp/opencode/gaps/${TAG}l5_s$1.out" 2>&1 &
+    --log-dir "$PWD/logs/gaps/log_${TAG}l5s$1" \
+    > "$PWD/logs/gaps/${TAG}l5_s$1.out" 2>&1 &
 }
 run_solo() { # seed
-  env HARVEY_DEVICE=cpu "$ENVV" python3 scripts/tournament_eval.py \
+  env HARVEY_DEVICE=cpu "${ENVV[@]}" python3 scripts/tournament_eval.py \
     --agents Harvey --n-rounds 40 --seed "$1" \
     --out "results/tourney_${TAG}solo_s$1.json" \
-    --log-dir "/tmp/opencode/gaps/log_${TAG}solo$1" \
-    > "/tmp/opencode/gaps/${TAG}solo_s$1.out" 2>&1 &
+    --log-dir "$PWD/logs/gaps/log_${TAG}solo$1" \
+    > "$PWD/logs/gaps/${TAG}solo_s$1.out" 2>&1 &
 }
-export ENVV
 for s in 0 1; do run_g1 "$s"; run_l5 "$s"; done
 run_solo 0
 wait

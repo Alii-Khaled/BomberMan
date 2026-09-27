@@ -5,9 +5,9 @@
 # 8 concurrent games, nice'd, engine logs to /tmp.
 # Usage: bash scripts/run_e122_battery.sh <arm-tag> <env-assignment>
 set -u
-cd /home/jovyan/work/BomberMan
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 TAG="${1:?arm tag}"; ENVV="${2:-}"
-mkdir -p logs results /tmp/opencode/e122bat
+mkdir -p logs results logs/e122bat
 
 MAXJOBS=8
 
@@ -15,7 +15,7 @@ run() { # btag leg agent seed rounds opponents...
   local btag="$1" leg="$2" agent="$3" seed="$4" rounds="$5"
   shift 5
   local out="results/tourney_${TAG}_${btag}_${leg}_s${seed}.json"
-  local ldir="/tmp/opencode/e122bat/${TAG}_${btag}_${leg}_s${seed}"
+  local ldir="$PWD/logs/e122bat/${TAG}_${btag}_${leg}_s${seed}"
   mkdir -p "$ldir"
   [ -f "$out" ] && { echo "SKIP $out"; return 0; }
   nice -n 10 env HARVEY_DEVICE=cpu $ENVV \

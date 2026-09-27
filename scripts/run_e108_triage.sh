@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Triage: e108rl snapshots vs fresh control, G1 40x1 s0 (cap 4).
 set -u
-cd /home/jovyan/work/BomberMan
-mkdir -p logs results /tmp/opencode/e108
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
+mkdir -p logs results logs/e108
 
 run() { # tag seed model
   local tag="$1" seed="$2" model="$3"
   local out="results/tourney_${tag}_s${seed}.json"
-  local ldir="/tmp/opencode/e108/${tag}_s${seed}"
+  local ldir="$PWD/logs/e108/${tag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   nice -n 10 env HARVEY_DEVICE=cpu HARVEY_WEIGHTS="$model" \

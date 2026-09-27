@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Smoke-test the training-only recorders against the current Harvey package.
 
-Run from the repository root. All demonstration output stays in /tmp/opencode.
+Run from the repository root. Demonstration output uses a temporary directory.
 This does not train a model or evaluate tournament performance.
 """
 
@@ -27,8 +27,7 @@ def state():
 
 
 def main():
-    with tempfile.TemporaryDirectory(prefix='recorder-probe-',
-                                     dir='/tmp/opencode') as tmp:
+    with tempfile.TemporaryDirectory(prefix='recorder-probe-') as tmp:
         os.environ['APEX_DEMO_OUT'] = str(Path(tmp) / 'solo')
         os.environ['ARBITER_DEMO_DIR'] = str(Path(tmp) / 'exit')
         os.environ['SOLO_LABEL'] = 'coin_collector_agent'

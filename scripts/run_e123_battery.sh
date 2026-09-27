@@ -3,16 +3,16 @@
 #   HARVEY_COINTAKE=1 HARVEY_COINTAKE_D=3 HARVEY_SOLO_RADIUS=8
 # vs the same-session ctl legs (ship defaults, run this session).
 set -u
-cd /home/jovyan/work/BomberMan
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 TAG="${1:?tag}"; ENVV="${2:-}"
-mkdir -p logs results /tmp/opencode/e123bat
+mkdir -p logs results logs/e123bat
 MAXJOBS=6
 
 run() { # leg agent seed rounds opponents...
   local leg="$1" agent="$2" seed="$3" rounds="$4"
   shift 4
   local out="results/tourney_${TAG}_${leg}_s${seed}.json"
-  local ldir="/tmp/opencode/e123bat/${TAG}_${leg}_s${seed}"
+  local ldir="$PWD/logs/e123bat/${TAG}_${leg}_s${seed}"
   mkdir -p "$ldir"
   [ -f "$out" ] && { echo "SKIP $out"; return 0; }
   nice -n 10 env HARVEY_DEVICE=cpu $ENVV \

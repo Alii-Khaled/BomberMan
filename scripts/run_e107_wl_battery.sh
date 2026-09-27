@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Finish the wl arm: g1 100x2 + strong s5-s9 (7 games).
 set -u
-cd /home/jovyan/work/BomberMan
-mkdir -p logs results /tmp/opencode/e107
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
+mkdir -p logs results logs/e107
 
 run() { # btag seed rounds opponents...
   local btag="$1" seed="$2" rounds="$3"
   shift 3
   local out="results/tourney_e107wl_${btag}_s${seed}.json"
-  local ldir="/tmp/opencode/e107/e107wl_${btag}_s${seed}"
+  local ldir="$PWD/logs/e107/e107wl_${btag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   nice -n 10 env HARVEY_DEVICE=cpu HARVEY_OPPMODEL=wardenlite \

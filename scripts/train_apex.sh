@@ -1,12 +1,5 @@
 #!/bin/bash
-# Apex training (OOM-safe defaults for 16 GiB Jupyter containers).
-#
-# Why this exists: running `main.py play --train` inside a notebook cell runs
-# the full CNN+DQN loop in the Jupyter kernel process. With the legacy
-# 300k float32 replay (~8 GiB raw + overhead) the cgroup (16G) OOMKills the
-# whole singleuser server -> full Lab disconnect, no traceback. This script
-# runs in a TERMINAL (detached), with capped replay + uint8 storage + sane
-# batch/EOR, so the Lab server stays alive.
+# Apex staged training with uint8 replay and reduced batch/update defaults.
 #
 # Usage (in a terminal, not a notebook cell):
 #   bash scripts/train_apex.sh
@@ -21,12 +14,7 @@
 #   tmux new -d -s apex 'bash scripts/train_apex.sh > logs/apex_A2.log 2>&1'
 #   tmux attach -t apex   # reattach after the browser/terminal tab dies
 #
-# Why tmux/detached: the Jupyter terminal tab (xterm.js) can die at random
-# points on multi-hour runs while the backend keeps going. main.py now
-# defaults to plain newline logs for --no-gui (APEX_TQDM=0) instead of a
-# per-round tqdm \\r rewrite, but always launch detached so a dead tab
-# never takes training down with it. If the tab dies: open a fresh one
-# and run `tmux ls; tmux attach -t apex`; do not start a second training.
+# A detached terminal session can keep long runs active after disconnects.
 #
 # Env overrides (all optional):
 #   APEX_TQDM (default 0) -- 0 = plain "[progress] round N/M" log every
@@ -71,7 +59,7 @@ if [ -n "${APEX_DEMO:-}" ]; then
   # dangling link must not count.
   _n=$(find "${APEX_DEMO}" -maxdepth 1 -name '*.npz' -readable 2>/dev/null | wc -l)
   if [ "$_n" -eq 0 ]; then
-    echo "REFUSE: APEX_DEMO=${APEX_DEMO} holds 0 readable npz (dangling? wiped 2026-09-09 once already)"; exit 1
+    echo "APEX_DEMO=${APEX_DEMO} contains no readable npz files"; exit 1
   fi
   echo "demo gate OK: $_n readable npz in ${APEX_DEMO}"
   unset _n
@@ -86,15 +74,13 @@ if [ -n "${APEX_SEED:-}" ]; then SEED_ARG="--seed $APEX_SEED"; fi
 echo "apex container-safe launch: BUFFER=$APEX_BUFFER BATCH=$APEX_BATCH UTD=$APEX_UTD EOR=$APEX_EOR_UPDATES"
 echo "progress mode: APEX_TQDM=$APEX_TQDM (0=plain log every $APEX_LOG_EVERY rounds, 1=throttled bar)"
 echo "free -h:"; free -h | head -n 3 || true
-echo "df -h work:"; df -h /home/jovyan/work 2>/dev/null | tail -n 1 || df -h . | tail -n 1
+df -h . | tail -n 1
 nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total --format=csv 2>&1 | head -n 5 || true
 mkdir -p results/archive logs agent_code/apex/checkpoints
-# Quota preflight: /home/jovyan/work is a small NFS volume (2G). Warn early
-# instead of dying mid-run on checkpoint/metric writes (which are caught and
-# only warn, but NFS stalls look like a hang).
-_AVAIL_MB=$(df -m /home/jovyan/work 2>/dev/null | tail -n 1 | awk '{print $4}'); _AVAIL_MB=${_AVAIL_MB:-999999}
+# Check free space on the checkpoint filesystem.
+_AVAIL_MB=$(df -m . | tail -n 1 | awk '{print $4}'); _AVAIL_MB=${_AVAIL_MB:-999999}
 if [ "$_AVAIL_MB" -lt 500 ]; then
-  echo "WARNING: only ${_AVAIL_MB}MB free on /home/jovyan/work — prune logs/game.log* / old checkpoints before long runs."
+  echo "WARNING: only ${_AVAIL_MB}MB free on the checkpoint filesystem."
 fi
 du -sh logs results agent_code/apex/checkpoints 2>/dev/null || true
 if [ -f agent_code/apex/checkpoints/last.pt ]; then
@@ -107,7 +93,7 @@ fi
 log_resources() {
   echo "--- resources @ $(date -u '+%F %T UTC') exit=${1:-?} ---"
   free -h | head -n 3 || true
-  df -h /home/jovyan/work 2>/dev/null | tail -n 1 || df -h . | tail -n 1
+  df -h . | tail -n 1
   nvidia-smi --query-gpu=index,utilization.gpu,memory.used --format=csv,noheader 2>&1 | tr '\n' ';'; echo || true
   tail -n 3 agent_code/apex/runs/metrics.csv 2>/dev/null || echo "no metrics yet"
 }

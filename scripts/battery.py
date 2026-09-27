@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Canonical battery/triage runner + tally.
 
-Runs games nice'd on CPU with per-game /tmp log dirs, skips
+Runs games nice'd on CPU with per-game log directories, skips
 existing outputs, wave-limited concurrency, then prints a pooled tally.
 
 Usage:
@@ -25,7 +25,7 @@ import sys
 import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TMP = '/tmp/opencode/battery'
+TMP = os.path.join(REPO, 'logs', 'battery')
 
 DEFAULT_LEGS = [('g1', 2, 100, 'rule_based_agent rule_based_agent rule_based_agent'),
                 ('strong', 10, 40, 'warden_v2 overlord sentinel'),
@@ -58,7 +58,7 @@ def run_leg(tag, name, seed, rounds, opps, model, jobs_left):
     out = out_path(tag, name, seed)
     if os.path.isfile(out):
         return
-    ldir = f'/tmp/opencode/battery/{tag}_{name}_s{seed}'
+    ldir = os.path.join(TMP, f'{tag}_{name}_s{seed}')
     os.makedirs(ldir, exist_ok=True)
     env = dict(os.environ)
     env.update({'HARVEY_DEVICE': 'cpu'})

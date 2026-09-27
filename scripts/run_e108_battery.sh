@@ -2,14 +2,14 @@
 # Decision battery: e108rl.pt.ep225 (candidate) on the full
 # pooled battery. Control = e107wl legs (current ship, same infra/day).
 set -u
-cd /home/jovyan/work/BomberMan
-mkdir -p logs results /tmp/opencode/e108
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
+mkdir -p logs results logs/e108
 
 run() { # tag btag seed rounds opponents...
   local tag="$1" btag="$2" seed="$3" rounds="$4"
   shift 4
   local out="results/tourney_${tag}_${btag}_s${seed}.json"
-  local ldir="/tmp/opencode/e108/${tag}_${btag}_s${seed}"
+  local ldir="$PWD/logs/e108/${tag}_${btag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   nice -n 10 env HARVEY_DEVICE=cpu HARVEY_WEIGHTS="$PWD/results/e108rl.pt.ep225" \

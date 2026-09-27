@@ -6,8 +6,8 @@
 # 8 concurrent games max, nice'd; engine logs -> /tmp (local disk);
 # agent logs stay at WARNING (tournament_eval patches settings).
 set -u
-cd /home/jovyan/work/BomberMan
-mkdir -p logs results /tmp/opencode/p0bat
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
+mkdir -p logs results logs/p0bat
 
 MAXJOBS=8
 
@@ -15,7 +15,7 @@ run() { # mtag btag agent model seed rounds opponents...
   local mtag="$1" btag="$2" agent="$3" model="$4" seed="$5" rounds="$6"
   shift 6
   local out="results/tourney_${mtag}_${btag}_s${seed}.json"
-  local ldir="/tmp/opencode/p0bat/${mtag}_${btag}_s${seed}"
+  local ldir="$PWD/logs/p0bat/${mtag}_${btag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   if [ -n "$model" ]; then

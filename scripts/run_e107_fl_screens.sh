@@ -2,14 +2,14 @@
 # Flee-lookahead screens: HARVEY_FLEE_LOOK=1 (ship weights, env-only).
 # STRONG 40x5 + UNSEEN legs 40x2, 8-wide.
 set -u
-cd /home/jovyan/work/BomberMan
-mkdir -p logs results /tmp/opencode/e107
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
+mkdir -p logs results logs/e107
 
 run() { # tag btag seed rounds opponents...
   local tag="$1" btag="$2" seed="$3" rounds="$4"
   shift 4
   local out="results/tourney_${tag}_${btag}_s${seed}.json"
-  local ldir="/tmp/opencode/e107/${tag}_${btag}_s${seed}"
+  local ldir="$PWD/logs/e107/${tag}_${btag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   nice -n 10 env HARVEY_DEVICE=cpu HARVEY_FLEE_LOOK=1 \

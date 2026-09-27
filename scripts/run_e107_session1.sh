@@ -4,8 +4,8 @@
 # HARVEY_RL_LR=0 + scratch OUT = no-op learning, weights untouched),
 # then wardenlite screens (8-wide).
 set -u
-cd /home/jovyan/work/BomberMan
-mkdir -p logs results /tmp/opencode/e107
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
+mkdir -p logs results logs/e107
 
 diag() { # seed
   local seed="$1"
@@ -13,7 +13,7 @@ diag() { # seed
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   nice -n 10 env HARVEY_DEVICE=cpu \
     HARVEY_DIAG="$PWD/results/diag_e107b1" \
-    HARVEY_RL_LR=0 HARVEY_RL_OUT="/tmp/opencode/e107/scratch.pt" \
+    HARVEY_RL_LR=0 HARVEY_RL_OUT="$PWD/logs/e107/scratch.pt" \
     python3 main.py play --no-gui \
     --agents Harvey rule_based_agent rule_based_agent rule_based_agent \
     --train 1 --continue-without-training --scenario classic \
@@ -30,7 +30,7 @@ run() { # tag btag seed rounds opponents...
   local tag="$1" btag="$2" seed="$3" rounds="$4"
   shift 4
   local out="results/tourney_${tag}_${btag}_s${seed}.json"
-  local ldir="/tmp/opencode/e107/${tag}_${btag}_s${seed}"
+  local ldir="$PWD/logs/e107/${tag}_${btag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   nice -n 10 env HARVEY_DEVICE=cpu HARVEY_OPPMODEL=wardenlite \
