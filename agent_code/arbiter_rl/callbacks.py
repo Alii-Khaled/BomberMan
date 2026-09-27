@@ -1,27 +1,27 @@
-"""ARBITER act policy (S0): learned policy prior + thin survival
-skeleton + warden-semantics mask filter. NO heuristic/Q blending.
+"""ARBITER act policy: learned policy prior + thin survival skeleton +
+warden-semantics mask filter, with no heuristic or Q blending.
 
-Structural rule from A4 (E62): the net NEVER shares a vote with a
-heuristic over root actions (apex double-counted warden into Q-delta
--0.42). Here pi ranks, V evaluates leaves (P1), and the heuristic
-carries ONLY survival content: must_flee override, loop tie-break,
-bomb-repeat tie-break — all bounded to <=0.5, an order below typical
-logit gaps. Everything else (navigation, economy, combat, placement)
-is the network's job.
+The net never shares a vote with a heuristic over root actions (apex
+double-counted warden into its Q and lost 0.42 in evaluation). Here pi
+ranks, V evaluates leaves, and the heuristic carries survival content
+only: must_flee override, loop tie-break, bomb-repeat tie-break, all
+bounded to <=0.5, an order below typical logit gaps. Everything else
+(navigation, economy, combat, placement) is the network's job.
 
-Decision (S0, ARBITER_SEARCH=off):
+Decision (ARBITER_SEARCH=off):
   1. mask = action_safety(game_state) -> valid / safe / danger timeline.
   2. pi logits over 98-dim features (single forward also yields V, logged).
   3. must_flee (own tile lethal t<=1): restrict to safe moves (warden).
-     else: rank valid moves by pi (S2 arm1: unconditional mask filter
-     cost ~0.4 — the mask binds only under threat).
+     else: rank valid moves by pi with an unconditional mask filter
+     (the mask binds only under threat).
   4. Loop/bomb-repeat tie-breaks (bounded), BOMB gated on mask-safe.
   5. Budget guard (ARBITER_TIME_BUDGET 0.30): features+forward must fit
      in 60%/90%; on exhaustion degrade to mask + tie-breaks (pi=uniform).
-P1 adds the bounded best-first search between steps 2 and 3
-(ARBITER_SEARCH=search, agent_code/arbiter/search.py); the tactical proven-kill override
-(ARBITER_SEARCH=tactical) is an inference-only exact computation.
-'search+tactical' (E69) runs both: forced +5 first, search decides rest.
+The bounded best-first search runs between steps 2 and 3
+(ARBITER_SEARCH=search, agent_code/arbiter_rl/search.py); the tactical proven-kill
+override (ARBITER_SEARCH=tactical) runs at inference with exact
+dynamics. 'search+tactical' runs both: the forced +5 first, then the
+search decides the rest.
 """
 from collections import deque
 import os
@@ -44,30 +44,29 @@ from .model import build_model, ACTION_LIST
 
 ACTION_TO_IDX = {a: i for i, a in enumerate(ACTION_LIST)}
 
-# E86 Phase-A death diagnostics (ARBITER_DIAG=path prefix; unset = no-op,
-# zero behavior change). When set, act() appends a compact per-tick
-# snapshot (position, action, safety mask, nearby bombs, opponents,
-# arena deltas, explosion map) to an in-memory buffer and end_of_round
-# dumps the tail to <prefix>_deaths.jsonl for every round in which the
-# agent died (SURVIVED_ROUND absent). Purely additive logging.
+# Death diagnostics (ARBITER_DIAG=path prefix; unset = no-op). When
+# set, act() appends a compact per-tick snapshot (position, action,
+# safety mask, nearby bombs, opponents, arena deltas, explosion map) to
+# an in-memory buffer, and end_of_round dumps the tail to
+# <prefix>_deaths.jsonl for every round. Purely additive logging.
 _DIAG = os.path.abspath(
     os.environ.get('ARBITER_DIAG', '').strip()) if \
     os.environ.get('ARBITER_DIAG', '').strip() else ''
 
-# ARBITER_POLICY: 'pi' (ship: learned prior ranks S0 moves) or 'warden'
-# (E97 experiment: warden_v2's fast heuristic ranks S0 moves). Only the
-# move fallback changes — search/tactical still own BOMB decisions and
-# action_safety's mask still binds. Default 'pi' == ship behavior.
+# ARBITER_POLICY: 'pi' (the learned prior ranks moves) or 'warden'
+# (warden_v2's fast heuristic ranks moves). Only the move fallback
+# changes: search/tactical still own BOMB decisions and action_safety's
+# mask still binds. Default 'pi'.
 POLICY = os.environ.get('ARBITER_POLICY', 'pi').strip().lower()
 
-# E100c device knob: 'cuda:0' (main CUDA device) by default when CUDA is
-# available, resolved per-agent in setup() with automatic CPU fallback;
-# ARBITER_DEVICE=cpu pins the ship CPU behavior.
+# Device knob: 'cuda:0' (main CUDA device) when CUDA is available,
+# resolved per-agent in setup() with automatic CPU fallback;
+# ARBITER_DEVICE=cpu forces the CPU path.
 DEVICE_NAME = os.environ.get('ARBITER_DEVICE', 'cuda:0').strip() or 'cuda:0'
 
-# E102: trace search/tactical-committed BOMB steps into the RL trace
+# Trace search/tactical-committed BOMB steps into the RL trace
 # (ARBITER_RL_BOMB_TRACE=1) so the move policy gets a gradient on the
-# states where bombs are planted (66% of deaths were own-bomb).
+# states where bombs are planted.
 BOMB_TRACE = os.environ.get('ARBITER_RL_BOMB_TRACE', '0') == '1'
 
 
@@ -115,10 +114,10 @@ def _diag_snapshot(self, game_state, t0_unused=0.0):
 def diag_dump_round(self, last_action, events):
     """Called from train.py end_of_round (the dispatched hook).
 
-    Writes <prefix>_deaths.jsonl: a round_meta line + the full per-tick
-    buffer for EVERY round (survival context enables the missed-kill
-    inventory; death rounds carry KILLED_SELF / GOT_KILLED in the
-    accumulated round events).
+    Writes <prefix>_deaths.jsonl: a round_meta line plus the full
+    per-tick buffer for every round. Survival context enables the
+    missed-kill inventory; death rounds carry KILLED_SELF / GOT_KILLED
+    in the accumulated round events.
     """
     if not _DIAG:
         return
@@ -162,10 +161,10 @@ def _env_float(name, default):
         return default
 
 
-# S0 knobs. ARBITER_SEARCH: search (SHIP default — validated G1 3.95)
-# | tactical (proven-kill overlay, inference only) | off (S0 fallback)
-# | search+tactical (E69: exact forced-kill overlay runs first, search
-# decides everything else — a certified +5 should never lose a
+# Knobs for the act path. ARBITER_SEARCH: search (default)
+# | tactical (proven-kill overlay, inference only) | off (base ranking)
+# | search+tactical (the exact forced-kill overlay runs first and the
+# search decides the rest: a certified +5 should never lose a
 # BOMB_MARGIN arbitration against a move plan).
 SEARCH = os.environ.get('ARBITER_SEARCH', 'search').strip().lower()
 # Substring flags (exact for all four mode strings: 'search' has no
@@ -173,26 +172,23 @@ SEARCH = os.environ.get('ARBITER_SEARCH', 'search').strip().lower()
 _SEARCH_ON = 'search' in SEARCH
 _TACTICAL_ON = 'tactical' in SEARCH
 TIME_BUDGET = _env_float('ARBITER_TIME_BUDGET', 0.30)
-# Ablation switches (E36/Q0 pattern): PI_OFF=1 forces a uniform prior
-# (pi0 ablation — isolates the learned prior); V_OFF=1 forces V=0
-# (V0 ablation — isolates the learned evaluator, load-bearing in P1).
+# Ablation switches: PI_OFF=1 forces a uniform prior (pi0 ablation,
+# isolates the learned prior); V_OFF=1 forces V=0 (V0 ablation,
+# isolates the learned evaluator the search leans on).
 PI_OFF = os.environ.get('ARBITER_PI_OFF', '0') == '1'
 V_OFF = os.environ.get('ARBITER_V_OFF', '0') == '1'
 LOOP3 = _env_float('ARBITER_LOOP3', 0.45)
 LOOP2 = _env_float('ARBITER_LOOP2', 0.15)
 BOMB_REPEAT = _env_float('ARBITER_BOMB_REPEAT', 0.9)
 TRAP_BONUS = _env_float('ARBITER_TRAP_BONUS', 0.0)
-# Dihedral TTA for pi (E74, SHIP default — best config on primary +
-# warden-mix + collectors simultaneously): average the prior over the
-# 8 exact board symmetries. Set ARBITER_TTA=0 for the single-forward
-# P1 ablation.
+# Dihedral TTA for pi (default on): average the prior over the 8 exact
+# board symmetries. Set ARBITER_TTA=0 for the single-forward ablation.
 TTA = os.environ.get('ARBITER_TTA', '1') == '1'
-# E90 flee quality: while fleeing (own bomb ticking or must-flee), pick
+# Flee quality: while fleeing (own bomb ticking or must-flee), pick
 # among the mask's safe moves by optionality (free neighbours at the
-# destination + distance from opponents) instead of raw pi order.
-# Certified-only (only re-ranks already-valid+safe moves) and
-# feature-neutral (state_to_features is untouched). Default 0 =
-# ship-identical.
+# destination + distance from opponents) instead of raw pi order. It
+# only re-ranks already-valid+safe moves and never touches
+# state_to_features. Default 0 (off).
 FLEE_Q = os.environ.get('ARBITER_FLEE_Q', '0') == '1'
 _DELTAS = {'UP': (0, -1), 'DOWN': (0, 1), 'LEFT': (-1, 0),
            'RIGHT': (1, 0), 'WAIT': (0, 0), 'BOMB': (0, 0)}
@@ -200,7 +196,7 @@ _DIRS4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
 
 def _flee_quality_choice(arena, bombs, others_xy, x, y, valid, safe, pi):
-    """Best safe flee move by open-space + opponent-distance (E90).
+    """Best safe flee move by open-space and opponent-distance.
 
     Only considers moves already marked valid+safe by the mask. Score =
     free non-occupied 4-neighbours at the destination + 0.25 * min
@@ -243,11 +239,11 @@ def _flee_quality_choice(arena, bombs, others_xy, x, y, valid, safe, pi):
 
 
 def setup(self):
-    # P1.1 safe defaults FIRST: if model construction/loading below
-    # raises, act() still degrades to uniform-pi + mask (never crashes —
-    # the engine has no fallback agent, so a setup crash kills the whole
-    # run). model=None is a supported degradation (pi uniform, V
-    # skipped via the getattr/model-None guards in act/search).
+    # Safe defaults first: if model construction/loading below raises,
+    # act() still degrades to uniform-pi + mask. The engine has no
+    # fallback agent, so a setup crash would kill the whole run.
+    # model=None is a supported degradation (pi uniform, V skipped via
+    # the getattr/model-None guards in act/search).
     self.model = None
     self.coord_history = deque([], 24)
     self.bomb_history = deque([], 5)
@@ -264,13 +260,13 @@ def setup(self):
     here = os.path.dirname(os.path.abspath(__file__))
     loaded = False
     # Candidate gating: ARBITER_MODEL points at an eval-only weights file
-    # (never used in tournament zips, defaults identical to the ship path).
+    # (never part of the tournament entry).
     _cands = []
     _env_model = os.environ.get('ARBITER_MODEL', '').strip()
     if _env_model:
         # Agent callbacks run with cwd = the agent dir, so a relative
-        # candidate path must be anchored to the repo root or it would be
-        # silently skipped and the ship weights loaded instead.
+        # candidate path must be anchored to the repo root or it gets
+        # silently skipped and the default weights load instead.
         if not os.path.isabs(_env_model):
             _root = os.path.dirname(os.path.dirname(here))
             _env_model = os.path.join(_root, _env_model)
@@ -323,7 +319,7 @@ def setup(self):
     self.bomb_history = deque([], 5)
     self.current_round = 0
     self.flee_timer = 0
-    # E97 hybrid: warden_v2 move prior (default off == ship behavior).
+    # Hybrid: warden_v2 move prior (default off).
     self._warden = None
     if POLICY == 'warden':
         try:
@@ -357,7 +353,7 @@ def _must_flee(game_state, danger):
 def _warden_move(self, game_state, valid, safe, threat):
     """Best warden_v2 move (BOMB excluded) that is valid for this agent.
 
-    E97 hybrid: warden_v2's heuristic carries the crate/coin/kill
+    Hybrid split: warden_v2's heuristic carries the crate/coin/kill
     navigation; arbiter's search carries bomb placement. Returns None
     when the hook is off or warden has no admissible move.
     """
@@ -396,13 +392,12 @@ def _warden_hist_update(self, action, x, y, nxt):
 
 
 def act(self, game_state):
-    """Exception-armored entry (P1.1): any failure -> WAIT fallback.
+    """Exception-armored entry: any failure falls back to WAIT.
 
-    The success path is bit-identical to the validated flow (see
-    _act_impl); the armor only converts a tournament-killing crash
-    (the engine has no fallback agent — an unguarded act exception
-    kills the whole game, or benches us for the round under
-    --silence-errors) into a single WAIT.
+    The wrapper leaves _act_impl untouched. The engine has no fallback
+    agent, so an unguarded act exception kills the whole game (or
+    benches us for the round under --silence-errors); the wrapper
+    converts one into a single WAIT.
     """
     t0 = time.perf_counter()
     try:
@@ -470,11 +465,11 @@ def _act_impl(self, game_state, t0):
                 and not PI_OFF \
                 and (time.perf_counter() - t0) < TIME_BUDGET * 0.6:
             if TTA:
-                # E74: symmetry-averaged prior. Features are exactly
+                # Symmetry-averaged prior. Features are exactly
                 # equivariant, so pi[a] = mean_s fwd(T_s(gs))[T_s(a)];
                 # V is an invariant scalar, averaged directly. Any
                 # failure or budget pressure falls back to uniform pi
-                # (mask + tie-breaks decide, as in the S0 path).
+                # (mask + tie-breaks decide, as in the base path).
                 _pairs = []
                 for _s in range(8):
                     if (time.perf_counter() - t0) >= TIME_BUDGET * 0.9:
@@ -563,9 +558,9 @@ def _act_impl(self, game_state, t0):
     except Exception:
         pass
 
-    # --- tactical proven-kill override (inference only, exact) ---
-    # Runs in 'tactical' AND 'search+tactical' (E69) modes. A forced +5
-    # never loses a BOMB_MARGIN arbitration: mask-safe already implies a
+    # --- tactical proven-kill override (inference only) ---
+    # Runs in 'tactical' and 'search+tactical' modes. A forced +5 never
+    # loses a BOMB_MARGIN arbitration: mask-safe already implies a
     # certified escape, so deferring to the search can only veto it.
     try:
         if _TACTICAL_ON and valid.get('BOMB') and safe.get('BOMB') \
@@ -578,9 +573,9 @@ def _act_impl(self, game_state, t0):
                 return 'BOMB'
     except Exception:
         pass
-    # --- P1 bounded search: exact plans + learned leaves (E62) ---
+    # --- bounded search: exact plans + learned leaves ---
     # The net never votes on root actions; search selects, V evaluates.
-    # Returns None on budget exhaust or failure -> S0 ranking below.
+    # Returns None on budget exhaust or failure -> base ranking below.
     try:
         if _SEARCH_ON:
             from .search import search_action
@@ -600,7 +595,7 @@ def _act_impl(self, game_state, t0):
     except Exception:
         pass
 
-    # --- S0 policy: warden_v2 move prior (E97 hybrid, default off) ---
+    # --- base policy: warden_v2 move prior (default off) ---
     # Search/tactical above may already have committed a BOMB or plan;
     # this only replaces the pi-ranked move fallback.
     if POLICY == 'warden':
@@ -610,7 +605,7 @@ def _act_impl(self, game_state, t0):
             _warden_hist_update(self, _wa, x, y, nxt)
             return _commit(self, _wa, x, y, nxt, bombs_left)
 
-    # --- E100 RL: on-policy softmax sample (train mode only) ---
+    # --- RL: on-policy softmax sample (train mode only) ---
     # Search/tactical above still own bombs; this replaces the pi-ranked
     # move fallback with a sample from softmax(pi/T) over the admissible
     # set and records the log-prob for the policy gradient.
@@ -646,8 +641,8 @@ def _act_impl(self, game_state, t0):
                    key=lambda i: (pi[i] + tiebreak(ACTION_LIST[i]),
                                   -i),
                    reverse=True)
-    # Warden semantics (S2 arm1, +0.43 pooled): the mask binds moves only
-    # under threat; otherwise every valid move is rankable by pi.
+    # Warden semantics: the mask binds moves only under threat; otherwise
+    # every valid move is rankable by pi.
     if must_flee or flee_locked:
         if FLEE_Q:
             _fa = _flee_quality_choice(
@@ -669,7 +664,7 @@ def _act_impl(self, game_state, t0):
             continue
         if valid.get(a):
             return _commit(self, a, x, y, nxt, bombs_left)
-    # Least-bad fallback: nothing valid ranked — take any valid move.
+    # Least-bad fallback: nothing valid ranked, take any valid move.
     for i in order:
         a = ACTION_LIST[i]
         if valid.get(a):
@@ -692,7 +687,7 @@ def _commit(self, a, x, y, nxt, bombs_left):
 
 
 def _rl_trace_bomb(self, game_state, safety, valid):
-    """E102: record a search/tactical-committed BOMB step for REINFORCE.
+    """Record a search/tactical-committed BOMB step for REINFORCE.
 
     Allowed set = every mask-valid action at this state (BOMB included);
     chosen = BOMB. Returns flow via returns-to-go as for move steps.

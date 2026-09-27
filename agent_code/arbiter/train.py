@@ -1,12 +1,12 @@
-"""ARBITER training hooks (P0/P1: offline pretraining lives in
+"""ARBITER training hooks. Offline pretraining lives in
 scripts/pretrain_arbiter.py; this file only satisfies the framework
-interface for --train runs. P2 (league policy iteration) fills in the
-online loop: search-policy targets for pi, backed-up values for V,
-PER + warmup-guarded best_ema (E62 lesson, inherited by design).
+interface for --train runs. The online loop (league policy iteration)
+fills in later: search-policy targets for pi, backed-up values for V,
+PER + warmup-guarded best_ema.
 """
 import events as e
 
-try:  # E86 diag dump lives in callbacks; train.py is the dispatched hook
+try:  # diag dump lives in callbacks; train.py is the dispatched hook
     from .callbacks import diag_dump_round, _DIAG
 except Exception:  # pragma: no cover
     diag_dump_round = None

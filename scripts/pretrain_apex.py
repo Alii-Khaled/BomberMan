@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""B4: behavior-clone teachers into ApexNet (CE over Q logits).
+"""Behavior-clone teachers into ApexNet (CE over Q logits).
 
 Usage:
   python3 scripts/pretrain_apex.py --demos 'results/apex_demos/*/*.npz' \
@@ -9,8 +9,8 @@ Loss: CrossEntropy(softmax(Q(s)), a_demo) + 0.1 * aux-alive (aux target 0:
 keeps the danger head finite, no supervision signal).
 Init: trunk (o3sbest conv weights, head re-init; default) or fresh.
 Aug: per-batch random CCW rotation with label remap (default on).
-Saves raw state dict + meta json. Gate: val_acc >= 0.5 (E35 got 0.82 on
-the MLP; CNN-from-teachers is harder — floor, not target).
+Saves raw state dict + meta json. Gate: val_acc >= 0.5 (a floor; the MLP
+reached 0.82 and CNN-from-teachers is harder).
 """
 import argparse
 import glob

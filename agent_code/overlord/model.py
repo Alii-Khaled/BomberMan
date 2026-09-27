@@ -70,8 +70,8 @@ class OverlordNet(nn.Module):
         # Optional 3rd block at full depth (OVERLORD_DEEP=1). Adds ~0.6M
         # params at base=96; gated so default shape stays loadable.
         self.res3 = ResBlock(base * 2, norm, groups) if deep else None
-        # global + local pooling; amax is used instead of AdaptiveMaxPool2d
-        # (CUDA-native, verified fast on Colab GPUs).
+        # global + local pooling; amax over AdaptiveMaxPool2d (CUDA-native,
+        # fast on Colab GPUs).
         self.gap = nn.AdaptiveAvgPool2d(1)
         feat = base * 2 * 2 + 8  # gap+gmp + small scalar head input
         # scalar head: step, bombs_left, crates, coins, opps, escape, crates_hit, opps_hit
@@ -116,10 +116,10 @@ def build_model(in_ch=N_CHANNELS, base=None, n_actions=N_ACTIONS,
                 fc_dim=None, norm=None, deep=None):
     """Env-overridable constructor (all args optional, backward compatible).
 
-    OVERLORD_BASE (default 96, was 64) · OVERLORD_FC (default 512, was 256)
-    OVERLORD_NORM=bn|gn (default bn) · OVERLORD_DEEP=1 adds res3.
+    OVERLORD_BASE (default 96) | OVERLORD_FC (default 512)
+    OVERLORD_NORM=bn|gn (default bn) | OVERLORD_DEEP=1 adds res3.
     Old checkpoints with base=64 load with strict=False (shape-mismatched
-    layers re-init) — fresh-init runs are unaffected.
+    layers re-init).
     """
     if base is None:
         base = _env_int('OVERLORD_BASE', 96, 32, 256)

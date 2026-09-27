@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
-"""ARBITER P1 parity probe: sim.step vs the engine's OWN step functions.
+"""ARBITER parity probe: sim.step vs the engine's own step functions.
 
 Method (stronger than replay-matching): build fake micro-worlds, run
 environment.BombeRLeWorld's unbound step functions on them AND
 arbiter.sim.step on the equivalent SimState, compare everything.
-  G1 blast_coords == items.Bomb.get_blast_coords (2000 trials, EXACT).
+  G1 blast_coords == items.Bomb.get_blast_coords (2000 trials, exact).
   G2 full-step parity, no hidden coins (300 trials): arena, coins,
       scores, alive, bombs_left, bombs, explosions. Engine order forced
-      self-first so A1 (movement order) cannot trigger.
-  G2b A1 characterization: self-last seating + contested tile ->
-      divergence must be confined to the contested outcome.
-  G2c long-horizon fuzz parity (E90): single agent, 15 random steps per
+      self-first so movement order cannot trigger.
+  G2b movement-order characterization: self-last seating + contested
+      tile -> divergence must be confined to the contested outcome.
+  G2c long-horizon fuzz parity: single agent, 15 random steps per
       trial, full-state comparison each step (timers/restoration/staging).
-  G6 mask-vs-engine survival fuzz (E90): every valid+safe mask move is
+  G6 mask-vs-engine survival fuzz: every valid+safe mask move is
       executed through the ENGINE's own step; the agent must survive.
-      0 false-safes required (the E88 bug class).
-  G3 hidden coins (200 trials): everything exact EXCEPT reveals, where
-      sim books expectation (approximation A2) -> mean |exp-act| small.
+      0 false-safes allowed (the escape-arrival bug class).
+  G3 hidden coins (200 trials): everything exact except reveals, where
+      sim books expectation (an approximation) -> mean |exp-act| small.
   G4 from/to_game_state round-trip preserves observables (demo states).
-  G5 latency: sim.step mean ms (P1 budget: thousands of steps/search).
+  G5 latency: sim.step mean ms (budget: thousands of steps/search).
 Usage: python3 scripts/probe_arbiter_sim.py [--trials N]
 Exit nonzero on any failure.
 """
@@ -86,7 +86,7 @@ class FakeAgent:
 
 
 class FakeWorld:
-    # tile_is_free only touches .arena/.bombs/.active_agents — reuse the
+    # tile_is_free only touches .arena/.bombs/.active_agents -- reuse the
     # engine's own method unbound so movement blocking is engine-exact.
     tile_is_free = BombeRLeWorld.tile_is_free
 
@@ -273,7 +273,7 @@ for _ in range(N):
 check('G2 full-step parity (no hidden)', bad == 0,
       '%d/%d mismatch' % (bad, trials))
 
-# ---- G2b: A1 characterization (self-last + contested tile) ----
+# ---- G2b: movement-order characterization (self-last + contested tile) ----
 confined = True
 seen_contest = 0
 for _ in range(120):
@@ -311,9 +311,9 @@ for _ in range(120):
     mv0 = _dd.get((tgt[0] - a0.x, tgt[1] - a0.y), 'WAIT')
     mv1 = _dd.get((tgt[0] - a1.x, tgt[1] - a1.y), 'WAIT')
     engine_step(fw, fagents, [mv1, mv0])
-    SIM.step(st, [mv0, mv1])  # sim: self-first by design (A1)
+    SIM.step(st, [mv0, mv1])  # sim: self-first by design (movement order)
     w, q = snapshot_world(fw, fagents), snapshot_sim(st)
-    # positions may differ ONLY by who won the contested tile
+    # positions may differ only by who won the contested tile
     rest_ok = (np.array_equal(w['arena'], q['arena'])
                and w['coins'] == q['coins'] and w['scores'] == q['scores']
                and w['alive'] == q['alive'] and w['bl'] == q['bl']
@@ -332,7 +332,7 @@ check('G2b A1 confined to contested tile', confined and seen_contest > 20,
 
 # ---- G2c: long-horizon fuzz parity (single agent, 15 steps) ----
 # Multi-step coverage for timer restoration, explosion staging, coin
-# reveals and scoring. Single agent so A1 (movement order) cannot
+# reveals and scoring. Single agent so movement order cannot
 # trigger; hidden=False keeps the comparison exact.
 bad = 0
 steps_run = 0
@@ -366,8 +366,8 @@ check('G2c long-horizon fuzz parity', bad == 0,
       '%d mismatches / %d steps' % (bad, steps_run))
 
 # ---- G6: mask-safe move must survive the engine's own next step ----
-# The E88 bug class: escape_bfs certified moves into live blasts. For a
-# single-agent state, take every move the mask marks valid+safe and run
+# This guards the escape-arrival bug class (moves into live blasts). For
+# a single-agent state, take every move the mask marks valid+safe and run
 # the ENGINE's step with exactly that action; the agent must survive.
 import arbiter.safety as SAF
 

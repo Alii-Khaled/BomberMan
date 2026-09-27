@@ -5,8 +5,8 @@
 --proxy : fixed-seed optimization trajectories on a TD-scale regression
           task (targets x10 to mimic TD-error magnitudes); compares final
           loss + loss AUC across candidates. Same init + data order.
-Live 50-round game validation runs at Stage-4 adoption (not here: live
-runs would clobber the running Stage-3 checkpoints/metrics).
+Live 50-round game validation runs happen at adoption time, not here:
+running them would clobber the live checkpoints/metrics.
 Usage: python3 scripts/bench_optim.py [--micro] [--proxy]
 """
 import statistics
@@ -106,9 +106,9 @@ def _kw(name):
 def proxy(steps=400, batch=256, seed=7, schedule=True):
     """Ill-conditioned noisy regression (condition ~1e4, TD-scale noise).
 
-    Same init + same data order per candidate. Separates adaptivity:
-    plain SGD-style dynamics stall in the valley; good adaptive methods
-    don't. Final loss + mean loss decide.
+    Same init + same data order per candidate, so the comparison isolates
+    adaptivity: plain SGD-style dynamics stall in the valley and adaptive
+    methods escape it. Final loss + mean loss decide.
     """
     sys.path.insert(0, '.')
     import numpy as np

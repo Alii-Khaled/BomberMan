@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tournament-mode win-rate harness (E88/P1.3).
+"""Tournament-mode win-rate harness.
 
 The repo's gates score pooled points/round; the project tournament ranks
 agents by TOTAL score, so we also need per-round winners and ranks. This
@@ -55,7 +55,7 @@ def main():
     p.add_argument('--silence', action='store_true', default=True)
     a = p.parse_args()
 
-    # P0-battery: quiet logging. The wrapper logger emits 2 DEBUG lines per
+    # Quiet logging. The wrapper logger emits 2 DEBUG lines per
     # callback call (per step, per agent); with several games running
     # concurrently on the NFS home this saturates I/O. Levels are module
     # constants read at AgentRunner construction, so patching before the

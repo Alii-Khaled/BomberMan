@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gap-diagnosis aggregator (E122 Phase 0).
+"""Gap-diagnosis aggregator.
 
 Reads one or more <prefix>_gap.jsonl traces written by the ship's
 ARBITER_GAP_DIAG recorder and prints per-issue statistics:

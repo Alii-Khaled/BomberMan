@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""ARBITER P0 extraction: materialize the joint pi/V training cache.
+"""ARBITER extraction: materialize the joint pi/V training cache.
 
-Inputs (S3 corpora, both validated 0-bad):
+Inputs (both corpora checked clean):
   apex-format  results/apex_demos/<teacher>/*.npz  (img u8 Tx12x17x17 x4,
       sc Tx16, act T) -> 98-dim feats via reconstruction + state_to_features
-      (validated lossless, S3 probe) + margin-to-go labels from sc[:,12]
+      (reconstruction is lossless) + margin-to-go labels from sc[:,12]
       (score_margin, clipped [-1,1]): vlabel_t = 10*(margin_T - margin_t).
   reaper-format results/demos/<teacher>[_<field>]/*.npz (feats Tx98,
       acts T,) -> pi rows only (no outcome channel: vlabel NaN).
@@ -21,12 +21,11 @@ Teacher ids: 0 warden / 1 sentinel / 2 overlord / 3 collector.
 Usage: python3 scripts/arbiter_extract.py [--out PATH] [--skip-reaper]
        [--reaper-include=prefix1,prefix2]
 
---skip-reaper (E88): omit all results/demos/* reaper-format rows.
---reaper-include (E88): keep only reaper-format dirs whose basename
-starts with one of the comma-separated prefixes, e.g.
---reaper-include=arbiter_self_e88 keeps the corrected-feature self
-corpus and drops the old buggy-feature warden/sentinel/overlord/
-arbiter_self rows.
+--skip-reaper: omit all results/demos/* reaper-format rows.
+--reaper-include: keep only reaper-format dirs whose basename starts
+with one of the comma-separated prefixes, e.g.
+--reaper-include=arbiter_self_e88 selects that self corpus and drops
+the warden/sentinel/overlord/arbiter_self rows.
 """
 import glob
 import hashlib
@@ -38,7 +37,7 @@ sys.path.insert(0, os.path.join(REPO, 'agent_code'))
 
 import numpy as np
 
-# --pkg=arbiter_v2 selects the feature module (E99 feature-v2 candidate);
+# --pkg=arbiter_v2 selects the feature module (the feature-v2 candidate);
 # reaper-format rows must carry that package's FEATURE_DIM.
 import importlib
 _PKG = 'arbiter'
@@ -60,10 +59,10 @@ for a in sys.argv[1:]:
 
 TEACHER_ID = {'warden': 0, 'warden_v1': 0, 'warden_v2': 0, 'sentinel': 1, 'overlord': 2,
               'coin_collector_agent': 3, 'collector': 3,
-              'arbiter_self': 4, 'arbiter': 4,  # P2-C self-distillation
-              'arbiter_v2_self': 4,  # E99 feature-v2 self corpus
-              'da_warden': 5}  # E98 ship-state warden_v2 label transfer
-# --warden-labels (E98): for dirs recorded with ARBITER_DAGGER_WARDEN=1,
+              'arbiter_self': 4, 'arbiter': 4,  # self-distillation
+              'arbiter_v2_self': 4,  # feature-v2 self corpus
+              'da_warden': 5}  # ship-state warden_v2 label transfer
+# --warden-labels: for dirs recorded with ARBITER_DAGGER_WARDEN=1,
 # train pi on warden_v2's action at the ship's own visited states.
 WARDEN_LABELS = '--warden-labels' in sys.argv
 

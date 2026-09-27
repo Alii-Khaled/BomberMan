@@ -1,15 +1,14 @@
 """Reaper training: N-step Double Dueling DQN + PER + Huber on a small MLP.
 
 Design (cheap-to-train, strong):
-  * engineered 68-dim features (BFS pathfinding + placement value +
-    own-bomb + opponent model) — navigation comes from features, not
-    from learning pixels
+  * engineered 98-dim features (BFS pathfinding + placement value +
+    own-bomb + opponent model): the features carry the navigation
   * optional BC pretrain (scripts/pretrain_reaper.py) from teacher demos
     (warden/sentinel/overlord), then RL fine-tune with a demo-replay mix
     (REAPER_DEMOS + REAPER_DEMO_RATIO) to resist catastrophic forgetting
   * 8-fold dihedral symmetry augmentation of every transition at sample
     time (features permute exactly; see features.apply_aug/map_action)
-  * proven anti-divergence preset: N_STEP=5 (suicide inside the return
+  * anti-divergence preset: N_STEP=5 (suicide inside the return
     window), Huber delta=1, grad clip 1, tuned Adam (eps/decay 1e-4)
 
 Device: CUDA when available (auto), else CPU. Env: REAPER_DEVICE / _AMP /
@@ -95,8 +94,8 @@ SCHED_WARMUP, SCHED_TOTAL, SCHED_MIN = 5000, 200000, 0.1
 DEMOS_GLOB = os.environ.get('REAPER_DEMOS', '').split(':') if os.environ.get('REAPER_DEMOS', '') else []
 DEMO_RATIO = _env_float('REAPER_DEMO_RATIO', 0.0)
 BC_W = _env_float('REAPER_BC_W', 0.5)
-# E37/P3: longer horizon so kill chains (10-25 steps of pursuit) stay inside
-# the return window (gamma^5=0.86 was strangling pursuit credit).
+# Longer horizon so kill chains (10-25 steps of pursuit) stay inside
+# the return window (gamma^5=0.86 gives pursuit almost no credit).
 GAMMA = _env_float('REAPER_GAMMA', 0.99)
 N_STEP = _env_int('REAPER_N_STEP', 8, 1, 20)
 # Potential-shaping weights (Ng et al. 1999; policy-invariant: the per-round
@@ -109,14 +108,14 @@ W_PHI_MOB = _env_float('REAPER_W_PHI_MOB', 0.5)
 
 
 class PERBuffer:
-    """Prioritized replay on preallocated numpy arrays (E37/P1).
+    """Prioritized replay on preallocated numpy arrays.
 
-    The old version rebuilt a 200k-element probability vector from a Python
-    list and sampled with replace=False on EVERY update — O(N) with a huge
-    constant, dominating step time at capacity. This version keeps a fixed
-    ring + float64 priority array: add is O(1), sample is one vectorized
-    sum + cumsum-searchsorted (~0.3 ms at 200k). replace=True duplicates
-    are rare at batch << buffer and harmless for SGD.
+    Rebuilding a 200k-element probability vector from a Python list and
+    sampling with replace=False on every update is O(N) with a large
+    constant and dominates step time at capacity. A fixed ring + float64
+    priority array makes add O(1) and sample one vectorized sum +
+    cumsum-searchsorted (~0.3 ms at 200k). replace=True duplicates are
+    rare at batch << buffer and harmless for SGD.
     """
 
     def __init__(self, cap=BUFFER_SIZE, alpha=0.6):
@@ -166,11 +165,11 @@ def epsilon_now(epsilon_steps):
 
 def _pick_device(logger=None):
     try:
-        # NB: pass 'REAPER_DML' (not 'REAPER_DEVICE'): _want_cuda derives
-        # the canonical key as {prefix}_DEVICE, so this is what makes
-        # REAPER_DEVICE=cpu actually work (passing 'REAPER_DEVICE' would
-        # make it look for 'REAPER_DEVICE_DEVICE' and silently stay on
-        # CUDA — same convention as overlord's 'OVERLORD_DML' call).
+        # NB: pass 'REAPER_DML', not 'REAPER_DEVICE': _want_cuda derives
+        # the canonical key as {prefix}_DEVICE, so 'REAPER_DML' is what
+        # makes REAPER_DEVICE=cpu work (passing 'REAPER_DEVICE' would look
+        # for 'REAPER_DEVICE_DEVICE' and stay on CUDA; same convention as
+        # overlord's 'OVERLORD_DML' call).
         return get_cuda_device('REAPER_DML', logger, default_on=True)
     except Exception:
         try:
@@ -183,7 +182,7 @@ def _pick_device(logger=None):
 def _load_demos(logger=None):
     """Load demo (feats, action) pairs from npz files matching DEMOS_GLOB.
 
-    Paths resolve against CWD, ~, AND the repo root: the engine chdir's
+    Paths resolve against CWD, ~, and the repo root: the engine chdir's
     into agent_code/<name>/ around every callback, so a repo-relative
     pattern like results/demos/... would otherwise silently match nothing
     (and the demo mix would be a no-op without any error).
@@ -227,8 +226,7 @@ def _engine_score_delta(events):
     The tournament ranks by total score = coins x1 + kills x5 (settings.py
     REWARD_COIN/REWARD_KILL, scored in environment.py:186,256). Everything
     else in the reward function is shaping. Logging both separately (see
-    end_of_round metrics) keeps shaping from silently dominating the true
-    objective — the Phase-3 acceptance gate.
+    end_of_round metrics) keeps shaping from taking over the true objective.
     """
     d = 0.0
     for ev in events:
@@ -240,7 +238,7 @@ def _engine_score_delta(events):
 
 
 def _potential(feats):
-    """Shaping potential Phi(s) off the feature vector (E37/P3).
+    """Shaping potential Phi(s) off the feature vector.
 
     Phi = W_PHI_KILL * f[93] + W_PHI_COIN * f[94] + W_PHI_MOB * f[85].
     Bounded in [0, ~3.5]; the per-round total telescopes to Phi_T - Phi_0
@@ -266,17 +264,15 @@ def _phi_shaping(feats, nfeats):
 
 
 def reward_from_events(self, events, old_state=None, action=None, new_state=None):
-    """Base reward = the tournament objective, exactly (E37/P3).
+    """Base reward = the tournament objective.
 
     +1 coin / +5 kill match the engine score one-to-one; death penalties
     price the forfeited future score (suicide worse: it also hands the
     round to the opponents). INVALID teaches legality (the engine scores
     it 0, so the net must learn it from here). WAITED is a mild trickle
     against idle-survival policies (which would otherwise farm SURVIVED).
-    Everything else the old shaping did (crate spam, coin greed, flat trap
-    bonuses into a saturated coin pie) is gone — replaced by the
-    potential-based shaping in game_events_occurred, which preserves the
-    optimal policy by construction.
+    Potential-based shaping in game_events_occurred covers the rest and
+    preserves the optimal policy by construction.
     """
     r = 0.0
     for ev in events:
@@ -298,12 +294,11 @@ def reward_from_events(self, events, old_state=None, action=None, new_state=None
 
 
 def _custom(old_state, action, new_state):
-    # E37/P3: no synthetic events. The old MOVE_TOWARD/AWAY_COIN,
-    # BOMB_NO_ESCAPE/BOMB_GOOD/TRAP_LAID events were flat (non-potential)
-    # shaping that distorted the objective AND cost an extra action_safety
-    # + up to 3 opp_can_escape calls on every BOMB step. Their guidance now
-    # comes from the potential shaping (Phi_kill/Phi_coin/Phi_mob), which
-    # is policy-invariant and free (it reuses the encoded features).
+    # No synthetic events: flat (non-potential) bonuses distort the objective
+    # and cost an extra action_safety + up to 3 opp_can_escape calls per BOMB
+    # step. Guidance comes from the potential shaping (Phi_kill/Phi_coin/
+    # Phi_mob), which is policy-invariant and free (it reuses the encoded
+    # features).
     return []
 
 
@@ -320,22 +315,22 @@ def _encode(state, own_bomb):
 def setup_training(self):
     self.logger.info('reaper setup_training')
     import torch
-    # REAPER_RUN_DIR isolates parallel sweeps (E37/P4): checkpoints, metrics
-    # and model exports land under the run dir instead of the agent dir, so
-    # K concurrent `main.py play --train 1` processes never clobber each
-    # other. Only the promoted candidate is copied into agent_code/reaper/.
-    # NOTE: SequentialAgentBackend chdirs into agent_code/<name>/ around
-    # every callback, so a RELATIVE run dir must be resolved against the
-    # repo root here (absolute __file__), never against the process cwd.
+    # REAPER_RUN_DIR isolates parallel sweeps: checkpoints, metrics and model
+    # exports land under the run dir instead of the agent dir, so K concurrent
+    # main.py play --train 1 processes never clobber each other. Only the
+    # promoted candidate is copied into agent_code/reaper/. SequentialAgentBackend
+    # chdirs into agent_code/<name>/ around every callback, so a relative run
+    # dir must be resolved against the repo root here (absolute __file__),
+    # never against the process cwd.
     _rd = os.environ.get('REAPER_RUN_DIR', '').strip()
     if _rd and not os.path.isabs(_rd):
         _repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         _rd = os.path.normpath(os.path.join(_repo, _rd))
     here = _rd or os.path.dirname(os.path.abspath(__file__))
     self._reaper_here = here
-    # Optional seeding for sweep arms (E37 sw02): seeds numpy/python RNG
-    # so parallel jobs differ reproducibly. Torch init noise remains
-    # unseeded (cuDNN nondeterminism would make exact repro misleading).
+    # Optional seeding for sweep arms: seeds numpy/python RNG so parallel
+    # jobs differ reproducibly. Torch init noise stays unseeded (cuDNN
+    # nondeterminism would make exact repro misleading).
     _seed = os.environ.get('REAPER_SEED', '').strip()
     if _seed:
         try:
@@ -538,7 +533,7 @@ def _export_tournament_model(here, q_net):
     tmp = here_pt + '.tmp'
     torch.save(sd, tmp)
     os.replace(tmp, here_pt)
-    # Sweep runs (REAPER_RUN_DIR set) must NOT touch the repo-root copy:
+    # Sweep runs (REAPER_RUN_DIR set) must not touch the repo-root copy:
     # K parallel jobs would race on it. Only the main agent dir exports
     # the cwd mirror (legacy behavior).
     if os.environ.get('REAPER_RUN_DIR', '').strip():
@@ -582,10 +577,10 @@ def _drain_n_step(self):
 
 
 def _push_final(self, terminal_bonus):
-    """Round-end finalize without double-pushing (E37/P1).
+    """Round-end finalize without double-pushing.
 
-    When the agent SURVIVES the round, game_events_occurred already pushed
-    (last_state, last_action) into the n-step buffer — so we must NOT push
+    When the agent survives the round, game_events_occurred already pushed
+    (last_state, last_action) into the n-step buffer, so we must not push
     it again. Instead attach the terminal reward (e.g. SURVIVED_ROUND) to
     the buffered tail and drain once as done=True.
     """
@@ -727,7 +722,7 @@ def game_events_occurred(self, old_game_state, self_action, new_game_state, even
     except Exception:
         pass
     own_before = self._own_bomb
-    # Feature cache: this step's new_state IS next step's old_state (the
+    # Feature cache: this step's new_state is next step's old_state (the
     # engine passes the same object through store_game_state). Key on
     # identity (strong ref, so no id-reuse) + own-bomb value, since the
     # tracker updates between the two encodings on BOMB/replenish steps.
@@ -746,7 +741,7 @@ def game_events_occurred(self, old_game_state, self_action, new_game_state, even
         self._feat_cache = (new_game_state, own_before, nfeats)
     except Exception:
         pass
-    # Potential-based shaping (E37/P3): gamma*Phi(s') - Phi(s), reusing the
+    # Potential-based shaping: gamma*Phi(s') - Phi(s), reusing the
     # already-encoded features (free). Policy-invariant by construction.
     try:
         _sh = _phi_shaping(feats, nfeats)
@@ -756,7 +751,7 @@ def game_events_occurred(self, old_game_state, self_action, new_game_state, even
     self._round_rew_shaping = float(getattr(self, '_round_rew_shaping', 0.0)) + float(_sh)
     if feats is not None and self_action in ACTION_TO_IDX:
         _push(self, feats, self_action, nfeats, r, new_game_state is None)
-    # update own-bomb tracker AFTER encoding (features describe pre-action state)
+    # update own-bomb tracker after encoding (features describe pre-action state)
     try:
         if self_action == 'BOMB' and old_game_state is not None:
             _, _, _, (x, y) = old_game_state['self']
@@ -769,7 +764,7 @@ def game_events_occurred(self, old_game_state, self_action, new_game_state, even
                     self._own_bomb = None
     except Exception:
         pass
-    # E31/C2 rule: epsilon counts env steps, not gradient steps
+    # epsilon counts env steps, not gradient steps
     self.epsilon_steps += 1
     self.epsilon = epsilon_now(self.epsilon_steps)
     for _ in range(getattr(self, 'utd', 1)):
@@ -803,12 +798,12 @@ def end_of_round(self, last_game_state, last_action, events):
         # Survived: (last_state, last_action) already entered the n-step
         # buffer via game_events_occurred (do_step always sends events for
         # the final step before end_round). Attach the terminal reward to
-        # the buffered tail and drain once — pushing again here would
+        # the buffered tail and drain once; pushing again here would
         # duplicate (s, a) with a conflicting return.
         _push_final(self, r)
     elif last_action in ACTION_TO_IDX and last_game_state is not None:
         # Died: the fatal step never reached game_events_occurred (the
-        # engine skips dead agents), so push it now as THE terminal
+        # engine skips dead agents), so push it now as the terminal
         # transition.
         feats = _encode(last_game_state, self._own_bomb)
         _push(self, feats, last_action, None, r, True)

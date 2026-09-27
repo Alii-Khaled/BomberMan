@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Report figures for ARBITER (§6). CPU-only, no games.
+"""Report figures for ARBITER (report section 6). CPU-only, no games.
 
 Inputs: results/arbiter_summary.csv (scripts/aggregate_arbiter.py).
 Outputs: results/figures/arbiter_*.png + captions.md entries.
   1. ablation: S0 / search+V0 / search+V / pi0 (+ ship + warden lines).
-  2. gates: G1/G2/G3/G4 + E69 (tactical) + E70 (K-widen) pooled bars
-     with per-seed points (noise shown, not hidden).
+  2. gates: G1/G2/G3/G4 + tactical + K-widen pooled bars
+     with per-seed points (noise shown).
   3. placement: crates/bomb bars (S0, search, warden, rb, collector).
-  4. value-delta: apex Q-deltas + arbiter V-deltas (40×2 and 100×2)
-     with the ±0.3 draw-noise band (only apex-A4 clears it).
+  4. value-delta: apex Q-deltas + arbiter V-deltas (40x2 and 100x2)
+     with the +-0.3 draw-noise band (only the apex run clears it).
 Reference points (non-arbiter) are hardcoded from docs/experiments.md
 and labeled as such; arbiter points come from the CSV pooled rows.
 Usage: python3 scripts/plot_arbiter.py

@@ -1,9 +1,8 @@
-# Unseen sparring agents — EVAL ONLY, never shipped in a tournament zip.
-# unseen_racer: pure coin-runner — BFS to the nearest revealed coin every
+# Unseen sparring agents. Eval only, never shipped in a tournament zip.
+# unseen_racer: pure coin-runner. BFS to the nearest revealed coin every
 # step, never bombs, ignores opponents except avoiding lethal cells.
-# Behavior axis: score-obsessed racer (unlike coin_collector_agent, which
-# bombs for coins and fights; unlike peaceful_agent, which is uniform
-# random).
+# Score-obsessed racer (unlike coin_collector_agent, which bombs for
+# coins and fights; unlike peaceful_agent, which is uniform random).
 """Coin-racer sparring agent (eval-only outsider)."""
 from collections import deque
 

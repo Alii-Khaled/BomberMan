@@ -29,8 +29,8 @@ def _env_float(name, default):
         return default
 
 
-# Track-1 frozen grid knobs (E31): env overrides, defaults = shipped values.
-# With env unset the policy is behavior-identical to the 3.79 ship.
+# Frozen grid knobs: env overrides whose defaults are the shipped values.
+# With every variable unset the policy matches the shipped configuration.
 G_WAIT = _env_float('OVERLORD_G_WAIT', 0.30)
 G_HUNT_BASE = _env_float('OVERLORD_G_HUNT_BASE', 0.5)
 G_BOMB_OPP = _env_float('OVERLORD_G_BOMB_OPP', 1.1)
@@ -42,18 +42,17 @@ G_FLEE_BOOST = _env_float('OVERLORD_G_FLEE_BOOST', 2.0)
 G_BOMB_REPEAT = _env_float('OVERLORD_G_BOMB_REPEAT', 0.9)
 G_COIN = _env_float('OVERLORD_G_COIN', 0.45)
 G_LATE = _env_float('OVERLORD_G_LATE', 0.4)
-# E45 additive openness bonus (user hypothesis: open 4-neighbourhood
-# maximizes blast tiles + shortens escapes). Default 0.0 = ship behavior
-# (running training never sets it, so live runs are unaffected).
+# Additive openness bonus: an open 4-neighbourhood maximizes blast tiles and
+# shortens escapes. Default 0.0 keeps the shipped behavior (training never
+# sets it, so live runs are unaffected).
 G_OPENNESS = _env_float('OVERLORD_G_OPENNESS', 0.0)
-# E39 late-hunt veto (E16 leg never live-tested): 1 = refuse BOMB with no
-# crates but opponents in blast after step 250 (P(kill) ~0.007 there).
-# Default 0 = ship behavior.
+# Late-hunt veto: 1 = refuse BOMB with no crates but opponents in blast after
+# step 250 (P(kill) ~0.007 there). Default 0 keeps the shipped behavior.
 G_LATEHUNT_VETO = _env_float('OVERLORD_G_LATEHUNT_VETO', 0)
 
 
 def _latehunt_vetoed(game_state, safety):
-    """True when the E39 veto forbids BOMB this step."""
+    """True when the late-hunt veto forbids BOMB this step."""
     if not G_LATEHUNT_VETO:
         return False
     try:
@@ -176,9 +175,9 @@ def _heuristic(game_state, safety):
                 b += G_BOMB_CRATE + 0.12 * min(crate_near, 3)
             else:
                 b -= 1.0
-        # E45 additive openness: bomb score += G_OPENNESS per open neighbour
-        # (blast coverage + short escapes). Pure addition — dead-end bonus
-        # above untouched; default 0.0 reproduces ship exactly.
+        # Additive openness: bomb score += G_OPENNESS per open neighbour
+        # (blast coverage + short escapes). Pure addition: the dead-end bonus
+        # above is untouched; default 0.0 keeps the shipped behavior.
         try:
             _open_nb = sum(1 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
                            if 0 <= x + dx < W and 0 <= y + dy < H and arena[x + dx, y + dy] == 0)
@@ -188,7 +187,7 @@ def _heuristic(game_state, safety):
         scores['BOMB'] += b
     else:
         scores['BOMB'] -= 0.7
-    scores['WAIT'] -= G_WAIT  # E20-port: -0.12 let WAIT win over flat moves
+    scores['WAIT'] -= G_WAIT  # 0.30: at -0.12, WAIT beat flat moves
     return scores
 
 
@@ -211,7 +210,7 @@ def setup(self):
                 import torch as _t
                 obj = _t.load(cand, map_location='cpu', weights_only=False)
                 sd = obj.get('state_dict', obj) if isinstance(obj, dict) else obj
-                # support both raw and traced? traced can't load state_dict; try raw first
+                # support both raw and traced models; traced can't load state_dict, so try raw first
                 try:
                     self.model.load_state_dict(sd, strict=False)
                     loaded = True
@@ -227,7 +226,7 @@ def setup(self):
     except Exception:
         pass
     # optional JIT fast path (eval-only: during training use the live model,
-    # which syncs from q_net — a setup-time trace would act stale forever)
+    # which syncs from q_net; a setup-time trace would act stale forever)
     self.fast = None
     try:
         import torch as _t
@@ -315,7 +314,7 @@ def act(self, game_state):
         pass
     heu_arr = np.array([heu[a] for a in ACTION_LIST], dtype=np.float64)
     total = heu_arr + Q_WEIGHT * q
-    # Epsilon-greedy exploration during training only (sentinel-proven):
+    # Epsilon-greedy exploration during training only:
     # random choice respects the safety mask: safe+valid > valid > WAIT.
     try:
         if getattr(self, 'train', False):
@@ -333,8 +332,8 @@ def act(self, game_state):
     except Exception:
         pass
     order = sorted(range(len(ACTION_LIST)), key=lambda i: total[i], reverse=True)
-    # killer exception: allow stepping toward kill even if marginally unsafe? No:
-    # keep strict safety, but prefer BOMB when opps_hit and escape exists (already safe-flagged)
+    # no killer exception for marginally unsafe steps: keep strict safety and
+    # prefer BOMB when opps_hit and escape exists (already safe-flagged)
     _veto = _latehunt_vetoed(game_state, safety)
     for i in order:
         a = ACTION_LIST[i]

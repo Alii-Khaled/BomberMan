@@ -2,7 +2,7 @@
 
 ~400K params, CPU-forward <1 ms. Zero-init value/advantage heads so Q
 starts near zero (behavior cloned / heuristically seeded policy dominates
-early, learned Q grows from scratch — same stabilization as overlord).
+early, learned Q grows from scratch; same stabilization as overlord).
 """
 import os
 import torch

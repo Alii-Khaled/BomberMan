@@ -1,4 +1,4 @@
-"""B2 unit test: apex _update on CPU with synthetic transitions.
+"""Unit test for apex _update on CPU with synthetic transitions.
 
 Exercises TD + aux + augmentation + DQfD demo paths (all on/off combos).
 Fails loudly. Run: APEX_AUG=1 python3 scripts/probe_apex_train.py

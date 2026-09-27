@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""E87/E88 probe: ARBITER_BOMB_ESC_MARGIN gate on BOMB certification.
+"""ARBITER_BOMB_ESC_MARGIN gate on BOMB certification.
 
-Validates (1) default margin=1 is bit-identical to the legacy any()
-semantics, (2) margin=2 vetoes single-escape plants, (3) the veto
-propagates to act() (no BOMB chosen when n_esc < margin), (4) real
-game smoke: no act failures with the knob on, (5) E88: the escape-dir
-knob is fully decoupled from search.ARBITER_BOMB_SCORE_MARGIN.
+Checks: (1) default margin=1 matches the legacy any() semantics,
+(2) margin=2 vetoes single-escape plants, (3) the veto propagates to
+act() (no BOMB chosen when n_esc < margin), (4) live game smoke: no act
+failures with the knob on, (5) the escape-dir knob is fully decoupled
+from search.ARBITER_BOMB_SCORE_MARGIN.
 """
 import os
 import sys
@@ -137,7 +137,7 @@ def probe_default_bitidentical():
 
 @group
 def probe_knob_decoupled():
-    """E88: ESC margin and search score margin are independent knobs."""
+    """ESC margin and search score margin are independent knobs."""
     import importlib
     os.environ.pop('ARBITER_BOMB_ESC_MARGIN', None)
     os.environ.pop('ARBITER_BOMB_MARGIN', None)
@@ -169,8 +169,8 @@ def probe_knob_decoupled():
 
 @group
 def probe_plant_gate():
-    """E88: ARBITER_PLANT_ESC governs _try_bomb_plan (the gate that
-    actually admits search bombs; the mask's ESC_MARGIN does not)."""
+    """ARBITER_PLANT_ESC governs _try_bomb_plan (the gate that
+    admits search bombs; the mask's ESC_MARGIN does not)."""
     import agent_code.arbiter.search as sch
     import agent_code.arbiter.safety as saf
 
@@ -211,7 +211,7 @@ def probe_plant_gate():
     assert ok1b is False, 'plant2 must veto 1-dir plant'
     assert ok2 is True, 'plant2 must admit 2-dir plant'
     assert ok0 is False, 'no-escape plant must be vetoed'
-    # default bit-identical constant
+    # default constant
     for mod in list(sys.modules):
         if mod in ('agent_code.arbiter.search',):
             del sys.modules[mod]
@@ -222,7 +222,7 @@ def probe_plant_gate():
 @group
 def probe_act_veto():
     """With margin=2, a single-escape plant position must not yield BOMB
-    where margin=1 would allow it; bit-identical otherwise."""
+    where margin=1 would allow it; identical otherwise."""
     import collections
     from agent_code.arbiter.safety import action_safety
     # find a tile where n_esc == 1 via scan (with one crate wall)

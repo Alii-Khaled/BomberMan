@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""ARBITER move-seed probe (E78: probe before games, E21 rule).
+"""ARBITER move-seed probe.
 
 Verifies the MOVE_SEEDS policy in search_action on a constructed
 mid-game state (model=None -> V skipped via the existing guard):
-  1. default is 1 (validated P1 flow untouched).
+  1. default is 1 (MOVE_SEEDS off is the shipped flow).
   2. determinism: same setting twice -> identical action/scores.
-  3. bomb invariance: best_bomb is EXACTLY equal under MOVE_SEEDS=1
+  3. bomb invariance: best_bomb is exactly equal under MOVE_SEEDS=1
      vs 3 (bomb plans stay single-seed with the identical j=0 seed
-     formula — E71b veto calibration preserved).
+     formula; veto calibration preserved).
   4. averaging is live: multi-seed move evaluation runs (plans scored,
      no crash) and tiny-budget exhaustion degrades gracefully.
 

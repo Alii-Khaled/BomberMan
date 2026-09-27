@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ARBITER hunt-intent probe (E82: probe before games, E21 rule).
+"""ARBITER hunt-intent probe.
 
 Unit tests:
   U0  default-off (ARBITER_HUNT unset -> HUNT False).
@@ -9,7 +9,7 @@ Unit tests:
 End-to-end on gen_plans:
   E1  open field, opp adjacent: append-only + exactly one hunt plan,
       its bomb tile's blast covers the opp, prefix ends with BOMB.
-  E2  no trigger (loot > 6, opp far): on == off (bit-identical).
+  E2  no trigger (loot > 6, opp far): on == off (identical).
   E3  bombs_left False: no hunt plans.
   E4  HUNT_PLANS cap with 2 opponents: 1 plan per opp, capped.
   E5  determinism (two identical calls).
@@ -172,7 +172,7 @@ def main():
         f6[cx, cy] = -1
     # E6a: radius=0 (own tile only) + K=1 -> the ranked walk can only
     # ever admit the own tile; (5,4) in the plans proves HUNT
-    # admission through the same gate (exact, like chain-probe E3).
+    # admission through the same gate (exact, like the chain probe).
     gs6 = make_state(f6, self_xy=(5, 5), others=[(5, 1)])
     SR.HUNT = False
     off6 = plans_of(gs6, k=1, radius=0)

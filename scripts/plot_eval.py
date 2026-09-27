@@ -59,7 +59,7 @@ STAGE_NAMES = ['Stage 1: coin-heaven solo', 'Stage 2: classic solo',
                'Stage 3: hunting (peaceful+collector)',
                'Stage 4: vs rule_based', 'Stage 5', 'Stage 6']
 # Known curriculum boundaries (episode numbers). Resumes/smoke runs inside a
-# stage reset the buffer too, so pure buffer-drop detection oversplits —
+# stage reset the buffer too, so pure buffer-drop detection oversplits --
 # these anchors pin the true stages; auto-detection only adds splits beyond
 # the last anchor.
 STAGE_BOUNDARIES = [1, 501, 2001, 3041]

@@ -1,9 +1,8 @@
-"""Apex extra scalars: opponent-model + trap + economy, rotation-INVARIANT.
+"""Apex extra scalars: opponent-model + trap + economy, rotation-invariant.
 
-Deliberately aggregate-only (max/any/min over directions) so train-time
-augmentation never needs scalar permutation — the per-direction masks that
-caused reaper's probe forensics #1/#2 are excluded by design. All outputs
-are invariant under board rotation by construction.
+Aggregate-only (max/any/min over directions) so train-time augmentation
+never needs scalar permutation; the per-direction masks stay excluded by
+design. All outputs are invariant under board rotation by construction.
 
 8 dims (float32):
  0 trap_any: 1.0 if any adjacent free spot traps an opponent

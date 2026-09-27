@@ -53,9 +53,9 @@ except ImportError:  # direct cwd execution fallback (SequentialAgentBackend chd
 
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward', 'done'))
 
-# hyperparams (reliable preset — HPO grid for report: LR {3e-4, 1e-3}, N_STEP {1,3,5})
-# Stage 5 (Arm A): N_STEP 5 so the -10 suicide penalty (4 steps after BOMB)
-# falls inside the n-step return window (was 3 < BOMB_TIMER 4: no direct credit).
+# hyperparams (reliable preset; HPO grid for report: LR {3e-4, 1e-3}, N_STEP {1,3,5})
+# N_STEP 5 puts the -10 suicide penalty (4 steps after BOMB) inside the n-step
+# return window; at N_STEP 3 < BOMB_TIMER 4 the penalty gets no direct credit.
 GAMMA = 0.95
 N_STEP = 5
 LR = 1e-3
@@ -63,8 +63,8 @@ BATCH = 256
 TARGET_SYNC = 1000
 EPS_START, EPS_END, EPS_DECAY = 1.0, 0.05, 50000
 BUFFER_SIZE = 100000
-# Optimizer select (env-gated; defaults preserve Stage 1-3 behavior exactly):
-#   SENTINEL_OPT: 'adam' (stock Adam lr=1e-3, foreach on CUDA) | 'lion' (Lion, benchmark winner)
+# Optimizer select (env-gated; defaults = stock behavior):
+#   SENTINEL_OPT: 'adam' (stock Adam lr=1e-3, foreach on CUDA) | 'lion' (Lion)
 #   SENTINEL_LR: base LR override (default per optimizer)
 #   SENTINEL_SCHEDULE: '1' enables warmup+cosine schedule on total_steps
 #   SENTINEL_TUNED: '1' applies the DQN task preset to Adam (eps=1e-4,
@@ -72,19 +72,19 @@ BUFFER_SIZE = 100000
 #     would otherwise restore the old eps=1e-8/decay=0 groups).
 #   SENTINEL_AMP: '1' (default) enables autocast+GradScaler on CUDA; '0' = fp32.
 #   SENTINEL_DEVICE: 'cuda'|'cpu'|'auto' (default auto = CUDA when available).
-# Stage 4 launch: SENTINEL_OPT=lion SENTINEL_SCHEDULE=1.
-# Stage 5 Arm A launch: SENTINEL_OPT=adam SENTINEL_TUNED=1 (no schedule: fixed LR).
+# Launch configs: SENTINEL_OPT=lion SENTINEL_SCHEDULE=1, or for a fixed LR
+# SENTINEL_OPT=adam SENTINEL_TUNED=1 (no schedule).
 OPT_NAME = os.environ.get('SENTINEL_OPT', 'adam')
 OPT_LR = float(os.environ.get('SENTINEL_LR', '0.0') or 0.0)
 OPT_SCHEDULE = os.environ.get('SENTINEL_SCHEDULE', '0') == '1'
 OPT_TUNED = os.environ.get('SENTINEL_TUNED', '0') == '1'
 OPT_LR_DEFAULTS = {'adam': LR, 'lion': 1e-3}
 SCHED_WARMUP, SCHED_TOTAL, SCHED_MIN = 5000, 200000, 0.1
-# GPU-utilization config (env-gated; defaults = legacy behavior exactly):
+# GPU-utilization config (env-gated; defaults = legacy behavior):
 #   SENTINEL_UTD: updates per env step (default 1)
 #   SENTINEL_BATCH: batch override (default 0 = BATCH)
 #   SENTINEL_EOR_UPDATES: extra updates at round end (default 4)
-# Stage 4 launch: SENTINEL_UTD=3 SENTINEL_BATCH=512 SENTINEL_EOR_UPDATES=16.
+# High-throughput launch: SENTINEL_UTD=3 SENTINEL_BATCH=512 SENTINEL_EOR_UPDATES=16.
 UTD, BATCH_EFF, EOR_UPDATES = update_config('SENTINEL', BATCH, 4)
 MIN_REPLAY = 2000
 EMA_ALPHA = 0.05  # best-tracking smoothing for round reward
@@ -217,8 +217,7 @@ def _metrics_path(here):
 
 
 def _log_metrics(here, row):
-    """Append a row; widens the header if new columns appear (e.g. duty
-    columns added mid-curriculum — old rows backfill as empty)."""
+    """Append a row; widen the header if new columns appear (old rows backfill as empty)."""
     path = _metrics_path(here)
     if not os.path.isfile(path):
         with open(path, 'w', newline='') as f:
@@ -343,8 +342,8 @@ def setup_training(self):
     self._round_coins = 0
     self._round_kills = 0
     self._round_suicides = 0
-    self._round_killed_self = 0  # E14a: own-bomb deaths (KILLED_SELF)
-    self._round_got_killed = 0  # E14a: enemy-bomb deaths (GOT_KILLED only)
+    self._round_killed_self = 0  # own-bomb deaths (KILLED_SELF)
+    self._round_got_killed = 0  # enemy-bomb deaths (GOT_KILLED only)
     # expose epsilon to callbacks.act() for exploration (train mode only)
     self.epsilon = EPS_START
 
@@ -362,7 +361,7 @@ def setup_training(self):
             self.target_net.load_state_dict(self.q_net.state_dict())
             # Best-effort optimizer resume: old ckpts may hold DMLAdam state
             # (int steps) while we now use stock Adam (Tensor steps), or vice
-            # versa — momentum transfers when shapes match, else fresh start.
+            # versa: momentum transfers when shapes match, else fresh start.
             try:
                 self.optimizer.load_state_dict(ckpt['optimizer'])
             except Exception as ex:
@@ -392,7 +391,7 @@ def setup_training(self):
             self.epsilon = epsilon_now(self.epsilon_steps)
             self.best_ema = ckpt.get('best_ema')
             self.ema_reward = ckpt.get('ema_reward')
-            # AMP scaler resume (old DML/fp32 ckpts have none — fresh scaler).
+            # AMP scaler resume (old DML/fp32 ckpts have none, so start fresh).
             try:
                 if getattr(self, 'use_amp', False) and self.scaler is not None \
                         and isinstance(ckpt.get('scaler'), dict):
@@ -504,7 +503,7 @@ def _update(self):
             g['lr'] = lr_now
     batch, idx, w = self.buffer.sample(getattr(self, 'train_batch', BATCH), beta)
     dev = self.device
-    # Single host->device transfer per tensor (PCIe is the bottleneck, not FLOPs).
+    # Single host->device transfer per tensor; PCIe is the bottleneck.
     S = torch.from_numpy(np.stack([t.state for t in batch])).to(dev)
     zero = torch.from_numpy(batch[0].state).to(dev)
     NS = torch.stack([
@@ -519,7 +518,7 @@ def _update(self):
     self.q_net.train()
     use_amp = bool(getattr(self, 'use_amp', False) and getattr(self, 'scaler', None) is not None)
     if use_amp:
-        # AMP on CUDA (default); fp32 path below is bit-identical to legacy.
+        # AMP on CUDA (default).
         with torch.autocast(device_type='cuda', dtype=torch.float16):
             q = self.q_net(S).gather(1, A).squeeze(1)
             with torch.no_grad():
@@ -527,8 +526,8 @@ def _update(self):
                 q_next = self.target_net(NS).gather(1, a_star).squeeze(1)
                 target = R + D * gam_n * q_next
             td = target - q
-            # Huber (delta=1): MSE detonated on ±100 TD errors in Stage 4
-            # (lossMed 480 -> 74k); bounded gradient keeps steps sane under PER.
+            # Huber (delta=1): MSE explodes on TD errors of +/-100 (loss median
+            # 480 -> 74k); the bounded gradient keeps steps stable under PER.
             loss = (W * torch.nn.functional.smooth_l1_loss(td, torch.zeros_like(td), reduction='none')).mean()
         self.optimizer.zero_grad(set_to_none=True)
         self.scaler.scale(loss).backward()
@@ -543,8 +542,8 @@ def _update(self):
             q_next = self.target_net(NS).gather(1, a_star).squeeze(1)
             target = R + D * gam_n * q_next
         td = target - q
-        # Huber (delta=1): MSE detonated on ±100 TD errors in Stage 4
-        # (lossMed 480 -> 74k); bounded gradient keeps steps sane under PER.
+        # Huber (delta=1): MSE explodes on TD errors of +/-100 (loss median
+        # 480 -> 74k); the bounded gradient keeps steps stable under PER.
         loss = (W * torch.nn.functional.smooth_l1_loss(td, torch.zeros_like(td), reduction='none')).mean()
         self.optimizer.zero_grad(set_to_none=True)
         loss.backward()
@@ -580,9 +579,9 @@ def game_events_occurred(self, old_game_state, self_action, new_game_state, even
             self._round_coins += 1
         if e.KILLED_OPPONENT in events:
             self._round_kills += 1
-        # E14a attribution: suicide rounds emit BOTH KILLED_SELF (own blast)
-        # and GOT_KILLED (removal loop tags every death) — own bomb takes
-        # precedence so the two counters partition _round_suicides exactly.
+        # Suicide rounds emit both KILLED_SELF (own blast) and GOT_KILLED (the
+        # removal loop tags every death); own bomb takes precedence so the two
+        # counters partition _round_suicides.
         if e.KILLED_SELF in events:
             self._round_suicides += 1
             self._round_killed_self += 1
@@ -621,9 +620,9 @@ def end_of_round(self, last_game_state, last_action, events):
             self._round_coins += 1
         if e.KILLED_OPPONENT in events:
             self._round_kills += 1
-        # E14a attribution: suicide rounds emit BOTH KILLED_SELF (own blast)
-        # and GOT_KILLED (removal loop tags every death) — own bomb takes
-        # precedence so the two counters partition _round_suicides exactly.
+        # Suicide rounds emit both KILLED_SELF (own blast) and GOT_KILLED (the
+        # removal loop tags every death); own bomb takes precedence so the two
+        # counters partition _round_suicides.
         if e.KILLED_SELF in events:
             self._round_suicides += 1
             self._round_killed_self += 1
@@ -677,7 +676,7 @@ def end_of_round(self, last_game_state, last_action, events):
     except Exception as ex:
         self.logger.warning(f'sentinel metrics log failed: {ex}')
 
-    # Checkpoints: full state (resumable, every round — 642KB, cheap) +
+    # Checkpoints: full state (resumable, every round, 642KB) +
     # tournament export (weights only). best/snapshot stay sparse.
     try:
         payload = _payload(self)

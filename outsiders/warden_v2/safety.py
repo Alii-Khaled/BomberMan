@@ -1,8 +1,7 @@
 # Warden v2 — shared hazard / escape / validity helpers (numpy only).
 #
-# Adapted from warden_v1's inline helpers with the E88 escape-solver
-# correctness fix (latest-lethal test + arrival check) and boolean
-# time-axis danger (non-contiguous windows handled exactly). Geometry
+# Adapted from warden_v1's inline helpers with the corrected escape
+# solver (latest-lethal test plus arrival check) and boolean
 # and timing replicate environment.py exactly:
 #   bomb dropped at t -> detonates during step t+4 -> lethal t+4, t+5.
 #   explosion_map > 0 marks a live blast at t=0 and t=1 (conservative:
@@ -83,7 +82,7 @@ def last_lethal(danger, horizon=HORIZON):
 
 
 def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
-    """Time-expanded BFS (E88 semantics). Returns (safe_first, dist).
+    """Time-expanded BFS with the corrected solver. Returns (safe_first, dist).
 
     safe_first[delta] True if that first step leads to a path that
     survives to the horizon or reaches a tile with no future danger.

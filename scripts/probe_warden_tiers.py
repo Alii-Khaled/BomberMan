@@ -1,4 +1,4 @@
-"""E47 probe: warden-discipline transplants (PAYOFF_TIER, MUSTFLEE1).
+"""Warden-discipline transplants (PAYOFF_TIER, MUSTFLEE1).
 
 MODE env: off | tier | mustflee | both. Dumps BOMB safe/valid verdicts for
 a fixed battery of synthetic + random states to results/probe_tiers_MODE.json.

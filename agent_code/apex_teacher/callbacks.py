@@ -1,14 +1,14 @@
-"""Apex demo recorder (B3): delegating wrapper around a teacher policy.
+"""Apex demo recorder: delegating wrapper around a teacher policy.
 
 TEACHER env: warden_v2 | warden_v1 | sentinel | overlord (default warden_v2).
-Records per step: img uint8 (12x17x17, x4 scale, LOSSLESS per E48),
+Records per step: img uint8 (12x17x17, x4 scale, lossless),
 sc float32 (16: overlord-8 + apex-extras-8), act uint8 (teacher action).
 One npz per round -> APEX_DEMO_OUT/<teacher>/round_%06d.npz.
-Deleted after the demo collection (temporary harness, E14b pattern).
+Deleted after the demo collection (temporary harness).
 
 The teacher acts every game (natural teacher distribution); the recorder
 only observes. Teacher state lives on a private namespace (histories
-evolve there, bit-identical to solo teacher play).
+evolve there, as in solo teacher play).
 """
 import importlib
 import logging
@@ -21,13 +21,12 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-# NOTE (E51): SequentialAgentBackend chdirs into agent_code/<name>/ around
-# EVERY callback (agents.py:304) — resolve the out dir from __file__ so
-# recordings land in results/ regardless of cwd (E27 chdir lesson, third
-# occurrence: 297 files initially landed under agent_code/apex_teacher/).
-# NOTE (E51b): act() flushes on round-change; train.py:end_of_round()
-# flushes the final round (without it the last round per invocation was
-# silently dropped: 150 played -> 149 files).
+# SequentialAgentBackend chdirs into agent_code/<name>/ around every
+# callback (agents.py:304), so resolve the out dir from __file__ and
+# land recordings in results/ regardless of cwd.
+# act() flushes on round-change; train.py:end_of_round() flushes the
+# final round (the last round per invocation would otherwise be
+# dropped).
 _REPO = os.path.abspath(os.path.join(_HERE, '..', '..'))
 TEACHER = os.environ.get('APEX_TEACHER', 'warden_v2')
 OUT = os.environ.get('APEX_DEMO_OUT', os.path.join(_REPO, 'results', 'apex_demos'))
@@ -81,8 +80,8 @@ def _flush(self):
         acts = np.asarray([b[2] for b in self._buf], dtype=np.uint8)
         tmp = os.path.join(self._outdir, 'round_%06d.npz.part' % self._next)
         dst = os.path.join(self._outdir, 'round_%06d.npz' % self._next)
-        # NOTE: np.savez_compressed appends '.npz' to plain string paths,
-        # so write through a file handle (no extension mangling).
+        # np.savez_compressed appends '.npz' to plain string paths, so
+        # write through a file handle (no extension mangling).
         with open(tmp, 'wb') as _fh:
             np.savez_compressed(_fh,
                                 img=(imgs * 4.0 + 0.5).astype(np.uint8),

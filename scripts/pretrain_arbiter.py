@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""ARBITER P0 warm start: joint pi (CE) + V (margin-to-go regression).
+"""ARBITER warm start: joint pi (CE) + V (margin-to-go regression).
 
 Data: results/arbiter_p0_cache.npz (scripts/arbiter_extract.py).
   pi rows: teacher in ARBITER_PI_TEACHERS (default 0,1,2 = warden /
-      sentinel / overlord — collector's 0.59-suicide actions stay OUT
-      of the prior; E62 design note).
+      sentinel / overlord; collector's 0.59-suicide actions stay OUT
+      of the prior).
   V rows: finite vlabel AND teacher in ARBITER_V_TEACHERS (default
-      0,1,2,3 — collector states teach high-yield positions).
+      0,1,2,3; collector states teach high-yield positions).
 Augmentation: per-batch symmetry s in 0..7 over the 8 dihedral perms
   (reaper-proven equivariant); actions remapped, V labels invariant.
-Loss: CE(pi, a) + ARBITER_V_W * MSE(V, vlabel/10). E35 recipe: Adam
+Loss: CE(pi, a) + ARBITER_V_W * MSE(V, vlabel/10). Recipe: Adam
   1e-3, batch 1024, 5 epochs, CUDA+AMP (CPU fallback).
-Gate: val_acc >= 0.5 (E35 got 0.82 on the 3-teacher mix).
+Gate: val_acc >= 0.5 (the 3-teacher mix reached 0.82).
 Out: agent_code/arbiter/my-saved-model.pt (raw state_dict) + meta json.
 Usage: python3 scripts/pretrain_arbiter.py [--epochs N] [--out PATH]
 """
@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(REPO, 'agent_code'))
 
 import numpy as np
 
-# AM/AF are resolved from --pkg inside main() (E99 candidate packages).
+# AM/AF are resolved from --pkg inside main() (candidate packages).
 
 ACTION_LIST = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
@@ -51,11 +51,11 @@ def main():
     ap.add_argument('--out', default=os.path.join(REPO, 'agent_code',
                                                   'arbiter',
                                                   'my-saved-model.pt'))
-    # Optional warm start (E97): load existing weights before training so
+    # Optional warm start: load existing weights before training so
     # a short low-LR fine-tune can shift calibration without the
     # catastrophic distribution shift of a from-scratch retrain.
     ap.add_argument('--init', default=None)
-    # E99: candidate package selector (default ship 'arbiter'), e.g.
+    # Candidate package selector (default ship 'arbiter'), e.g.
     # --pkg=arbiter_v2 for the 114-dim feature-v2 candidate.
     ap.add_argument('--pkg', default=os.environ.get('ARBITER_PKG', 'arbiter'))
     a = ap.parse_args()
@@ -107,7 +107,7 @@ def main():
                 if key in obj and isinstance(obj[key], dict):
                     obj = obj[key]
                     break
-        # Tolerant warm start incl. feature expansion (E99): a wider first
+        # Tolerant warm start incl. feature expansion: a wider first
         # layer keeps the old input columns and zero-inits the new dims.
         msd = model.state_dict()
         copied, expanded, skipped = 0, 0, 0

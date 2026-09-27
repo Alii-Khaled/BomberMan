@@ -23,8 +23,8 @@ Env (PREFIX = SENTINEL / OVERLORD):
   {PREFIX}_EOR_UPDATES  extra updates at round end (default = agent constant)
   {PREFIX}_DEVICE       cuda|cpu|auto (default auto = CUDA when available)
   {PREFIX}_AMP          1/0 (default 1 = autocast+GradScaler on CUDA)
-All defaults reproduce pre-enhancement behavior exactly, except the
-device default is now CUDA (was DirectML) and AMP is on for CUDA.
+All defaults match the original behavior, with two exceptions: the
+device default is CUDA (it used to be DirectML) and AMP is on for CUDA.
 """
 import csv
 import glob
@@ -137,10 +137,9 @@ def is_cuda_device(device) -> bool:
 
 
 def is_dml_device(device) -> bool:
-    """Legacy shim: DirectML removed — True for any GPU (CUDA) device.
-
-    Kept so old call sites that branched on "GPU vs CPU" (e.g. overlord
-    full-batch vs CPU-batch) keep working: CUDA counts as GPU.
+    """True for any GPU (CUDA) device. Old call sites branched on "GPU vs
+    CPU" (overlord picks a full batch on GPU and a smaller one on CPU), and
+    CUDA counts as GPU for those.
     """
     return is_cuda_device(device)
 
@@ -201,12 +200,12 @@ def get_cuda_device(env_flag, logger=None, default_on=True):
 
 
 def get_device(env_flag, logger=None, default_on=True):
-    """Canonical alias for :func:`get_cuda_device`."""
+    """Canonical alias for get_cuda_device."""
     return get_cuda_device(env_flag, logger, default_on)
 
 
 def get_dml_device(env_flag, logger=None, default_on=True):
-    """Legacy alias for :func:`get_cuda_device` (DirectML removed)."""
+    """Older name for get_cuda_device."""
     return get_cuda_device(env_flag, logger, default_on)
 
 
@@ -326,7 +325,7 @@ def append_metrics_row(path, row):
 
     If the file exists and its header already covers ``row`` keys, appends
     without rewriting (no read-back). Otherwise falls back to
-    :func:`log_metrics_row` (header widen). Never raises.
+    log_metrics_row to widen the header. Never raises.
     """
     try:
         directory = os.path.dirname(path)

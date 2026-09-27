@@ -1,7 +1,8 @@
-"""E45 probe: additive openness bonus (OVERLORD_G_OPENNESS).
+"""Additive openness bonus (OVERLORD_G_OPENNESS).
 
-Differential design (robust to absolute heuristic values): the open-minus-
-pocket BOMB gap must shift by exactly G*(4-1) between unset and G=0.25 runs.
+Differential design (independent of absolute heuristic values): the
+open-minus-pocket BOMB gap must shift by exactly G*(4-1) between unset
+and G=0.25 runs.
 Run twice (unset + 0.25), compare printed gaps. Fails loudly.
 """
 import os

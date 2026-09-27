@@ -2,12 +2,12 @@
 
 Thin heuristic = safety-driven flee scores, loop penalties, WAIT penalty,
 bomb-repeat penalty. Everything else (pathfinding, placement, hunting,
-endgame) is the network's job — the Q was behavior-cloned from a strong
+endgame) is the network's job: the Q was behavior-cloned from a strong
 teacher then RL-refined, and the features give it BFS pathfinding +
 placement value + opponent-model signals.
 
-Safety mask from safety.py (proven: margin gate, exact blast, time-
-expanded escape). Fallback without torch: mask + heuristic only.
+Safety mask from safety.py (margin gate, exact blast, time-expanded
+escape). Fallback without torch: mask + heuristic only.
 """
 from collections import deque
 import os
@@ -44,9 +44,8 @@ G_REVISIT3 = _env_float('REAPER_G_REVISIT3', 0.45)
 G_REVISIT2 = _env_float('REAPER_G_REVISIT2', 0.15)
 G_BOMB_REPEAT = _env_float('REAPER_G_BOMB_REPEAT', 0.9)
 G_FLEE = _env_float('REAPER_G_FLEE', 1.0)
-# Post-bomb flee escalation. Default 1.0 = original behavior (a 20-round A/B
-# showed 1.6 ~ 1.0 within noise on the zero-Q policy); tune via the Phase-4
-# sweep once a trained Q is in the loop.
+# Post-bomb flee escalation. Default 1.0: a 20-round A/B put 1.6 within noise
+# of 1.0 on the zero-Q policy. Worth revisiting once a trained Q is in the loop.
 G_FLEE_LOCK = _env_float('REAPER_G_FLEE_LOCK', 1.0)
 Q_CLIP = _env_float('REAPER_Q_CLIP', 50.0)
 TIME_BUDGET = _env_float('REAPER_TIME_BUDGET', 0.12)
@@ -57,8 +56,8 @@ TIME_BUDGET = _env_float('REAPER_TIME_BUDGET', 0.12)
 TRAP_BONUS = _env_float('REAPER_TRAP_BONUS', 1.5)
 # Inference-time tactical overlay: off | tactical. Tactical = exact
 # guaranteed-kill BOMB override (bomb_here_traps) + least-bad fallback
-# when nothing is mask-safe. Off during training (clean Q0 ablation);
-# evaluated as an inference overlay in the frozen bake-off.
+# when nothing is mask-safe. Off during training so the learned Q gets a
+# clean ablation; it adds tactical moves at inference only.
 SEARCH = os.environ.get('REAPER_SEARCH', 'off').strip().lower()
 _DIR_TO_ACTION = {(0, -1): 'UP', (0, 1): 'DOWN', (-1, 0): 'LEFT',
                   (1, 0): 'RIGHT'}
@@ -207,7 +206,7 @@ def act(self, game_state):
         heu_arr *= HEUR_MAX / peak
 
     # Time budget: the tournament gives 0.5 s/step on one slow thread and
-    # an overrun also taxes the NEXT step (environment.py:448-460), so we
+    # an overrun also taxes the next step (environment.py:448-460), so we
     # spend at most ~60% of TIME_BUDGET on features and ~90% total. If the
     # budget is gone we rank by mask + heuristic (Q=0), which is safe.
     q = np.zeros(len(ACTION_LIST), dtype=np.float64)

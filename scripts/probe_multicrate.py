@@ -1,7 +1,8 @@
-"""E44 regression probe: multi-crate bonus is REMOVED.
+"""Regression probe: the multi-crate bonus stays removed.
 
-C1 rejected it (crates 11.0 vs 16+ bar, bombs up with crates down).
-Asserts ABSENCE: BOMB_GOOD intact, no CRATE_EXTRA anywhere.
+The bonus missed its crates bar (11.0 vs 16+) while raising bombs and
+cutting crates. This probe asserts its absence: BOMB_GOOD intact, no
+CRATE_EXTRA anywhere.
 Fails loudly; never touches training or checkpoints.
 """
 import os

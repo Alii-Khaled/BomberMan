@@ -1,6 +1,5 @@
-# ARBITER-RL (E100): on-policy masked-softmax sampling for policy-gradient
-# fine-tuning. Active only when train.py sets self._rl (default ship path
-# untouched).
+# ARBITER-RL: on-policy masked-softmax sampling for policy-gradient
+# fine-tuning. Active only when train.py sets self._rl.
 import os
 
 import numpy as np
@@ -20,7 +19,7 @@ NAMES = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 def sample_action(self, pi, valid, safe, must_flee, flee_locked, feats):
     """Sample a move from masked softmax(pi/T); record the training trace.
 
-    Admissible = valid, and safe under flee semantics (ship S0 filter).
+    Admissible = valid, and safe under flee semantics (the base filter).
     Records (round, step, feats, allowed_idx, chosen_j) for train.py,
     which recomputes the log-probs with gradients at round end.
     """

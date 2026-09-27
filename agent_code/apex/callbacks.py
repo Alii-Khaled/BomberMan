@@ -1,11 +1,11 @@
-"""Apex: synthesis agent — warden target priority + BFS directions,
+"""Apex: synthesis agent -- warden target priority + BFS directions,
 overlord-grade safety mask, CNN Q (16-scalar head) at full authority.
 
-Decision skeleton follows warden (proven 5.35 system): strict tiered bomb
-discipline, safe-first move scoring with danger gradient, deterministic
-play. Learned Q (Q_WEIGHT=1.0) modulates on top; safety mask (overlord
-core: margin gate, corridor rule) constrains selection. Heuristic drives
-early play (dueling heads zero-init); Q grows via BC + RL.
+Decision skeleton follows warden: strict tiered bomb discipline, safe-first
+move scoring with danger gradient, deterministic play. Learned Q
+(Q_WEIGHT=1.0) modulates on top; the safety mask (overlord core: margin
+gate, corridor rule) constrains selection. Heuristic drives early play
+(dueling heads zero-init); Q grows via BC + RL.
 """
 from collections import deque
 import os
@@ -33,15 +33,15 @@ def _env_float(name, default):
         return default
 
 
-# Frozen-probe + training-arm knobs (defaults = shipped A2 behavior).
-# APEX_Q_WEIGHT: 1.0 ship; 0.0 = heuristic-only Q0 ablation (E36 pattern).
-# APEX_RELAX_TIER: 0 = strict tiers (ship); 1 = allow crates==1 & dist<=3
-#   (single approved relaxed arm — intent-volume A/B, frozen-gated).
-# APEX_WAIT: additive WAIT penalty (default -0.30 = E20 value).
-# APEX_MASK_ALWAYS: 1 = every move must be mask-safe (ship); 0 = mask
-#   filters only when must_flee (warden semantics, E62/S2 sweep).
-# APEX_Q_CLIP: abs bound on the learned Q before it is added to the
-#   heuristic total (default 4.0; S2 arm tests 0.5 — E61 Q-delta −0.42).
+# Knobs (defaults = the shipped configuration).
+# APEX_Q_WEIGHT: 1.0 full authority; 0.0 = heuristic-only (zero-Q ablation).
+# APEX_RELAX_TIER: 0 = strict tiers; 1 = allow crates==1 & dist<=3
+#   (the one relaxed arm, for an intent-volume A/B).
+# APEX_WAIT: additive WAIT penalty (default 0.30).
+# APEX_MASK_ALWAYS: 1 = every move must be mask-safe; 0 = mask
+#   filters only when must_flee (warden semantics).
+# APEX_Q_CLIP: abs bound on the learned Q before it joins the
+#   heuristic total (default 4.0).
 Q_WEIGHT = _env_float('APEX_Q_WEIGHT', 1.0)
 APEX_RELAX_TIER = os.environ.get('APEX_RELAX_TIER', '0') == '1'
 APEX_WAIT = _env_float('APEX_WAIT', 0.30)
@@ -189,7 +189,7 @@ def act(self, game_state):
         pass
     must_flee = lethal.get((x, y), float('inf')) <= 1
 
-    # hypothetical own bomb (mask verdicts, E27-validated)
+    # hypothetical own bomb (mask verdicts)
     can_escape_bomb = bool(safety.get('can_escape_if_bomb', False))
     dist_hyp = float(safety.get('dist_hyp', 9))
     opps_hit = int(safety.get('opps_hit_if_bomb', 0))
@@ -213,8 +213,8 @@ def act(self, game_state):
                              min(abs(ox - x) + abs(oy - y) for ox, oy in others) <= 3)
 
     # --- bomb decision (strict tiers, training-time mask) ---
-    # APEX_RELAX_TIER=1 (approved single arm): crates==1 & dist<=3 allowed.
-    # Default 0 reproduces A2 ship exactly.
+    # APEX_RELAX_TIER=1 allows crates==1 & dist<=3; default 0 keeps the
+    # strict tiers.
     want_bomb = False
     if valid.get('BOMB') and can_escape_bomb and not must_flee \
             and (x, y) not in list(self.bomb_history)[-3:]:
@@ -282,7 +282,7 @@ def act(self, game_state):
                  if a in _safe_moves(safety, valid)}
         if safec:
             scores = safec
-    scores['WAIT'] = scores.get('WAIT', 0.0) - APEX_WAIT  # activity (E20 value 0.30)
+    scores['WAIT'] = scores.get('WAIT', 0.0) - APEX_WAIT  # activity
 
     # --- learned Q (16-scalar net, full authority) ---
     q = np.zeros(len(ACTION_LIST))
@@ -331,9 +331,9 @@ def act(self, game_state):
         return 'BOMB'
     order = sorted([a for a in ACTION_LIST if a != 'BOMB'],
                    key=lambda a: total[a], reverse=True)
-    # E62/S2: mask filters every move by default (ship behavior);
-    # APEX_MASK_ALWAYS=0 restores warden semantics (mask binds only when
-    # must_flee). The valid-only fallback is unchanged in both modes.
+    # By default the mask filters every move; APEX_MASK_ALWAYS=0 restores
+    # warden semantics (mask binds only when must_flee). The valid-only
+    # fallback is the same in both modes.
     if APEX_MASK_ALWAYS or must_flee:
         for a in order:
             if valid.get(a) and safe.get(a):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E106 battery tally: pooled multi-battery score/win per model + deltas.
+"""Battery tally: pooled multi-battery score/win per model + deltas.
 
 Batteries: g1 (100x2), strong (40x10), umix (100x2),
 ucow/ubom/urus/urac (40x2 each). Pooled = all rounds concatenated.

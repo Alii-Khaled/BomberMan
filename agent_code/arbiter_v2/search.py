@@ -1,6 +1,6 @@
-"""ARBITER bounded best-first search (P1): exact-dynamics plans ranked by
-exact payoff + learned leaf value. The net NEVER votes on root actions
-(E62 constraint) — it evaluates consequences the heuristic cannot see.
+"""ARBITER bounded best-first search: exact-dynamics plans ranked by
+exact payoff + learned leaf value. The net never votes on root actions;
+it evaluates consequences the heuristic cannot see.
 
 Plan = committed own-action prefix (BFS path to a bomb tile + BOMB, or a
 single move) + cheap continuation to detonation settle. Opponents use an
@@ -11,8 +11,8 @@ Score(plan) = exact margin delta (crates*w + coins + 5*certified kills
 - 8*own death + coin-reveal expectation) + V_BLEND * V(s_end).
 
 Budgets: wall-clock (shares ARBITER_TIME_BUDGET with act), plan cap,
-leaf-V cap (features cost 1.18 ms vs sim.step 0.031 ms — V is the
-binding constraint). Exhaustion degrades to the S0 ranking.
+leaf-V cap (features cost 1.18 ms vs sim.step 0.031 ms, so V is the
+binding constraint). Exhaustion degrades to the base ranking.
 """
 import os
 import time
@@ -41,148 +41,134 @@ def _env_int(name, default, lo, hi):
 
 
 H = _env_int('ARBITER_SEARCH_H', 6, 2, 12)
-# Rollout seeds per plan (E71): the exact-payoff part of a plan score
-# carries opponent-policy RNG noise; averaging over seeds shrinks it.
-# V is evaluated on the primary rollout's leaf only (leaf features cost
-# 1.18 ms — V over all seeds would break the step budget). Default 1 =
-# exactly the validated P1 behavior (same seed formula).
+# Rollout seeds per plan: the exact-payoff part of a plan score carries
+# opponent-policy RNG noise, and averaging over seeds shrinks it. V runs
+# on the primary rollout's leaf only (leaf features cost 1.18 ms, so V
+# over all seeds would break the step budget). Default 1.
 SEEDS = _env_int('ARBITER_SEEDS', 1, 1, 8)
-# Move-plan seeds (E78): average the exact-payoff part over
-# MOVE_SEEDS opponent-policy rollouts for MOVE plans only, single
-# seed for bomb plans. E71 showed seed-averaging lifts coins
-# (2.50, stabler move arbitration) but dilutes the single-seed
-# W_DEATH veto on bombs (+0.065 sui, E71b: veto calibration is
-# single-seed). Bombs keep exactly the validated single-seed path
-# (j=0 seed formula unchanged -> bit-identical bomb scores);
-# moves buy the coin-side variance reduction. Default 1 = P1 flow.
+# Move-plan seeds: average the exact-payoff part over MOVE_SEEDS
+# opponent-policy rollouts for MOVE plans only, single seed for bomb
+# plans. Seed-averaging steadies move arbitration but dilutes the
+# single-seed W_DEATH veto on bombs (veto calibration assumes one
+# seed), so bombs keep the single-seed path (j=0 seed formula) and
+# moves buy the coin-side variance reduction. Default 1.
 MOVE_SEEDS = _env_int('ARBITER_MOVE_SEEDS', 1, 1, 8)
-# E88 common random numbers: opponent rollouts keyed by (rollout seed,
-# tick, opponent) instead of (rollout seed, plan), so every plan in a
-# step is compared against the SAME opponent draws (paired comparison,
-# lower variance on plan differences). E88 ship: default ON (validated
-# G1 100x2 4.775 vs 4.590 with plan-indexed seeds on the same fixed
-# solver + margin 0.6); ARBITER_CRN=0 restores the legacy unpaired flow.
+# Common random numbers: opponent rollouts key on (rollout seed, tick,
+# opponent) instead of (rollout seed, plan), so every plan in a step is
+# compared against the same opponent draws (paired comparison, lower
+# variance on plan differences). Default ON; ARBITER_CRN=0 restores
+# unpaired plan-indexed seeding.
 CRN = os.environ.get('ARBITER_CRN', '1') == '1'
 K = _env_int('ARBITER_SEARCH_K', 8, 0, 32)
 RADIUS = _env_int('ARBITER_SEARCH_R', 4, 1, 8)
 PLAN_CAP = _env_int('ARBITER_SEARCH_PLANS', 48, 1, 256)
 V_BLEND = _env_float('ARBITER_V_BLEND', 1.0)
 # V_OFF mirrors callbacks' ARBITER_V_OFF (V0 ablation): when set, the
-# search skips leaf evaluation exactly as if V_BLEND were 0. (Lesson:
-# an earlier V0 gate used V_OFF, which only zeroed the logged S0 value
-# while search kept evaluating — always ablate via the path under test.)
+# search skips leaf evaluation exactly as if V_BLEND were 0.
 V_OFF = os.environ.get('ARBITER_V_OFF', '0') == '1'
 W_CRATE = _env_float('ARBITER_W_CRATE', 0.1)
 W_DEATH = _env_float('ARBITER_W_DEATH', 8.0)
-# Bomb-vs-move arbitration (P1 redesign): search OWNS bomb decisions
-# (placement is what pi cannot do); pi owns moves (V RMSE +-2.4 dwarfs
-# 1-step value gaps, so V-ranked moves are noise vs pi's sharp policy).
-# A bomb plan executes only if it beats the best move plan by more than
-# BOMB_MARGIN; else search returns None and S0 (pi) decides the move.
-# E88: de-conflicted from safety.py's escape-dir count (both used to read
-# ARBITER_BOMB_MARGIN). The score margin now reads
-# ARBITER_BOMB_SCORE_MARGIN; the legacy ARBITER_BOMB_MARGIN name is still
-# honored (README-documented meaning) so existing scripts keep working.
-# E88 ship: default raised 0.2 -> 0.6. The corrected escape solver makes
-# certified kills and bomb admission stricter; the old 0.2 margin then
-# over-admits bombs (G1 40x2 3.325). 0.6 is the swept optimum on the
-# fixed solver (4.300 at 40x2; with CRN 4.775 at G1 100x2 vs E80 4.345).
+# Bomb-vs-move arbitration: search owns bomb decisions (placement is
+# what pi cannot do); pi owns moves (V RMSE +-2.4 dwarfs 1-step value
+# gaps, so V-ranked moves are noise against pi's sharp policy). A bomb
+# plan executes only if it beats the best move plan by more than
+# BOMB_MARGIN; else search returns None and pi decides the move.
+# The score margin reads ARBITER_BOMB_SCORE_MARGIN; the legacy
+# ARBITER_BOMB_MARGIN name is still honored (README-documented
+# meaning) so existing scripts keep working. safety.py's escape-dir
+# count reads its own ARBITER_BOMB_ESC_MARGIN knob.
+# Default 0.6: the strict escape solver makes certified kills and bomb
+# admission stricter, and a 0.2 margin over-admits bombs against it.
 BOMB_MARGIN = _env_float(
     'ARBITER_BOMB_SCORE_MARGIN',
     _env_float('ARBITER_BOMB_MARGIN', 0.6))
 # Coin proximity in bomb-tile ranking: blast yield alone strands the
-# agent far from the coins it reveals (P1 screen: crates 20.8 but coins
-# 0.85). Prefer high-yield tiles near collectable coins.
+# agent far from the coins it reveals. Prefer high-yield tiles near
+# collectable coins.
 W_COIN_TILE = _env_float('ARBITER_W_COIN_TILE', 0.5)
-# Yield-scaled bomb margin (E73): junk bombs (opps_hit=0 plants kill
-# with P=0.003, E16) should clear a HIGHER bar, not the same 0.2.
+# Yield-scaled bomb margin: junk bombs (plants with opps_hit=0 almost
+# never kill) should clear a higher bar than valuable ones.
 # margin_eff = BOMB_MARGIN + YIELD_GAMMA * max(0, 2 - tile_yield),
 # tile_yield = crates_in_blast + 2 * opps_in_blast at the bomb tile.
-# Soft (arbitration, not veto — the veto saga stays closed) and
-# default 0 = validated P1 behavior.
+# Soft: the margin scales the bar, nothing is forbidden outright.
+# Default 0 (off).
 YIELD_GAMMA = _env_float('ARBITER_YIELD_GAMMA', 0.0)
-# Opponent blast bonus in tile ranking (P1c: search bombs for crates and
-# under-kills 0.20 vs S0 0.39 — pi/warden bombs opportunistically on
-# opps_hit>0). Bonus per opponent in blast; certification at scoring
+# Opponent blast bonus in tile ranking: search leans toward crate bombs
+# and under-kills relative to pi/warden, which bomb opportunistically
+# on opps_hit>0. Bonus per opponent in blast; certification at scoring
 # (opp_can_escape) keeps it honest. Default 2.0.
 W_OPP_TILE = _env_float('ARBITER_W_OPP_TILE', 2.0)
 # Escape strictness: 0 = any escape first-step suffices;
-# N > 0 = require escape_bfs dist_to_safe <= N. SHIP default 3.0
-# (validated G1 3.95; P1d grid W2/E3 beat W2/E0 on both seeds).
+# N > 0 = require escape_bfs dist_to_safe <= N. Default 3.0.
 ESC_DIST = _env_float('ARBITER_ESC_DIST', 3.0)
-# E88: minimum post-plant escape DIRECTIONS required by the search's bomb
-# gate. 1 = legacy any() (bit-identical). E87 tested the mask's copy of
-# this idea, but the mask does not govern search-selected bombs (16.2% of
-# executed bombs had safe['BOMB']=0); this knob targets the gate that
-# actually admits search bombs (the clean E87 redo).
+# Minimum post-plant escape directions required by the search's bomb
+# gate. 1 = the original any() rule. The mask's copy of this idea
+# cannot govern search-selected bombs (the mask marks bombs the search
+# then picks anyway); this knob targets the gate that admits search
+# bombs.
 PLANT_ESC = _env_int('ARBITER_PLANT_ESC', 1, 1, 4)
-# E97 Phase 3: opponent-aware plant certification (targeted at the E90
-# interference death class: a planted bomb whose certified escape is cut
-# by an opponent body block). 0 = off (ship-identical). N >= 1 requires
-# at least N post-plant escape directions that avoid the opponents'
-# K-step shadow (tiles within ARBITER_PLANT_OPP_K BFS steps of any
-# opponent). Certified-only, no de-aggression: it vetoes bombs, never
-# re-ranks or slows play.
+# Opponent-aware plant certification: an opponent body block can cut a
+# planted bomb's certified escape. 0 = off. N >= 1 requires at least N
+# post-plant escape directions that avoid the opponents' K-step shadow
+# (tiles within ARBITER_PLANT_OPP_K BFS steps of any opponent). It
+# vetoes bombs only and never re-ranks.
 PLANT_OPP = _env_int('ARBITER_PLANT_OPP', 0, 0, 4)
 PLANT_OPP_K = _env_int('ARBITER_PLANT_OPP_K', 1, 1, 3)
-# Coin-race move plan (E75): a committed BFS path to the nearest
-# reachable visible coin, scored by the exact rollout like any plan.
-# Competes as a MOVE plan (bomb_at None) — a valuable coin run
-# correctly raises the bomb bar via best_move. Default 0 = P1 flow.
+# Coin-race move plan: a committed BFS path to the nearest reachable
+# visible coin, scored by the exact rollout like any plan. It competes
+# as a MOVE plan (bomb_at None), and a valuable coin run raises the
+# bomb bar via best_move. Default 0 (off).
 COINRUN = os.environ.get('ARBITER_COINRUN', '0') == '1'
-# Chain-bomb priority (E72): own tile + 4 neighbours always enter
-# bomb candidacy (bypass ranking AND the K cap). The re-bomb step is
-# the cheapest volume lever — the tile we stand on needs no travel.
-# The proven-escape gate below still applies to each. Default 0 =
-# validated P1 candidate flow.
+# Chain-bomb priority: own tile + 4 neighbours always enter bomb
+# candidacy (they bypass ranking and the K cap). The re-bomb step is
+# the cheapest volume lever: the tile we stand on needs no travel.
+# The proven-escape gate below still applies to each. Default 0 (off).
 CHAIN = os.environ.get('ARBITER_CHAIN', '0') == '1'
-# Guarded chain (E77): own tile + 4 neighbours enter candidacy ONLY
-# under warden's want_bomb guard (opps_hit > 0, or crates_hit >= 2
-# with hyp_dist <= 3, or crates_hit == 1 with hyp_dist <= 2).
-# E72's unguarded chain fired junk (6-step lockout displaces good
-# bombs, -0.38); E73 proved junk filtering is score-neutral — the
-# missing piece is guarding the ADMISSION, not the arbitration.
-# Appended after ranked candidates (E72b seed-index discipline: the K
-# cap covers ranked plans only; ranked plans keep their rollout-seed
-# indices). Proven-escape gate below still applies. Default 0.
+# Guarded chain: own tile + 4 neighbours enter candidacy only under
+# warden's want_bomb guard (opps_hit > 0, or crates_hit >= 2 with
+# hyp_dist <= 3, or crates_hit == 1 with hyp_dist <= 2). An unguarded
+# chain fires junk (the 6-step lockout displaces good bombs), and junk
+# score filtering does not help: the guard belongs on admission.
+# Appended after ranked candidates so the ranked plans keep their
+# rollout-seed indices and the K cap covers ranked plans only. The
+# proven-escape gate below still applies. Default 0 (off).
 CHAIN_GUARD = os.environ.get('ARBITER_CHAIN_GUARD', '0') == '1'
-# Opportunistic-trap credit (trap cycle): certified kills (no escape at
-# any timer) pay 1.0; opponents whose escape needs >= TRAP_HARD steps
-# while a bomb detonates within 2 pay TRAP_P (expected value — they stay
-# alive in sim). Default off (0 = certified-only). Rationale: per-bomb
-# kill rates match warden (1.5-1.6%) — the gap is VOLUME (20.4 vs 29.5
-# bombs/rd), and strict certification vetoes contested bombs.
+# Opportunistic-trap credit: certified kills (no escape at any timer)
+# pay 1.0; opponents whose escape needs >= TRAP_HARD steps while a
+# bomb detonates within 2 pay TRAP_P (expected value, they stay alive
+# in sim). Default off (0 = certified only). Per-bomb kill rates
+# already match warden; the gap is bomb volume, and strict
+# certification vetoes contested bombs.
 TRAP_HARD = _env_float('ARBITER_TRAP_HARD', 0.0)
 TRAP_P = _env_float('ARBITER_TRAP_P', 0.5)
-# E82 hunt-intent (W1): pursuit bomb plans. When the warden hunt
-# trigger holds (opponents present AND [loot <= 6 | step > 200 | opp
-# within Manhattan 3]), each opponent gets ONE bomb plan at the best
-# free tile whose hypothetical blast covers the opponent (BFS path +
-# BOMB prefix), admitted through the SAME _try_bomb_plan gate as every
-# other tile (E14b: one gate, no special cases). Appended after the
-# ranked walk (E72b seed-index discipline: ranked plans keep their
-# rollout-seed indices; the bomb cap extends by len(hunt plans)).
-# Default 0 = validated flow, bit-identical.
+# Hunt intent: pursuit bomb plans. When the warden hunt trigger holds
+# (opponents present and [loot <= 6 | step > 200 | opp within Manhattan
+# 3]), each opponent gets one bomb plan at the best free tile whose
+# hypothetical blast covers the opponent (BFS path + BOMB prefix),
+# admitted through the same _try_bomb_plan gate as every other tile
+# (one gate, no special cases). Appended after the ranked walk so
+# ranked plans keep their rollout-seed indices; the bomb cap extends
+# by len(hunt plans). Default 0 (off).
 HUNT = os.environ.get('ARBITER_HUNT', '0') == '1'
 HUNT_PLANS = _env_int('ARBITER_HUNT_PLANS', 2, 1, 4)
-# Pursuit distance cap: 4 = the ranked walk's radius — identical
-# path-staleness class (certifies the bomb tile, not the path, E70
-# lesson); receding-horizon re-scoring covers the rest.
+# Pursuit distance cap: 4 = the ranked walk's radius, the same
+# path-staleness class (certifies the bomb tile, not the path);
+# receding-horizon re-scoring covers the rest.
 HUNT_DIST = _env_int('ARBITER_HUNT_DIST', 4, 1, 11)
-# E83a cert-owner discipline: the certification loop runs over ALL sim
-# bombs; with the rollout opp model dropping bombs randomly (~0.5
-# suicides/round/opp), an opp self-trap gets certified and +5-credited
-# to US although the engine pays nobody. CERT_OWN=1 restricts the cert
-# trigger to our own bombs (owner 0; pre-existing bombs are owner -1 =
-# unknown and stay certifiable) while keeping the escape check global.
-# Engine-exact semantics; default 0 = validated flow.
+# Cert-owner discipline: the certification loop runs over all sim
+# bombs, and the rollout opp model drops bombs randomly (~0.5
+# suicides/round/opp), so an opp self-trap would get certified and
+# +5-credited to us although the engine pays nobody. CERT_OWN=1
+# restricts the cert trigger to our own bombs (owner 0; pre-existing
+# bombs are owner -1 = unknown and stay certifiable) while keeping
+# the escape check global. Default 0 (off).
 CERT_OWN = os.environ.get('ARBITER_CERT_OWN', '0') == '1'
-# E83b rollout opponent model: 'random' (default = validated:
-# avoid-lethal-myopic + uniform incl. BOMB) or 'wardenlite'
-# (avoid-lethal, then Manhattan-coin-pursuit step, bombs only under a
-# cheap warden guard: opps_hit > 0 | crates_hit >= 2, and only with a
-# free neighbour outside the new blast). Realism for arbitration
-# pricing vs strong unseen agents; O(1) per opp-tick (no extra BFS).
+# Rollout opponent model: 'random' (default: avoid-lethal-myopic +
+# uniform incl. BOMB) or 'wardenlite' (avoid-lethal, then
+# Manhattan-coin-pursuit step, bombs only under a cheap warden guard:
+# opps_hit > 0 | crates_hit >= 2, and only with a free neighbour
+# outside the new blast). The overlay prices arbitration against
+# strong unseen agents; O(1) per opp-tick (no extra BFS).
 OPPMODEL = os.environ.get('ARBITER_OPPMODEL', 'random').strip().lower()
 
 
@@ -289,10 +275,10 @@ def _shadow_cells(arena, others_xy, k):
 
 
 def chain_guard_ok(arena, blocked, bombs, others_xy, danger, tx, ty):
-    """E77 warden-rule admission predicate for chain tiles.
+    """Warden-rule admission predicate for chain tiles.
 
-    Returns (admit, tile_yield). Pure function (directly probed):
-    a chain tile is admitted iff it has a proven escape (same recipe
+    Returns (admit, tile_yield). Pure function: a chain tile is
+    admitted iff it has a proven escape (same recipe
     as the plan gate) AND warden's want_bomb payoff guard holds
     (opps_hit > 0, or crates_hit >= 2 with hyp_dist <= 3, or
     crates_hit == 1 with hyp_dist <= 2).
@@ -336,8 +322,8 @@ def _try_bomb_plan(arena, blocked, bombs, others_xy, danger,
                    plans, x, y, cx, cy, tile_yield):
     """Shared bomb-tile admission: BFS path + proven-escape gate.
 
-    Single gate authority for ranked and chain tiles alike (E14b
-    lesson: one gate, no special cases). Returns True on admission.
+    Single gate authority for ranked and chain tiles alike (one gate,
+    no special cases). Returns True on admission.
     """
     from .safety import escape_bfs, with_hypothetical_bomb
     path = _bfs_path(arena, blocked, (x, y), (cx, cy))
@@ -357,7 +343,7 @@ def _try_bomb_plan(arena, blocked, bombs, others_xy, danger,
             except Exception:
                 can = False
         if can and PLANT_OPP > 0:
-            # E97: escapes must also avoid the opponents' k-step shadow.
+            # escapes must also avoid the opponents' k-step shadow.
             try:
                 shadow = _shadow_cells(arena, others_xy, PLANT_OPP_K)
                 sh_opp, d_opp = escape_bfs(
@@ -382,7 +368,7 @@ def _try_bomb_plan(arena, blocked, bombs, others_xy, danger,
 
 
 def hunt_trigger_ok(arena, n_coins, others_xy, x, y, step):
-    """Warden hunt predicate (pure, directly probed): opponents present
+    """Warden hunt predicate (pure): opponents present
     AND (loot <= 6 | step > 200 | opponent within Manhattan 3)."""
     if not others_xy:
         return False
@@ -436,8 +422,8 @@ def gen_plans(game_state, safety, K=K, radius=RADIUS):
         if valid.get(a):
             plans.append({'first': a, 'prefix': [a], 'bomb_at': None})
     if COINRUN:
-        # E75 coin-race plan: committed BFS path to the nearest
-        # reachable visible coin (prefix ≤ 12; replan next step).
+        # coin-race plan: committed BFS path to the nearest reachable
+        # visible coin (prefix <= 12; replan next step).
         try:
             _coins = [(int(c[0]), int(c[1])) for c in
                       (game_state.get('coins', []) or [])]
@@ -501,12 +487,12 @@ def gen_plans(game_state, safety, K=K, radius=RADIUS):
                 rescored.append((key + W_OPP_TILE * opps, negdd,
                                  (cx, cy)))
             rescored.sort(reverse=True)
-            # E72 chain set: own tile + 4 neighbours enter candidacy
-            # (gated by CHAIN; the escape check below applies). E72b:
-            # APPENDED after ranked candidates (not prepended) so the
-            # ranked plans keep their rollout-seed indices — the chain
-            # is a pure max-addition, never an RNG perturbation. The K
-            # cap covers ranked plans; chain tiles get extras.
+            # chain set: own tile + 4 neighbours enter candidacy
+            # (gated by CHAIN; the escape check below applies). Appended
+            # after ranked candidates so the ranked plans keep their
+            # rollout-seed indices: the chain is a pure max-addition,
+            # never an RNG perturbation. The K cap covers ranked plans;
+            # chain tiles get extras.
             ordered = [(cx, cy) for _, _, (cx, cy) in rescored]
             cap = K
             if CHAIN:
@@ -522,22 +508,19 @@ def gen_plans(game_state, safety, K=K, radius=RADIUS):
                 ordered = list(ordered) + [t for t in chain
                                            if t not in _seen]
                 cap = K + len(chain)
-            # Ranked walk: cap K strictly. With CHAIN_GUARD off this is
-            # bit-identical to the validated P1 flow (same order, same
-            # cap -> same rollout-seed indices in search_action).
+            # Ranked walk: cap K strictly. The enumeration order and the
+            # cap fix the rollout-seed indices in search_action.
             for (cx, cy) in ordered:
                 if len([p for p in plans if p['bomb_at']]) >= cap:
                     break
                 _try_bomb_plan(arena, blocked, bombs, others_xy,
                                danger, plans, x, y, cx, cy, tile_yield)
             if CHAIN_GUARD:
-                # E77 guarded chain: pure max-addition AFTER the ranked
-                # walk (E72b semantics done right — the first draft
-                # inflated the ranked cap instead; probe forensics).
-                # Tiles the ranked walk already admitted are skipped
-                # (no duplicates); chain gets its own budget of
+                # guarded chain: pure max-addition after the ranked
+                # walk. Tiles the ranked walk already admitted are
+                # skipped (no duplicates); chain gets its own budget of
                 # K + len(extra) total bomb plans. Gate authority stays
-                # in _try_bomb_plan (E14b: one gate, no special cases).
+                # in _try_bomb_plan (one gate, no special cases).
                 _taken = set(p['bomb_at'] for p in plans
                              if p['bomb_at'])
                 _extra = []
@@ -559,11 +542,10 @@ def gen_plans(game_state, safety, K=K, radius=RADIUS):
                     _try_bomb_plan(arena, blocked, bombs, others_xy,
                                    danger, plans, x, y, _fx, _fy,
                                    tile_yield)
-            # E82 hunt-intent: one pursuit bomb plan per opponent
-            # (max HUNT_PLANS total), nearest opp first. Candidate
-            # tiles ring-first, then by BFS dist from us; ONE gate
-            # authority (_try_bomb_plan). Pure max-addition after the
-            # ranked walk.
+            # hunt-intent: one pursuit bomb plan per opponent (max
+            # HUNT_PLANS total), nearest opp first. Candidate tiles
+            # ring-first, then by BFS dist from us; one gate authority
+            # (_try_bomb_plan). Pure max-addition after the ranked walk.
             if HUNT and others_xy and hunt_trigger_ok(
                     arena, len(coins_xy), others_xy, x, y, step):
                 from .sim import blast_coords as _hblast
@@ -626,9 +608,9 @@ def _opp_move(rng, st, i, danger_now):
     good = [o for o in opts if o not in bad]
     if OPPMODEL == 'wardenlite':
         # bombs only under a cheap warden guard, and only when not
-        # cornered (pre-blast safe mobility >= 2 incl. WAIT — the
-        # escape proxy; the opp's own blast seals its neighbours by
-        # construction, so mobility is checked BEFORE dropping).
+        # cornered (pre-blast safe mobility >= 2 incl. WAIT, the escape
+        # proxy; the opp's own blast seals its neighbours by
+        # construction, so mobility is checked before dropping).
         if 'BOMB' in good:
             try:
                 from .sim import blast_coords
@@ -688,9 +670,9 @@ def _opp_move(rng, st, i, danger_now):
 def _continuation(game_state, st, i, danger=None):
     """Cheap post-prefix policy. Danger-aware: if own tile is lethal
     within 2 steps, flee to the valid move minimizing near-term danger
-    (tie-break: coin-greedy); else coin-greedy. No net — V prices the
-    leaf. (Fix: coin-greedy continuation walked bomb plans into their
-    own blast, pricing every bomb at -8 — bombs never won.)"""
+    (tie-break: coin-greedy); else coin-greedy. No net, V prices the
+    leaf. The danger check keeps bomb plans from walking into their own
+    blast, which would price every bomb at -8."""
     arena = st['arena']
     bombs = [(b[0], b[1]) for b in st['bombs']]
     bomb_set = set(bombs)
@@ -794,9 +776,10 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
             payoff -= w_death
             break
     # phase 2: settle to detonation with danger-aware continuation.
-    # Settle-to-quiet (not fixed horizon): bomb plans MUST see their
-    # consequences — truncating before detonation scores them on garbage
-    # pre-blast V. Cap = prefix + 7 (detonation at +4/+5, linger +1).
+    # Settle-to-quiet (not a fixed horizon): bomb plans must see their
+    # consequences, and truncating before detonation scores them on
+    # garbage pre-blast V. Cap = prefix + 7 (detonation at +4/+5,
+    # linger +1).
     settle = max(horizon, len(prefix) + 7)
     while st['agents'][0]['alive'] and ticks < settle:
         if not st['bombs'] and not any(
@@ -814,9 +797,9 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
                 acts.append('WAIT')
         # certify: opponents currently in any soon-detonating blast that
         # cannot escape -> forced kills (optimal-flight assumption).
-        # CERT_OWN (E83a): restrict the trigger to OUR bombs (owner 0;
-        # pre-existing bombs owner -1 = unknown stay certifiable) —
-        # the engine pays nobody for an opp self-trap.
+        # CERT_OWN restricts the trigger to our bombs (owner 0;
+        # pre-existing bombs owner -1 = unknown stay certifiable),
+        # since the engine pays nobody for an opp self-trap.
         try:
             for b in st['bombs']:
                 if b[2] > 2:
@@ -861,8 +844,8 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
             break
     payoff += 5.0 * certified_kills
     payoff += margin(st) - m0 - (st['agents'][0]['score'] - st0['agents'][0]['score'])
-    # NOTE: margin() already includes score deltas; the last line adds the
-    # OPPONENT-score movement only (own score counted once via margin).
+    # margin() already includes score deltas; the last line adds the
+    # opponent-score movement only (own score counted once via margin).
     return payoff, st
 
 
@@ -890,13 +873,13 @@ def search_action(game_state, safety, model, t0, budget):
         if (time.perf_counter() - t0) >= budget:
             dbg['exhausted'] = True
             break
-        # E71/E78: average the exact-payoff part over opponent-policy
-        # rollouts (opponent RNG is the noise source). MOVE plans use
-        # MOVE_SEEDS rollouts (coin-side variance reduction); BOMB
-        # plans stay single-seed (E71b: W_DEATH veto calibration).
-        # Death is NOT averaged: a plan that kills us in ANY seed
-        # takes the full W_DEATH veto — ruin is not compensable by
-        # upside. V prices the primary rollout's leaf only.
+        # Average the exact-payoff part over opponent-policy rollouts
+        # (opponent RNG is the noise source). MOVE plans use MOVE_SEEDS
+        # rollouts (coin-side variance reduction); BOMB plans stay
+        # single-seed (W_DEATH veto calibration). Death is never
+        # averaged: a plan that kills us in any seed takes the full
+        # W_DEATH veto, since ruin is not compensable by upside. V
+        # prices the primary rollout's leaf only.
         n_seeds = MOVE_SEEDS if plan['bomb_at'] is None else 1
         pay_sum, end = 0.0, None
         died_any = False
@@ -904,7 +887,7 @@ def search_action(game_state, safety, model, t0, budget):
             if (time.perf_counter() - t0) >= budget:
                 dbg['exhausted'] = True
                 break
-            # E88: CRN drops the plan index from the seed; the per-tick
+            # CRN drops the plan index from the seed; the per-tick
             # opponent RNG inside score_plan then keys on (seed, tick,
             # opponent), sharing draws across plans.
             payoff_j, end_j = score_plan(
@@ -916,7 +899,7 @@ def search_action(game_state, safety, model, t0, budget):
             if end is None:
                 end = end_j
         if end is None:
-            continue  # budget died mid-plan: drop it, keep S0 fallback
+            continue  # budget died mid-plan: drop it, keep the base fallback
         scored.append([pay_sum / n_seeds - (W_DEATH if died_any else 0.0),
                        plan, end])
         v_batch.append(end)
@@ -942,11 +925,11 @@ def search_action(game_state, safety, model, t0, budget):
         pass
     if not scored:
         return None, dbg
-    # Arbitration (P1 redesign): search owns BOMB decisions only. A bomb
-    # plan executes iff it beats the best move plan by BOMB_MARGIN; else
-    # None -> S0 (pi) decides the move. Move plans are the baseline.
-    # E73: the margin scales with the bomb tile's pre-rollout yield —
-    # junk tiles must clear a higher bar (soft, still arbitration).
+    # Arbitration: search owns BOMB decisions only. A bomb plan executes
+    # iff it beats the best move plan by BOMB_MARGIN; else None -> pi
+    # decides the move. Move plans are the baseline. The margin scales
+    # with the bomb tile's pre-rollout yield, so junk tiles clear a
+    # higher bar (still arbitration).
     bombs = [r for r in scored if r[1]['bomb_at'] is not None]
     moves = [r for r in scored if r[1]['bomb_at'] is None]
     best_move = max([r[0] for r in moves], default=float('-inf'))

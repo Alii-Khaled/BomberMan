@@ -1,6 +1,6 @@
 """ARBITER exact forward simulator (numpy + engine semantics, no torch).
 
-Replicates environment.py do_step order EXACTLY per simulated step:
+Replicates environment.py do_step order exactly per simulated step:
   1. apply actions sequentially (movement via tile_is_free rules;
      BOMB iff bombs_left; else WAIT/INVALID = stand still),
   2. collect_coins (+1 standing on collectable),
@@ -15,20 +15,18 @@ Bomb cycle: dropped at t (timer 4->3 same step) -> detonates during
 step t+4 -> lethal t+4,t+5 -> bombs_left back at t+6. Matches the mask's
 danger model (safety.py) and the brief (BOMB_TIMER 4, POWER 3).
 
-TWO intentional approximations (both documented + probed):
-  A1 movement order: engine applies in seating order; sim applies self
-     (index 0) then opponents in others-order. Matters only when two
-     agents contest one tile in one step (measured rare; replanning
-     every step washes single-step artifacts out).
-  A2 hidden coins: game_state hides coins under crates. The engine
-     reveals them deterministically; the sim books EXPECTED coins per
+Two intentional approximations:
+  1 (movement order): engine applies in seating order; sim applies
+     self (index 0) then opponents in others-order. Matters only when
+     two agents contest one tile in one step (rare; replanning every
+     step washes single-step artifacts out).
+  2 (hidden coins): game_state hides coins under crates. The engine
+     reveals them deterministically; the sim books expected coins per
      cleared crate (p = remaining-hidden / remaining-crates, all terms
      observable: total 9 - visible - collected_est, where collected_est
      = total_score - 5 * observed_deaths). Exact payoffs (crates, kills,
      deaths, collections of visible coins) are unaffected.
-Everything else (blast geometry, timers, scoring, blocking) is exact
-and parity-probed against the engine's own step functions in
-scripts/probe_arbiter_sim.py.
+Everything else (blast geometry, timers, scoring, blocking) is exact.
 """
 import numpy as np
 
@@ -147,7 +145,7 @@ def valid_actions(st, i):
 
 
 def _reveal_p(st):
-    """Expected P(hidden coin | cleared crate) — approximation A2."""
+    """Expected P(hidden coin | cleared crate), approximation 2."""
     arena = st['arena']
     crates = int((arena == 1).sum())
     if crates <= 0:
@@ -170,7 +168,7 @@ def step(st, actions):
     info = {'crates': 0, 'revealed_exp': 0.0, 'coins': [0] * len(actions),
             'kills': [0] * len(actions), 'died': [False] * len(actions),
             'score0': st['agents'][0]['score']}
-    # 1. apply actions sequentially (self first: approximation A1)
+    # 1. apply actions sequentially (self first: approximation 1)
     order = [0] + [i for i in range(1, len(actions)) if i < len(st['agents'])]
     for i in order:
         a = st['agents'][i]
@@ -271,7 +269,7 @@ def margin(st):
 
 
 def yield_field(arena):
-    """Exact crates-per-bomb for EVERY tile (vectorized, 0.13 ms)."""
+    """Exact crates-per-bomb for every tile (vectorized, 0.13 ms)."""
     from .features import _blast_crate_counts
     _, blast = _blast_crate_counts(np.asarray(arena))
     return blast

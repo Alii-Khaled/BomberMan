@@ -4,7 +4,7 @@ Recording happens in act() (see callbacks.py) so the fatal step of a
 death round is captured too (game_events_occurred never sees deaths).
 Rounds flush to: <ARBITER_DEMO_DIR>/round_%06d.npz
   {feats: float32[N,98], acts: uint8[N]}  (reaper-format, pi-only rows)
-Consume via scripts/arbiter_extract.py (teacher id 4 = arbiter_self).
+Consume via scripts/arbiter_extract.py.
 """
 import os
 import sys

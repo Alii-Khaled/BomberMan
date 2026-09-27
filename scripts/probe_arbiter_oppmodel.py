@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""ARBITER rollout-noise probe (E83: probe before games, E21 rule).
+"""ARBITER rollout-noise probe.
 
   U0  default-off: CERT_OWN False, OPPMODEL 'random'.
-  U1  _opp_move 'random' bit-parity: same rng -> same action for
+  U1  _opp_move 'random' parity: same rng -> same action for
       random / wardenlite-on-danger paths.
   E1  cert-owner: an opp SELF-trap (opp bombs itself in a sealed
       corner, CERT default) credits us +5; with CERT_OWN=1 the same
@@ -77,7 +77,7 @@ def main():
     check('U1a-random-model', a1 in ('UP', 'DOWN', 'LEFT', 'RIGHT',
                                      'WAIT', 'BOMB'), f'a1={a1!r}')
     # danger set: opp at (5,2), bomb at (5,6) t=2 up-arm covers
-    # (5,3),(5,4),(5,5) — DOWN is lethal, UP/WAIT are safe; wardenlite
+    # (5,3),(5,4),(5,5) -- DOWN is lethal, UP/WAIT are safe; wardenlite
     # must also drop BOMB (guard holds: no crates, no opps in blast).
     fw = open_field()
     gsw = make_state(fw, self_xy=(5, 9), others=[(5, 2)])
@@ -98,8 +98,8 @@ def main():
           f'wardenlite={sorted(steps_w)} random={sorted(steps_r)}')
 
     # --- E1 cert-owner: opp self-trap credits us only under default ---
-    # E88: CERT_OWN semantics are orthogonal to CRN; pin the legacy
-    # unpaired rollout so this probe's seed scan stays stable.
+    # CERT_OWN semantics are orthogonal to CRN; pin the legacy unpaired
+    # rollout so this probe's seed scan stays stable.
     SR.CRN = False
     gs1 = make_state(open_field(), others=())
     gs1['others'] = [('o0', 0, True, (5, 1))]

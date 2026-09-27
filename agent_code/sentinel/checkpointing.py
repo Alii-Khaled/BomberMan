@@ -7,7 +7,7 @@ Layout (all under agent_code/sentinel/checkpoints/):
 
 Each file stores: q_net, target_net, optimizer, episode, total_steps,
 epsilon_steps, best_ema, config. Tournament export my-saved-model.pt
-(state_dict only) is written separately and is NOT the source of truth.
+(state_dict only) is written separately and is not the source of truth.
 """
 import glob
 import os

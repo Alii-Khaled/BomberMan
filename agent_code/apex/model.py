@@ -71,8 +71,8 @@ class ApexNet(nn.Module):
         # Optional 3rd block at full depth (APEX_DEEP=1). Adds ~0.6M
         # params at base=96; gated so default shape stays loadable.
         self.res3 = ResBlock(base * 2, norm, groups) if deep else None
-        # global + local pooling; amax is used instead of AdaptiveMaxPool2d
-        # (CUDA-native, verified fast on Colab GPUs).
+        # global + local pooling; amax over AdaptiveMaxPool2d (CUDA-native,
+        # fast on Colab GPUs).
         self.gap = nn.AdaptiveAvgPool2d(1)
         feat = base * 2 * 2 + N_SCALARS  # gap+gmp + extended scalar head (8 overlord + 8 apex extras)
         # scalar head: step, bombs_left, crates, coins, opps, escape, crates_hit, opps_hit
@@ -117,10 +117,10 @@ def build_model(in_ch=N_CHANNELS, base=None, n_actions=N_ACTIONS,
                 fc_dim=None, norm=None, deep=None):
     """Env-overridable constructor (all args optional, backward compatible).
 
-    APEX_BASE (default 96, was 64) · APEX_FC (default 512, was 256)
-    APEX_NORM=bn|gn (default bn) · APEX_DEEP=1 adds res3.
+    APEX_BASE (default 96) | APEX_FC (default 512)
+    APEX_NORM=bn|gn (default bn) | APEX_DEEP=1 adds res3.
     Old checkpoints with base=64 load with strict=False (shape-mismatched
-    layers re-init) — fresh-init runs are unaffected.
+    layers re-init).
     """
     if base is None:
         base = _env_int('APEX_BASE', 96, 32, 256)

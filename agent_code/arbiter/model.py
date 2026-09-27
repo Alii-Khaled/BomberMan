@@ -1,15 +1,15 @@
-"""ARBITER policy/value net: shared MLP trunk over the 98-dim engineered
-features, with a policy prior head pi (6 logits) and a state-value head
-V (1 scalar, score-margin-to-go).
+"""ARBITER policy/value net: shared MLP trunk over the engineered
+features (FEATURE_DIM inputs), with a policy prior head pi (6 logits)
+and a state-value head V (1 scalar, score-margin-to-go).
 
-Design constraint from A4 (E62): the net NEVER votes on root actions
-directly. pi prunes the search and is the S0 fallback; V evaluates
-search leaves only. This is structural immunity to the apex failure
-(E61 Q-delta -0.42 from a dueling Q given veto authority over an
-equivalent heuristic).
+The net never votes on root actions. pi prunes the search and ranks
+the base fallback; V evaluates search leaves only. A dueling Q head
+with veto authority over an equivalent heuristic double-counted the
+warden and lost 0.42 in evaluation (the apex failure), so the split is
+structural.
 
-Convention (repo-wide): zero-init heads, so pi starts uniform and V
-starts at 0 — the heuristic skeleton drives early play.
+Repo-wide convention: zero-init heads, so pi starts uniform and V
+starts at 0, and the heuristic skeleton drives early play.
 """
 import os
 import torch

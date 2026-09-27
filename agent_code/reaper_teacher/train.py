@@ -5,8 +5,8 @@ and its action; features are computed with reaper's feature builder plus
 the recorder's own-bomb tracker. Rounds flush to npz files:
   <REAPER_DEMO_DIR>/round_%06d.npz  {feats: float32[N,98], acts: uint8[N]}
 
-In DAGGER mode (REAPER_DAGGER=1, see callbacks.py) the STUDENT acts but
-the recorded action is the TEACHER's label for that state — consume-and-
+In DAgger mode (REAPER_DAGGER=1, see callbacks.py) the student acts but
+the recorded action is the teacher's label for that state. Consume and
 clear the label so a skipped step (death) can never leak a stale label
 into the next step.
 """
@@ -109,9 +109,9 @@ def end_of_round(self, last_game_state, last_action, events):
             _survived = False
         if getattr(self, '_dagger', False) and _survived:
             # Survived: game_events_occurred already recorded this exact
-            # state with the teacher label — pushing again here would store
-            # a CONFLICTING (student-action) duplicate. Skip. (The died
-            # case still pushes below: the fatal step never reached
+            # state with the teacher label, and pushing again here would
+            # store a conflicting (student-action) duplicate. Skip. (The
+            # died case still pushes below: the fatal step never reached
             # game_events_occurred, and its teacher label is waiting.)
             pass
         else:

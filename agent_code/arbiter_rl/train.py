@@ -1,11 +1,11 @@
-"""E100 ARBITER-RL: KL-anchored REINFORCE fine-tune of pi.
+"""ARBITER-RL: KL-anchored REINFORCE fine-tune of pi.
 
 Only the move fallback is a pi decision (the search owns bombs); steps
 where search/tactical acted carry no trace entry. Rewards are the exact
 engine objective plus reaper's death/invalid/wait terms; returns-to-go
 over the whole round feed the traced steps. KL(pi || frozen BC prior)
 anchors calibration. Runs on the callbacks' device (main CUDA device
-with CPU fallback, E100c); the net is tiny.
+with CPU fallback); the net is tiny.
 """
 import copy
 import os
@@ -52,9 +52,9 @@ def setup_training(self):
     self._rl_beta = _env('ARBITER_RL_BETA', 0.02)
     self._rl_trunk = os.environ.get('ARBITER_RL_TRUNK', '1') == '1'
     self._rl_save_every = int(_env('ARBITER_RL_SAVE_EVERY', 25, int))
-    # E102 RL loop v2 (all env-gated; defaults = E100 behavior):
-    # STABLE — adaptive KL anchor + hard revert guard;
-    # EPOCHS — extra passes over the round batch; CRITIC — V-as-baseline
+    # RL loop options (all env-gated, defaults keep the base behavior):
+    # STABLE: adaptive KL anchor + hard revert guard;
+    # EPOCHS: extra passes over the round batch; CRITIC: V-as-baseline
     # advantages + value regression.
     self._rl_stable = os.environ.get('ARBITER_RL_STABLE', '0') == '1'
     self._rl_kl_hi = _env('ARBITER_RL_KL_HI', 0.5)
@@ -118,9 +118,9 @@ def end_of_round(self, last_game_state, last_action, events):
     self._rl_ep = int(getattr(self, '_rl_ep', 0)) + 1
     if trace and rew:
         try:
-            # E104 B2 shaping knob: survived a round in which we planted
-            # bombs -> terminal bonus (counter-weights KILLED_SELF -8;
-            # default 0 = ship behavior).
+            # Shaping knob: survived a round in which we planted bombs
+            # -> terminal bonus (counter-weights KILLED_SELF -8;
+            # default 0).
             _sb = _env('ARBITER_RL_BOMB_SURVIVE_BONUS', 0.0)
             if _sb > 0 \
                     and 'SURVIVED_ROUND' in ' '.join(
@@ -173,8 +173,8 @@ def _rl_update(self, trace, rew):
     else:
         adv_arr = np.asarray([ret[i] - base for i in steps_k],
                              dtype=np.float64)
-    # E100b stability: unit-variance advantages (raw returns span +-20 and
-    # destabilized the first run: KL blew to 12 and G1 fell to 3.55).
+    # Stability: unit-variance advantages (raw returns span +-20 and
+    # destabilize the update: KL blows up).
     adv_arr = (adv_arr - adv_arr.mean()) / (adv_arr.std() + 1e-6)
     adv = torch.tensor(adv_arr, dtype=torch.float32, device=dev)
     with torch.no_grad():
@@ -218,7 +218,7 @@ def _rl_update(self, trace, rew):
 
 
 def _rl_stable_post(self, kl_val):
-    """E102 stable mode: revert guard + adaptive beta on the measured KL."""
+    """Stable mode: revert guard + adaptive beta on the measured KL."""
     import torch
     try:
         if kl_val > self._rl_kl_rev and self._rl_good is not None:

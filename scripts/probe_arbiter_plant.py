@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E97 Phase 3 probe: opponent-aware plant gate (ARBITER_PLANT_OPP).
+"""Opponent-aware plant gate (ARBITER_PLANT_OPP).
 
 Runs in a MODE-specific process (the knob is read at search import):
   ARBITER_PLANT_OPP_MODE=off|1|2 [ARBITER_PLANT_OPP_K=1..3]

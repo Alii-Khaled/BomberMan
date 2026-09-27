@@ -1,4 +1,4 @@
-"""E39 probe: late-hunt veto (OVERLORD_G_LATEHUNT_VETO).
+"""Late-hunt veto (OVERLORD_G_LATEHUNT_VETO).
 
 Run twice: VETO=0 (expect BOMB chosen in a late opp-only blast setup) and
 VETO=1 (expect BOMB refused). Run from repo root, one env per process

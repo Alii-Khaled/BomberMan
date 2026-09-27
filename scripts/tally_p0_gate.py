@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase-0 gate tally: pooled G1 100x2 means + win rates, candidates vs control.
+"""Gate tally: pooled G1 100x2 means + win rates, candidates vs control.
 
 Usage: python3 scripts/tally_p0_gate.py
 """

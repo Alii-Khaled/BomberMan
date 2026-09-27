@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Aggregate ARBITER frozen-gate JSONs into report tables (§6).
+"""Aggregate ARBITER frozen-gate JSONs into report tables (report section 6).
 
 Reads results/gate_arbiter_*.json (main.py --save-stats format).
-Writes results/arbiter_summary.csv — one row per file x agent with
+Writes results/arbiter_summary.csv -- one row per file x agent with
 per-round rates + pooled rows per gate family.
 Usage: python3 scripts/aggregate_arbiter.py
 """

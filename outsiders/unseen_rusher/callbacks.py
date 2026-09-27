@@ -1,8 +1,8 @@
-# Unseen sparring agents — EVAL ONLY, never shipped in a tournament zip.
-# unseen_rusher: pure hunter — BFS to the nearest opponent every step,
+# Unseen sparring agents. Eval only, never shipped in a tournament zip.
+# unseen_rusher: pure hunter. BFS to the nearest opponent every step,
 # plants when an opponent stands on its blast line (with a <=3-step exit
-# path), FLEES while bombs are live, resumes the chase after.
-# Ignores coins entirely. Behavior axis: opponent-obsessed rusher.
+# path), flees while bombs are live, resumes the chase after.
+# Ignores coins entirely. Opponent-obsessed rusher.
 """Opponent-rusher sparring agent (eval-only outsider)."""
 from collections import deque
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ARBITER guarded-chain probe (E77: probe before games, E21 rule).
+"""ARBITER guarded-chain probe.
 
 Unit tests on chain_guard_ok (pure predicate):
   U1 opp in own-tile blast -> (True, 2.0).
@@ -9,14 +9,14 @@ Unit tests on chain_guard_ok (pure predicate):
   U5 blocked tile (opponent standing) -> (False, _).
   U6 out-of-bounds -> (False, _).
   U7 pocket trap (opps in blast but no escape) -> (False, _).
-End-to-end on gen_plans (K=1 forces the guard to prove admission —
+End-to-end on gen_plans (K=1 forces the guard to prove admission --
 ranking takes only the top tile, every extra bomb plan is
 guard-admitted):
   E1 opp-adjacent: off=[(5,5)], on=[(5,5),(5,4)] (exact admission).
-  E2 empty: on == off (E72 junk stays out).
+  E2 empty: on == off (junk stays out).
   E3 crates2 + richer tile elsewhere: off=[(7,7)], on=[(7,7),(5,5)].
-  E4 append-only at K=8 (seed-index discipline, E72b).
-  E5 default is OFF (validated P1 flow untouched).
+  E4 append-only at K=8 (seed-index discipline).
+  E5 default is OFF (the shipped default flow).
 
 Usage: python3 scripts/probe_arbiter_chain.py
 Exit nonzero on any failure.

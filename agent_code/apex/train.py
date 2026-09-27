@@ -4,7 +4,7 @@ aux danger loss + 8x train-time augmentation + DQfD demo margin, on CUDA.
 Init chain: apex last.pt (exact resume) > apex my-saved-model.pt (raw or
 q_net payload, incl. BC output) > o3sbest trunk partial (head re-inits) >
 fresh. Optimizer via dml_optimizer factory (tuned AdamW default).
-Epsilon counts env steps (E31/C2 lesson). Demo format (B3 recorder):
+Epsilon counts env steps. Demo format:
 npz per round with img uint8 (T,12,17,17, x4 scale), sc float32 (T,16),
 act uint8 (T,) action indices; APEX_DEMO points at the dir (empty = off).
 OOM safety (16G containers): replay stores uint8 x4 (lossless for 0/1 +
@@ -12,7 +12,7 @@ timer/4 planes, same scale as demos) and defaults to APEX_BUFFER=100000
 (max 300000); checkpoint payload is built lazily only on save rounds;
 wnorm recomputes on save rounds; tournament export writes here/ only
 (APEX_EXPORT_CWD=1 restores the CWD duplicate). Run via
-scripts/train_apex.sh in a terminal — never in a notebook cell.
+scripts/train_apex.sh in a terminal, not in a notebook cell.
 """
 from collections import deque, namedtuple
 import glob
@@ -58,9 +58,9 @@ except ImportError:
 
 Transition = namedtuple('Transition', ('img', 'sc', 'action', 'next_img', 'next_sc', 'reward', 'done', 'aux'))
 
-# Train-time augmentation (E49: scalars are rotation-invariant aggregates,
-# so only the image rotates + action indices remap; no scalar permutation
-# code exists by design). CCW steps k=0..3, action perm UP->LEFT->DOWN->RIGHT.
+# Train-time augmentation: scalars are rotation-invariant aggregates, so
+# only the image rotates and action indices remap (no scalar permutation).
+# CCW steps k=0..3, action perm UP->LEFT->DOWN->RIGHT.
 AUG = os.environ.get('APEX_AUG', '1') == '1'
 PERM_CCW = [3, 0, 1, 2, 4, 5]
 # DQfD demo margin loss (needs only (s, a_demo) pairs): J = mean(max_a
@@ -101,10 +101,10 @@ def _buffer_cap():
 
 
 def _quantize_img(img):
-    """Quantizezomg 0..1 float32 CNN planes to uint8 0..4 (4x RAM saving).
+    """Quantize 0..1 float32 CNN planes to uint8 0..4 (4x RAM saving).
 
     All apex planes are 0/1 except bomb-timer/4 (0/0.25/0.5/0.75/1.0), so
-    round(x*4) is lossless and matches the B3 demo format (uint8 x4 scale,
+    round(x*4) is lossless and matches the demo format on disk (uint8 x4 scale,
     dequantized with /4.0). Pass-through for None/uint8/foreign dtypes so
     synthetic probes with standard_normal data keep working.
     """
@@ -131,24 +131,24 @@ def _dequantize_batch(arr):
     return np.asarray(a, dtype=np.float32)
 
 EPS_START, EPS_END = 1.0, 0.05
-EPS_DECAY = _env_int('APEX_EPS_DECAY', 100000, 5000, 1000000)  # epsilon-greedy, sentinel-proven (lengthened for cold CNN; was 50000)
+EPS_DECAY = _env_int('APEX_EPS_DECAY', 100000, 5000, 1000000)  # epsilon-greedy decay; long because the CNN starts cold
 # GPU-throughput switches (env-gated; defaults = aggressive L40S path):
 #   APEX_CHANNELS_LAST=1 (default) keeps conv inputs channels-last
 #   APEX_COMPILE=1 enables torch.compile on the train nets (default 0:
-#     validate first — BatchNorm/amax usually compile cleanly but graph
-#     breaks would silently slow the loop)
+#     BatchNorm/amax usually compile cleanly, but graph breaks slow the
+#     loop without an error)
 #   APEX_SAVE_EVERY (default 5): rounds between full last.pt saves
 #     (best.pt still on EMA improvement; tournament export every round).
 CHANNELS_LAST = os.environ.get('APEX_CHANNELS_LAST', '1') == '1'
 USE_COMPILE = os.environ.get('APEX_COMPILE', '0') == '1'
 SAVE_EVERY = save_every_config('APEX', 5)
 # Optimizer select (env-gated; default = legacy AdamW behavior):
-#   APEX_OPT: 'adam' (stock AdamW) | 'lion' (Lion, benchmark winner on sentinel)
+#   APEX_OPT: 'adam' (stock AdamW) | 'lion' (Lion)
 #   APEX_LR: base LR override (default LR)
 #   APEX_SCHEDULE: '1' enables warmup+cosine schedule on total_steps
 #   APEX_TUNED: '1' applies the DQN task preset to AdamW (eps=1e-4,
 #     decay stays 1e-4); re-applied after resume (load_state_dict would
-#     otherwise restore old groups). Sentinel Arm-A lesson, ported.
+#     otherwise restore old groups).
 #   APEX_AMP: '1' (default) enables autocast+GradScaler on CUDA; '0' = fp32.
 #   APEX_DEVICE: 'cuda'|'cpu'|'auto' (default auto = CUDA when available).
 OPT_NAME = os.environ.get('APEX_OPT', 'adam')
@@ -273,10 +273,6 @@ def _custom(old_state, action, new_state):
                 out.append('MOVE_TOWARD_TARGET')
             elif nd > od:
                 out.append('MOVE_AWAY_TARGET')
-        # NOTE (E29): crate-approach pull (CRATE_APPROACH/RETREAT ±0.05)
-        # was tried in W1 and REJECTED (coins 1.09 vs O2s 1.34 — trigger
-        # fired). Removed; sparring alone continues. See probe_crate_pull.py
-        # (now asserts absence) and E28/E29.
         if action == 'BOMB' and old_state is not None:
             try:
                 s = action_safety(old_state)
@@ -284,10 +280,6 @@ def _custom(old_state, action, new_state):
                     out.append('BOMB_NO_ESCAPE')
                 elif s.get('crates_hit_if_bomb', 0) > 0 or s.get('opps_hit_if_bomb', 0) > 0:
                     out.append('BOMB_GOOD')
-                # NOTE (E44): multi-crate bonus (CRATE_EXTRA +0.15) tried in
-                # C1 and REJECTED (crates 11.0 vs bar 16+; bombs up to
-                # 22.1/rd with crates DOWN — bought volume, not placement).
-                # Removed; probe_multicrate.py now asserts absence.
             except Exception:
                 pass
         if int(new_state.get('step', 0)) > 280 and action in ('UP', 'DOWN', 'LEFT', 'RIGHT'):
@@ -329,7 +321,7 @@ def _encode(state):
 
 
 def _load_demos(demo_dir, cap, logger=None):
-    """Load B3 demo pairs: list of (img_u8, sc16, action_idx). Empty = off."""
+    """Load demo pairs: list of (img_u8, sc16, action_idx). Empty = off."""
     out = []
     if not demo_dir:
         return out
@@ -359,10 +351,11 @@ def _load_demos(demo_dir, cap, logger=None):
         try:
             logger.info(f'apex demo buffer: {len(out)} pairs from {demo_dir or "<off>"}')
             if demo_dir and not out:
-                # Loud fail: a configured-but-empty demo dir means DQfD is
-                # silently off (e.g. relative path resolved against the
-                # agent cwd — the backend chdirs per callback). Shout so
-                # the run gets fixed instead of training pure TD for hours.
+                # Loud failure: a configured-but-empty demo dir means DQfD is
+                # off without warning (e.g. a relative path resolved against
+                # the agent cwd, since the backend chdirs per callback). Raise
+                # here so the run gets fixed instead of training pure TD for
+                # hours.
                 logger.warning(
                     f'apex DEMO_DIR={demo_dir!r} yielded 0 pairs '
                     f'(cwd={os.getcwd()}); use an absolute path')
@@ -597,8 +590,8 @@ def setup_training(self):
         except Exception:
             pass
         self.logger.info(f'apex fresh start (no usable checkpoint; init={_init_src})')
-    # Demo buffer for DQfD margin loss (B3 format; empty = pure TD).
-    # Loaded on every start (resume or fresh) — demos are data, not state.
+    # Demo buffer for DQfD margin loss (empty = pure TD).
+    # Loaded on every start (resume or fresh) since demos are plain data.
     self.demo = _load_demos(DEMO_DIR, DEMO_CAP, logger=self.logger)
 
 
@@ -694,20 +687,20 @@ def _update(self):
         return
     import torch
     self.total_steps += 1
-    # NOTE (E31/C2): epsilon_steps is counted per env step in
-    # game_events_occurred/end_of_round, NOT here — update counts would
-    # couple the exploration schedule to UTD/EOR.
+    # epsilon_steps counts env steps in game_events_occurred/end_of_round,
+    # not update steps here: update counts would couple the exploration
+    # schedule to UTD/EOR.
     beta = min(1.0, 0.4 + 0.6 * self.total_steps / 150000)
     if getattr(self, 'opt_schedule', False):
         apply_schedule(self.optimizer, self.opt_base_lr, self.total_steps,
                        warmup=SCHED_WARMUP, total=SCHED_TOTAL, min_ratio=SCHED_MIN)
     batch, idx, w = self.buffer.sample(self.batch_size, beta)
     dev = self.device
-    # One stacked H2D copy per tensor (was: per-sample from_numpy + per-
-    # element zeros_like → N small PCIe transfers per update). Stack on
-    # CPU, then a single async copy; channels-last for conv inputs.
-    # Replay now stores uint8 x4 (see _quantize_img); dequantize to fp32
-    # here. Legacy float32 entries (synthetic probes) pass through.
+    # One stacked H2D copy per tensor: stack on CPU, then a single async copy
+    # (per-sample from_numpy + per-element zeros_like would make N small PCIe
+    # transfers per update); channels-last for conv inputs.
+    # Replay stores uint8 x4 (see _quantize_img); dequantize to fp32 here.
+    # Legacy float32 entries (synthetic probes) pass through.
     use_cl = bool(CHANNELS_LAST and is_cuda_device(dev))
     I_cpu = _dequantize_batch(np.stack([t.img for t in batch]))
     S_cpu = np.stack([t.sc for t in batch]).astype(np.float32, copy=False)
@@ -731,7 +724,7 @@ def _update(self):
     D = torch.tensor([0.0 if t.done else 1.0 for t in batch], dtype=torch.float32, device=dev)
     W = torch.tensor(w, dtype=torch.float32, device=dev)
     AUX = torch.tensor([t.aux for t in batch], dtype=torch.float32, device=dev)
-    # Train-time augmentation (E49): one random CCW rotation per update.
+    # Train-time augmentation: one random CCW rotation per update.
     # Scalars are rotation-invariant aggregates (no permutation needed);
     # action indices remap UP->LEFT->DOWN->RIGHT. k=0 (25%) is identity.
     aug_k = 0
@@ -763,12 +756,12 @@ def _update(self):
             q_next = qt.gather(1, a_star).squeeze(1)
             target = R + D * gam_n * q_next
         td = target - q
-        # Huber (delta=1) both heads: MSE detonated on ±100 TD errors in
-        # sentinel Stage 4 (lossMed 480 -> 74k). Bounded gradients instead.
+        # Huber (delta=1) both heads: MSE explodes on TD errors of +/-100
+        # (loss median 480 -> 74k). The bounded gradient keeps steps stable.
         td_loss = (W * torch.nn.functional.smooth_l1_loss(td, torch.zeros_like(td), reduction='none')).mean()
         aux_loss = torch.nn.functional.smooth_l1_loss(aux_pred, AUX, reduction='none').mean()
         total = td_loss + AUX_W * aux_loss
-        # DQfD demo margin (B3 pairs only; skipped when demo buffer empty):
+        # DQfD demo margin (demo pairs only; skipped when demo buffer empty):
         # J = mean(max_a [Q(s,a) + M*(a != a_demo)] - Q(s,a_demo)).
         try:
             _demo = getattr(self, 'demo', None) or []
@@ -798,7 +791,7 @@ def _update(self):
         return total, td
     use_amp = bool(getattr(self, 'use_amp', False) and getattr(self, 'scaler', None) is not None)
     if use_amp:
-        # AMP on CUDA (default); fp32 path below is bit-identical to legacy.
+        # AMP on CUDA (default).
         with torch.autocast(device_type='cuda', dtype=torch.float16):
             loss, td = loss_fn()
         self.optimizer.zero_grad(set_to_none=True)
@@ -845,8 +838,8 @@ def game_events_occurred(self, old_game_state, self_action, new_game_state, even
             self._round_coins += 1
         if e.KILLED_OPPONENT in events:
             self._round_kills += 1
-        # Own bomb takes precedence: suicide rounds emit BOTH events
-        # (removal loop tags every death GOT_KILLED) — partition exactly.
+        # Own bomb takes precedence: suicide rounds emit both events
+        # (the removal loop tags every death GOT_KILLED) so the counters partition.
         if e.KILLED_SELF in events:
             self._round_suicides += 1
             self._round_killed_self += 1
@@ -859,9 +852,9 @@ def game_events_occurred(self, old_game_state, self_action, new_game_state, even
     nimg, nsc, _ = _encode(new_game_state) if new_game_state is not None else (None, None, 0.0)
     done = new_game_state is None
     _push(self, img, sc, self_action, nimg, nsc, r, done, aux)
-    # E31/C2: epsilon counts ENV steps (one per callback here), not gradient
-    # steps — the old per-_update counting made the schedule silently depend
-    # on UTD/EOR (≈800 updates/round burned 100k decay in ~125 rounds).
+    # epsilon counts env steps (one per callback here), not gradient steps:
+    # per-update counting makes the schedule depend on UTD/EOR (~800
+    # updates/round would burn the 100k decay in ~125 rounds).
     self.epsilon_steps += 1
     self.epsilon = epsilon_now(self.epsilon_steps)
     for _ in range(getattr(self, 'utd', 1)):
@@ -881,8 +874,8 @@ def end_of_round(self, last_game_state, last_action, events):
             self._round_coins += 1
         if e.KILLED_OPPONENT in events:
             self._round_kills += 1
-        # Own bomb takes precedence: suicide rounds emit BOTH events
-        # (removal loop tags every death GOT_KILLED) — partition exactly.
+        # Own bomb takes precedence: suicide rounds emit both events
+        # (the removal loop tags every death GOT_KILLED) so the counters partition.
         if e.KILLED_SELF in events:
             self._round_suicides += 1
             self._round_killed_self += 1
@@ -895,7 +888,7 @@ def end_of_round(self, last_game_state, last_action, events):
     _push(self, img, sc, last_action, None, None, r, True, aux)
     # _push with done=True already drains n-step buffer
     self.n_step_buf.clear()
-    self.epsilon_steps += 1  # final env step of the round (E31/C2)
+    self.epsilon_steps += 1  # final env step of the round
     self.epsilon = epsilon_now(self.epsilon_steps)
     for _ in range(getattr(self, 'eor_updates', 6)):
         with self.duty.measure():
@@ -906,18 +899,18 @@ def end_of_round(self, last_game_state, last_action, events):
 
     rr = float(self._round_reward)
     self.ema_reward = rr if self.ema_reward is None else (1 - EMA_ALPHA) * self.ema_reward + EMA_ALPHA * rr
-    # Warmup guard (E60): _update() no-ops while len(buffer) < MIN_REPLAY,
-    # so weights below that threshold are exactly the stage-entry weights
-    # and the reward EMA is a 1-N-sample transient. Latching best.pt here
-    # corrupted the tracker at ep 401 (E55) and ep 1901 (A3) — a first-round
-    # spike survives forever because steady-state EMA never reaches it.
+    # Warmup guard: _update() no-ops while len(buffer) < MIN_REPLAY, so
+    # weights below that threshold are the stage-entry weights and the
+    # reward EMA is a 1-N-sample transient. Latching best.pt in that window
+    # lets a first-round spike survive forever because the steady-state EMA
+    # never reaches it.
     warmup = len(self.buffer) < MIN_REPLAY
     improved = (not warmup) and (self.best_ema is None or self.ema_reward > self.best_ema)
     if improved:
         self.best_ema = float(self.ema_reward)
 
-    # Weight norm (divergence guard: E04 lesson — |w| 447→2139 signaled
-    # MSE blowup; healthy Huber runs deflate to ~15-30 and hold).
+    # Weight norm (divergence guard: |w| 447 -> 2139 signaled MSE blowup;
+    # healthy Huber runs deflate to ~15-30 and hold).
     # Throttled: full param cat().norm() copies ~5MB to CPU every round;
     # recompute on save rounds, on improvement, or when cache is cold
     # (fresh process after resume), reuse cached value otherwise.
@@ -957,7 +950,7 @@ def end_of_round(self, last_game_state, last_action, events):
 
     try:
         # Lazy payload: _payload() clones q_net+target+optimizer (~20MB +
-        # 2x pickle transient). Build only when a save will actually happen.
+        # 2x pickle transient). Build only when a save will happen.
         will_save = (self.episode % max(1, SAVE_EVERY) == 0) or bool(improved) \
             or (self.episode % max(1, self.ckpts.snapshot_every) == 0)
         if will_save:

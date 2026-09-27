@@ -1,18 +1,19 @@
 """Reaper teacher recorder: delegates act() to a teacher agent and records
-(features, action) samples for BC pretraining. Training-time only — never
-ships to the tournament.
+(features, action) samples for BC pretraining. Training-time only, never
+part of the tournament entry.
 
 Teacher selection: TEACHER env = warden_v2 | warden_v1 | sentinel |
 overlord (default warden_v2; the warden is always versioned). The
-recorder reuses the teacher's own ``setup``/``act`` on the same self
-object, so delegation is exact.
+recorder reuses the teacher's own setup/act on the same self object,
+so delegation is exact.
 
-DAgger mode (REAPER_DAGGER=1): the STUDENT (reaper with current weights)
-acts, and the teacher only labels the visited state. This puts teacher
-supervision on the student's own state distribution, fixing the
-off-distribution blindness of pure teacher demos. The recorder's train.py
-saves (features, teacher_action) in this mode. Student weights come from
-REAPER_STUDENT_PT (defaults to agent_code/reaper/my-saved-model.pt).
+DAgger mode (REAPER_DAGGER=1): the student (reaper with current
+weights) acts, and the teacher only labels the visited state. This
+puts teacher supervision on the student's own state distribution,
+which fixes the off-distribution blindness of pure teacher demos. The
+recorder's train.py saves (features, teacher_action) in this mode.
+Student weights come from REAPER_STUDENT_PT (defaults to
+agent_code/reaper/my-saved-model.pt).
 """
 import os
 import sys
@@ -93,10 +94,10 @@ def setup(self):
 
 def act(self, game_state):
     if getattr(self, '_dagger', False):
-        # Teacher FIRST so its round-reset logic (keyed on the shared
-        # self.current_round) runs correctly; the student's reset is then
-        # handled manually below with its own tracker, since the teacher
-        # has already advanced self.current_round.
+        # Teacher first so its round-reset logic (keyed on the shared
+        # self.current_round) runs; the student's reset is then handled
+        # manually below with its own tracker, since the teacher has
+        # already advanced self.current_round.
         try:
             teacher_action = self._teacher.act(self, game_state)
         except Exception:

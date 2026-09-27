@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""E105 NGQ dataset: offline (x, a, r, r3, next, done) from the NG-1 BC
-cache + the raw demo img arrays.
+"""NGQ dataset: offline (x, a, r, r3, next, done) from the BC cache +
+the raw demo img arrays.
 
-x = (img/4 raveled 3468) ++ cached 98-dim NG scalars (the exact eval input
+x = (img/4 raveled 3468) ++ cached 98-dim scalars (the exact eval input
 layout). r = score-margin delta between consecutive ticks (engine score
 units), r3 = gamma-discounted 3-step return with terminal handling, next
 = row index of the successor state (itself when terminal).

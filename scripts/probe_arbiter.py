@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""ARBITER P0 static probe (E21/E33 discipline: gates before games).
+"""ARBITER static probe.
 Groups:
   G1 model shapes + zero-init (pi uniform, V zero) + determinism.
   G2 vendored parity arbiter.features vs reaper.features on reconstructed
       demo states: _blast_crate_counts exact; state_to_features exact on
-      all indices EXCEPT the escape-derived block {63,68-71,80-83,91,93}
-      (E88: arbiter's escape solver is corrected, reaper's is not).
+      all indices except the escape-derived block {63,68-71,80-83,91,93}
+      (arbiter's escape solver is corrected, reaper's is not).
   G3 vendored parity arbiter.safety vs reaper.safety: `valid` exact (logic
-      unchanged); `safe` subset (arbiter E88 fix only removes false-safes,
+      unchanged); `safe` subset (the arbiter fix only removes false-safes,
       reaper still carries the escape_bfs arrival bug); trap verdicts free.
-  G3b escape-solver correctness (E88): timer-0 blast arrival, non-contiguous
-      stacked-bomb windows, linger semantics — the bug class the old
+  G3b escape-solver correctness: timer-0 blast arrival, non-contiguous
+      stacked-bomb windows, linger semantics -- the bug class the
       first_lethal-based BFS mis-certified as safe.
   G4 act() unit: untrained net returns a mask-valid action on live states;
       S0 tie-break bounds (loop/BOMB penalties <= 0.5+0.9 combined scale).
-  G5 latency: state_to_features + forward p50 on 1 thread (budgets P1).
+  G5 latency: state_to_features + forward p50 on 1 thread.
 Usage: python3 scripts/probe_arbiter.py [--states N]
 Exit nonzero on any failure.
 """
@@ -94,7 +94,7 @@ for f in fs:
 states = states[:N]
 check('G2 states', len(states) == N, '%d states' % len(states))
 
-# ---- G2: feature parity (escape-derived indices may differ post-E88) ----
+# ---- G2: feature parity (escape-derived indices may differ after the fix) ----
 # Indices fed by escape_bfs / _adj_kill_info: f63 trap-flag, f68-71 trap
 # mask, f80-83 per-dir escape margin, f91 min opp escape, f93 kill
 # potential (derived from the trap mask).
@@ -122,7 +122,7 @@ check('G2 _blast_crate_counts exact', ok)
 check('G2 FEATURE_DIM', AF.FEATURE_DIM == RF.FEATURE_DIM == 98)
 check('G2 N_SYMS', AF.N_SYMS == RF.N_SYMS == 8)
 
-# ---- G3: safety parity (valid exact; safe subset after E88 fix) ----
+# ---- G3: safety parity (valid exact; safe subset after the fix) ----
 ok_valid = True
 ok_subset = True
 for gs in states:
@@ -132,7 +132,7 @@ for gs in states:
         ok_valid = False
         break
     for a in ('UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB'):
-        # E88: arbiter must never be MORE permissive than the buggy reaper
+        # The arbiter must never be more permissive than the buggy reaper
         # escape solver (the fix only removes false-safe certificates).
         if bool(sa.get('safe', {}).get(a)) and not bool(sb.get('safe', {}).get(a)):
             ok_subset = False
@@ -152,7 +152,7 @@ for gs in states:
         break
 check('G3 bomb_here_traps superset (E88)', ok)
 
-# ---- G3b: escape-solver correctness (E88) ----
+# ---- G3b: escape-solver correctness ----
 def _blank_state():
     arena = np.zeros((17, 17), dtype=int)
     arena[0, :] = -1
@@ -186,8 +186,8 @@ gs_lg['bombs'] = [((2, 3), 1)]
 slg = AS.action_safety(gs_lg)
 check('G3b timer-1 arrival unsafe (RIGHT)', not slg['safe']['RIGHT'])
 
-# doomed 1-wide corridor: the pre-fix BFS certified an escape that the
-# engine cannot execute (blast covers both neighbours at t=0/1)
+# doomed 1-wide corridor: the first_lethal BFS certified an escape that
+# the engine cannot execute (blast covers both neighbours at t=0/1)
 gs_cor = _blank_state()
 gs_cor['field'][2:16, :] = -1
 gs_cor['field'][1, 0:17] = 0

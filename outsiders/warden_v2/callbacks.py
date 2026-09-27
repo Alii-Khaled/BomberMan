@@ -4,8 +4,8 @@
 # so the game loader finds it.
 #
 # v2 over v1:
-#   * corrected time-expanded escape solver (latest-lethal test + arrival
-#     check, E88 semantics) and a boolean danger timeline (no window loss)
+#   * corrected time-expanded escape solver (latest-lethal test plus an
+#     arrival check, and a boolean danger timeline with no window loss)
 #   * certified-trap bombs (opponent in blast with no proven escape)
 #   * optional bounded rollout search over exact-dynamics plans
 #     (WARDEN_SEARCH=rollout, default) with a wall-clock budget and

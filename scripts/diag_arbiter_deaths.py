@@ -1,29 +1,26 @@
 #!/usr/bin/env python3
-"""E86/E88 Phase A: death attribution + missed-kill inventory from
-ARBITER_DIAG jsonl logs (per-tick snapshots, full rounds).
+"""Death attribution + missed-kill inventory from ARBITER_DIAG jsonl logs
+(per-tick snapshots, full rounds).
 
 Inputs (default):  results/diag_e86_{s0,s1,wm}_deaths.jsonl
 Outputs (default): results/diag_e86_{deaths.md,attribution.csv,missedkills.csv}
 
-E88 fixes over the first draft (all verified against engine semantics):
+Engine semantics this relies on:
   * mask strings are logged in model ACTION_LIST order
-    ['UP','RIGHT','DOWN','LEFT','WAIT','BOMB'] (the old decoder used
-    UP/DOWN/LEFT/RIGHT/WAIT/BOMB, so corridor cells were mislabeled);
+    ['UP','RIGHT','DOWN','LEFT','WAIT','BOMB'];
   * blast_set is engine-exact: power 3, beam stops at stone walls (-1)
-    and passes through/destroys crates (1) (the old draft used radius 4
-    and had wall/crate swapped);
-  * attribution keys off the TERMINAL hazard (the ttl<=0 bomb blast or
+    and passes through/destroys crates (1);
+  * attribution keys off the terminal hazard (the ttl<=0 bomb blast or
     live explosion at the last logged tick, checked against the post-
-    action destination) instead of the first bomb that ever covered us
-    (the old pick matched the engine's killer in 0/23 deaths);
+    action destination) instead of the first bomb that ever covered us;
   * the seal window is bounded to enemy bombs planted <=2 ticks after
-    the killer's plant tick (as the docstring always claimed).
+    the killer's plant tick.
 
-E90 v2 fixes:
-  * the killer bomb's plant tick is the START of the CONTIGUOUS block
-    of snapshots containing its coordinate that ends at the terminal
-    tick (the first-ever coordinate occurrence can belong to an older
-    bomb on a re-bombed tile, inflating the escape count);
+Plant tick and ownership:
+  * the killer bomb's plant tick is the start of the contiguous block of
+    snapshots containing its coordinate that ends at the terminal tick;
+    the first occurrence can belong to an older bomb on the same tile and
+    inflate the escape count;
   * the engine's KILLED_SELF / GOT_KILLED round event is authoritative
     for the terminal bomb's owner; coordinate history is kept only as a
     diagnostic (`owner_mismatch`), since stale `mine` entries collide
@@ -43,7 +40,7 @@ Taxonomy (priority order):
 
 Missed-kill inventory: per tick, enemy inside the blast set of a bomb
 (own or pre-existing) whose ttl fuse they cannot escape within their
-movement options (exact geometry, no rollout — NOT the E82 mechanism).
+movement options (exact geometry, no rollout).
 """
 import csv
 import json
@@ -67,7 +64,7 @@ for a in sys.argv[1:]:
     elif a.startswith('--label='):
         LABEL = a.split('=', 1)[1]
 
-# model.action.ACTION_LIST order — MUST match callbacks._diag_last_mask
+# model.action.ACTION_LIST order; must match callbacks._diag_last_mask
 MASK_ACTS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 ACT_DELTA = {'UP': (0, -1), 'DOWN': (0, 1), 'LEFT': (-1, 0),
              'RIGHT': (1, 0), 'WAIT': (0, 0), 'BOMB': (0, 0)}
@@ -200,13 +197,13 @@ def attribute(rnd):
                     hazard['t'], hazard['pos0'], hazard['pos1']))
     bx, by = hazard['bomb']
     coord_ours = bool(hazard['ours'])
-    # E90: engine event is authoritative for the terminal bomb's owner;
+    # Engine event is authoritative for the terminal bomb's owner;
     # coordinate history collides when a tile is re-bombed after an
     # earlier own bomb (stale `mine` entries).
     ours = (killer == 'KILLED_SELF') if killer in ('KILLED_SELF',
                                                    'GOT_KILLED') \
         else coord_ours
-    # Plant tick = start of the CONTIGUOUS block of snapshots containing
+    # Plant tick = start of the contiguous block of snapshots containing
     # this bomb coordinate that ends at the terminal tick. The first-ever
     # occurrence can belong to an older bomb on the same tile.
     plant_i = len(ticks) - 1

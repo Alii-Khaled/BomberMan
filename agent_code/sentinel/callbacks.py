@@ -24,7 +24,7 @@ def _flee_scores(game_state):
     """Strong escape override: commit away from live bombs (wall-aware blast).
 
     Returns dict action->bonus. Called last so it dominates coin/hunt when
-    threatened. Fixes 'flee then wander back' suicides.
+    threatened. Prevents the 'flee then wander back' suicide.
     """
     scores = {a: 0.0 for a in ACTION_LIST}
     arena = game_state['field']
@@ -98,7 +98,7 @@ def _heuristic_scores(game_state, safety):
     step = int(game_state.get('step', 0))
     W, H = arena.shape[0], arena.shape[1]
 
-    # direction hints via BFS first-step (reuse features' BFS? cheap recompute via dist)
+    # direction hints via BFS first-step (cheap recompute via dist)
     # Simple Manhattan + wall-aware preference: score moves reducing distance
     def manhattan(ax, ay, targets):
         if not targets:
@@ -172,9 +172,9 @@ def _heuristic_scores(game_state, safety):
         scores['BOMB'] += b
     else:
         scores['BOMB'] -= 0.7
-    # WAIT penalty (avoid camping) unless no safe move.
-    # E18: -0.12 let WAIT win strictly over flat early moves (30% early WAIT,
-    # 321 safe-stuck sits/30rd with zero bombs ticking). Mask still picks WAIT
+    # WAIT penalty (avoid camping) unless no safe move. At -0.12, WAIT beat
+    # flat early moves (30% early WAIT, 321 safe-stuck sits per 30 rounds with
+    # zero bombs ticking), so the penalty is 0.30. The mask still picks WAIT
     # when it is the only safe move, so survival is unaffected.
     scores['WAIT'] -= 0.30
     # light dead-end avoidance: only punish true cul-de-sac
@@ -184,8 +184,8 @@ def _heuristic_scores(game_state, safety):
             nb = sum(1 for ddx, ddy in ((1, 0), (-1, 0), (0, 1), (0, -1))
                      if 0 <= nx + ddx < W and 0 <= ny + ddy < H and arena[nx + ddx, ny + ddy] == 0)
             if nb == 0:
-                # E18: early dead-ends hold crates — full avoidance strands
-                # the agent at spawn (displacement 3.2 tiles by step 50).
+                # early dead-ends hold crates; full avoidance strands the
+                # agent at spawn (displacement 3.2 tiles by step 50)
                 scores[a] -= 0.10 if step < 150 else 0.35  # cul-de-sac
     return scores
 
@@ -246,8 +246,8 @@ def act(self, game_state):
     bombs = game_state.get('bombs', []) or []
     safety = action_safety(game_state)
     valid, safe = safety['valid'], safety['safe']
-    # track own-bomb flee commitment: bombs list lacks owner, so use
-    # heuristic — if we bombed recently and any bomb is within 6 steps of
+    # track own-bomb flee commitment: bombs list lacks owner, so use a
+    # heuristic: if we bombed recently and any bomb is within 6 steps of
     # our history, stay in flee mode. Decrement each step.
     flee_locked = getattr(self, 'flee_timer', 0) > 0
     if flee_locked:
@@ -321,7 +321,7 @@ def act(self, game_state):
     heu_arr = np.array([heu[a] for a in ACTION_LIST], dtype=np.float64)
     total = heu_arr + Q_WEIGHT * q
 
-    # Epsilon-greedy exploration during training only (grade: exploration proof).
+    # Epsilon-greedy exploration during training only.
     # Random choice respects the safety mask: safe+valid > valid > WAIT.
     try:
         if getattr(self, 'train', False):

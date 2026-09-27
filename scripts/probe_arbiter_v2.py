@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E99 feature-v2 probe: candidate-package gates before any game.
+"""Feature-v2 probe: candidate-package gates before any game.
 
   G0  import + FEATURE_DIM == 114 + AUG_PERMS bijective.
   G1  features equivariant under all 8 board symmetries (with safety).
@@ -104,9 +104,9 @@ check('G0 v2 features/safety numpy-only',
       not _imports_torch(F) and not _imports_torch(SAFE))
 
 # ---- G1 equivariance ----
-# NOTE: index 45 (safe-first mask) shows a rare (1/300) pre-existing
-# escape_bfs tie-break asymmetry in the SHIP package too; the gate is
-# exact on the NEW block (98-113) and records full-vector parity.
+# Index 45 (safe-first mask) shows a rare (1/300) escape_bfs tie-break
+# asymmetry in the ship package too; the gate is exact on the new block
+# (98-113) and records full-vector parity.
 bad_new = 0
 bad_all = 0
 for _ in range(N):

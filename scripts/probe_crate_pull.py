@@ -1,8 +1,8 @@
-"""E29 regression probe: crate-approach pull is REMOVED.
+"""Regression probe: the crate-approach pull stays removed.
 
-E28 shipped CRATE_APPROACH/RETREAT ±0.05; W1 rejected it (coins 1.09 vs O2s
-1.34 — trigger fired) and it was reverted. This probe now asserts ABSENCE:
-no crate events on any movement, zero crate-channel reward, coin pull intact.
+The CRATE_APPROACH/RETREAT +-0.05 shaping cut coins (1.09 vs 1.34) and
+was reverted. This probe asserts its absence: no crate events on any
+movement, zero crate-channel reward, coin pull intact.
 Fails loudly (no silent except); never touches training or checkpoints.
 """
 import os
@@ -49,7 +49,7 @@ check('conflict: only coin event survives',
 check('conflict reward is pure coin (-0.06)',
       abs(reward_from_events(None, ev) - (-0.06)) < 1e-9)
 
-# 4. coin pull itself intact (revert did not collateral-damage shaping)
+    # 4. coin pull itself intact (the revert left the shaping intact)
 ev = _custom(state((5, 5), coins=[(5, 8)]), 'DOWN', state((5, 6), coins=[(5, 8)]))
 check('coin pull intact', ev == ['MOVE_TOWARD_TARGET'])
 check('coin reward intact', reward_from_events(None, ev) == 0.06)

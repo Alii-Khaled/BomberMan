@@ -1,7 +1,7 @@
 """Exact blast + time-expanded escape solver (numpy only, no torch).
 
 Mirrors items.py:Bomb.get_blast_coords and environment.py movement rules,
-but fixes rule_based_agent flaws:
+with three fixes over rule_based_agent:
  - wall-aware blast (rule_based ignores walls in bomb_map)
  - future danger for t=0..H (rule_based only checks timer==0)
  - time-expanded BFS escape (rule_based uses same-row/col heuristic)
@@ -16,12 +16,11 @@ def _env_flag(name):
     return _os.environ.get(name, '0') == '1'
 
 
-# E47 warden-discipline transplants (default off = validated ship behavior;
-# probes assert default-off identity on real states before any screen):
+# Warden-discipline knobs (both default off):
 #  _PAYOFF_TIER: non-opp bombs need crates>=2 or fast escape (dist<=2).
 #    Warden bombs 1-crate spots only with hyp_dist<=2, 2+ crates with <=3;
-#    overlord allows 1-crate at dist-3 (E27: 2.7% vs 1.4% lethal).
-#  _MUSTFLEE1: refuse BOMB while own tile is lethal NEXT step (danger[1]).
+#    overlord allows 1-crate at dist-3 (2.7% vs 1.4% lethal).
+#  _MUSTFLEE1: refuse BOMB while own tile is lethal next step (danger[1]).
 #    Warden never bombs under threat<=1; overlord vetoes only danger[0].
 _PAYOFF_TIER = _env_flag('OVERLORD_G_PAYOFF_TIER')
 _MUSTFLEE1 = _env_flag('OVERLORD_G_MUSTFLEE1')
@@ -232,8 +231,8 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
         if a not in safe:
             safe[a] = False
     # BOMB safety: can we escape if we drop now?
-    # NOTE: after dropping, own tile becomes a bomb tile (blocked for re-entry).
-    # escape_bfs blocks bomb tiles, so pass bombs+own for hypothetical.
+    # After dropping, own tile becomes a bomb tile (blocked for re-entry);
+    # escape_bfs blocks bomb tiles, so pass bombs+own for the hypothetical.
     danger_hyp = with_hypothetical_bomb(danger, arena, x, y, horizon, bomb_timer, power)
     bombs_hyp = list(bombs or []) + [((x, y), bomb_timer)]
     safe_hyp, dist_hyp = escape_bfs((x, y), arena, bombs_hyp, others_xy, danger_hyp, horizon)
@@ -262,8 +261,8 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                     can_escape = False
     except Exception:
         pass
-    # E14b margin rule (sentinel audit 60rd: dist_hyp 4.0 plants 23/27 fatal
-    # vs 2.4% at <=3.0 — a dist==timer escape always loses the race).
+    # Margin rule: in a 60-round sentinel audit, dist_hyp 4.0 plants were
+    # 23/27 fatal vs 2.4% at <=3.0; a dist==timer escape always loses the race.
     if valid.get('BOMB', False) and can_escape:
         try:
             if float(dist_hyp) > 3:
@@ -271,7 +270,7 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                 can_escape = False
         except Exception:
             pass
-    # E47 tiered payoff (warden discipline, default off): non-opp bombs
+    # Tiered payoff (warden discipline, default off): non-opp bombs
     # need crates>=2 or fast escape (dist<=2).
     if _PAYOFF_TIER and valid.get('BOMB', False) and can_escape:
         try:
@@ -280,12 +279,8 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                 can_escape = False
         except Exception:
             pass
-    # NOTE (E21 lesson): a crate-payoff gate was tried on sentinel and
-    # REJECTED after a true live test (200rd pooled neutral-to-negative:
-    # vetoed slots don't convert without a crate-approach pull). Margin gate
-    # only here; payoff stays an open research item, not a mask rule.
-    # CRITICAL: staying (WAIT/BOMB) dies if current tile explodes THIS step.
-    # Moving away can still save you, but staying cannot.
+    # Staying (WAIT/BOMB) dies if the current tile explodes this step.
+    # Moving away can still save you; staying cannot.
     try:
         if bool(danger[0, x, y]):
             safe['WAIT'] = False
@@ -293,10 +288,10 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
             can_escape = False
     except Exception:
         pass
-    # E47 must-flee strictness (warden discipline, default off): refuse
-    # BOMB while own tile is lethal NEXT step (threat<=1 gates warden's
-    # want_bomb; overlord only vetoed danger[0]). Selection veto only —
-    # the hypothetical-escape verdict is untouched.
+    # Must-flee strictness (default off): refuse BOMB while own tile is lethal
+    # next step (threat<=1 gates warden's want_bomb; overlord vetoes only
+    # danger[0]). Selection veto only; the hypothetical-escape verdict is
+    # untouched.
     try:
         if _MUSTFLEE1 and horizon >= 1 and bool(danger[1, x, y]):
             safe['BOMB'] = False

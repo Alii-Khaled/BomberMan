@@ -1,15 +1,15 @@
-"""CUDA-default Adam / AdamW optimizers (+ legacy DirectML-safe variants).
+"""Adam and AdamW with CUDA defaults, plus older DirectML-safe variants.
 
-History: stock ``torch.optim.Adam`` updates moments via ``aten::lerp``,
-which had no DirectML kernel, so every step round-tripped tensors to CPU.
-``DMLAdam``/``DMLAdamW`` spelled the same math with DML-native ops
-(``mul_``/``add_``/``sqrt``/``div``) for the old WSL2 + RX 6900 XT setup.
+Stock ``torch.optim.Adam`` updates its moments with ``aten::lerp``. That op
+had no DirectML kernel, so every step round-tripped tensors to CPU.
+``DMLAdam``/``DMLAdamW`` write the same math with ops DirectML does support
+(``mul_``/``add_``/``sqrt``/``div``), which made the old WSL2 and RX 6900 XT
+setup usable.
 
-On CUDA (Google Colab) stock Adam/AdamW have native foreach/fused kernels
-and are faster, so :func:`build_optimizer_for_device` now returns stock
-torch optimizers on CUDA/CPU. The ``DML*`` classes stay importable as a
-legacy resume shim (old ``last.pt`` files store their state) but are no
-longer the default path.
+On CUDA, stock Adam and AdamW have native foreach and fused kernels and run
+faster, so ``build_optimizer_for_device`` returns the stock torch optimizers
+on CUDA and CPU. The ``DML*`` classes stay importable because old ``last.pt``
+files store their state, but nothing selects them anymore.
 
 Usage (sentinel / overlord)::
 
@@ -17,9 +17,10 @@ Usage (sentinel / overlord)::
     self.optimizer = build_optimizer_for_device(
         self.device, self.q_net.parameters(), lr=LR)
 
-On CUDA/CPU the factory returns stock ``torch.optim.Adam`` / ``AdamW``
-(foreach where available). ``name='lion'`` returns the sign-momentum Lion
-implementation (CUDA-native ops only) on all devices.
+On CUDA and CPU the factory returns stock ``torch.optim.Adam`` /
+``torch.optim.AdamW``, with foreach where available. ``name='lion'``
+returns the sign-momentum Lion implementation, built from CUDA-native ops
+only, on every device.
 """
 
 import math
@@ -38,11 +39,11 @@ def is_cuda_device(device) -> bool:
 
 
 def is_dml_device(device) -> bool:
-    """Legacy shim: True only for old DirectML ``privateuse`` devices.
+    """True only for the old DirectML ``privateuse`` devices.
 
-    DirectML is removed (CUDA default). Kept so old checkpoints/logs that
-    reference ``privateuseone`` still classify correctly; always False on
-    Colab (cuda/cpu only).
+    DirectML support is gone and CUDA is the default. We keep the check so
+    old checkpoints and logs that mention ``privateuseone`` still classify
+    correctly. Always False on Colab, which offers cuda and cpu only.
     """
     try:
         t = getattr(device, "type", device)
@@ -52,11 +53,11 @@ def is_dml_device(device) -> bool:
 
 
 class DMLAdam(Optimizer):
-    """Legacy DirectML-safe Adam (kept for old-checkpoint resume).
+    """DirectML-safe Adam, kept so old checkpoints resume.
 
-    Mathematically identical to Adam; only the op spelling differs to avoid
-    ``aten::lerp``. Uses only ``mul_``/``add_``/``sqrt``/``div``.
-    New CUDA/CPU runs use stock ``torch.optim.Adam`` via the factory.
+    Same math as Adam. Only the op spelling differs, to avoid
+    ``aten::lerp``, and it uses ``mul_``/``add_``/``sqrt``/``div`` alone.
+    New CUDA and CPU runs get stock ``torch.optim.Adam`` from the factory.
     """
 
     def __init__(
@@ -263,14 +264,15 @@ class DMLAdamW(Optimizer):
 
 
 class DMLLion(Optimizer):
-    """Lion (EvoLved Sign Momentum, Chen et al. 2023) — default Lion on all devices.
+    """Lion (EvoLved Sign Momentum, Chen et al. 2023), on every device.
 
     Update: m = beta1*m + (1-beta1)*g; p -= lr * (sign(m) + wd*p).
-    One state tensor per param (vs two for Adam) and only
-    ``mul_``/``add_``/``sign`` elementwise ops — CUDA/CPU-native, fewer
-    dispatches per step than Adam on small nets where launch overhead
-    dominates (profiled: optimizer step was ~50% of a 256-batch MLP update).
-    Note: Lion LRs run ~3-10x below Adam's; sweep {1e-4, 3e-4, 7e-4}.
+    One state tensor per param, against two for Adam, and only the
+    elementwise ops ``mul_``/``add_``/``sign``, all CUDA and CPU native.
+    That is fewer dispatches per step than Adam on small nets, where launch
+    overhead dominates: profiling put the optimizer step at about 50% of a
+    256-batch MLP update. Lion learning rates run 3-10x below Adam's, so
+    sweep {1e-4, 3e-4, 7e-4}.
     """
 
     def __init__(self, params, lr=3e-4, betas=(0.9, 0.99), weight_decay=0.0):
@@ -422,18 +424,17 @@ def build_optimizer_for_device(
     device, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.0, adamw=False,
     name="adam", lookahead=None, tuned=False,
 ):
-    """Return the default optimizer for ``device`` (CUDA-default).
+    """Return the default optimizer for ``device``, with CUDA preferred.
 
-    - CUDA / CPU -> stock ``torch.optim.Adam`` / ``torch.optim.AdamW``
-      (foreach/fused where available — fastest on Colab GPUs).
-    - Legacy DirectML ``privateuse`` device -> ``DMLAdam``/``DMLAdamW``
-      (kept only so ancient local runs still import; never happens on Colab).
+    - CUDA / CPU -> stock ``torch.optim.Adam`` / ``torch.optim.AdamW``,
+      with foreach and fused kernels where available (fastest on Colab).
+    - Old DirectML ``privateuse`` device -> ``DMLAdam`` / ``DMLAdamW``, kept
+      so older local runs still import. Never happens on Colab.
 
-    ``name='lion'`` selects :class:`DMLLion` (sign-momentum Lion, CUDA-native
-    ``mul_``/``add_``/``sign`` ops only — torch has no stock Lion).
-    ``tuned=True`` applies the DQN task preset (eps=1e-4, decay=1e-4) to Adam.
+    ``name='lion'`` selects ``DMLLion``, a sign-momentum Lion built from the
+    CUDA-native ops ``mul_``/``add_``/``sign``; torch ships no Lion.
+    ``tuned=True`` applies the DQN preset (eps=1e-4, decay=1e-4) to Adam.
     ``lookahead={'alpha': 0.5, 'k': 5}`` wraps the base optimizer.
-    Defaults preserve the pre-existing behavior exactly.
     """
     import torch.optim as optim
 

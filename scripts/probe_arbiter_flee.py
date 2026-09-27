@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""E90 probe: ARBITER_FLEE_Q post-plant flee quality.
+"""ARBITER_FLEE_Q post-plant flee quality.
 
 Groups:
-  G1 default off (ship-identical) and helper import.
+  G1 default off (behavior unchanged) and helper import.
   G2 unit: open-space/distance score picks the non-pocket move among the
      mask's safe options and ignores unsafe moves.
   G3 fallback: returns None when no safe move exists; returns the only
@@ -46,7 +46,7 @@ def reload_arb(flee_q):
 
 
 def board_with_pocket():
-    """s1-style pocket: agent (11,9), bomb same tile, opponent below-left."""
+    """Tight pocket: agent (11,9), bomb same tile, opponent below-left."""
     f = np.zeros((17, 17), dtype=int)
     for x in range(17):
         for y in range(17):

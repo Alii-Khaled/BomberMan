@@ -1,10 +1,10 @@
-"""E38 TTA probes: rotation-equivariant Q-averaging feasibility.
+"""TTA probes: rotation-equivariant Q-averaging feasibility.
 
 Groups (fail loudly, never touch training/checkpoints):
  1. remap algebra: CW action perm ^4 == identity; inverse correctness.
  2. rotation direction: marker one-hot at north lands east under rot_cw.
- 3. equivariance gap: |Q(x) - unrot(Q(rot(x)))| on the SHIP weights —
-    measures how much TTA views actually differ (informational).
+ 3. equivariance gap: |Q(x) - unrot(Q(rot(x)))| on the ship weights --
+    measures how far TTA views drift (informational).
  4. timing: 4-view forward loop on CPU < 100 ms total (hard gate).
 """
 import os

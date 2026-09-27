@@ -17,7 +17,7 @@ def _resolve_want(env_flag='SENTINEL_DEVICE'):
     raw = os.environ.get(env_flag, 'auto').strip().lower()
     if raw in ('cuda', 'cpu'):
         return raw
-    # legacy compat (no DirectML path anymore — maps to cpu/cuda choice)
+    # legacy names kept for compat: they feed the cpu/cuda choice
     if os.environ.get('SENTINEL_DML', '1') == '0':
         return 'cpu'
     if os.environ.get('SENTINEL_CUDA', '1') == '0':
@@ -71,5 +71,5 @@ def is_cuda(device) -> bool:
 
 
 def is_dml(device) -> bool:
-    """Legacy shim: DirectML no longer supported — always False."""
+    """Legacy shim for the old DirectML flag; always False."""
     return False

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E99 Phase B gate: V RMSE on exact-outcome targets.
+"""V RMSE gate on exact-outcome targets.
 
 Compares the legacy ship V (98-dim) and an optional candidate V
 (package feature dim) against the exact-outcome labels (teacher id 6)

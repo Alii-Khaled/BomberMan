@@ -1,7 +1,7 @@
-# Unseen sparring agents — EVAL ONLY, never shipped in a tournament zip.
+# Unseen sparring agents. Eval only, never shipped in a tournament zip.
 # unseen_bomber: drops a bomb on cooldown whenever a <=3-step escape path
-# exists, then FLEES to safety before wandering. Behavior axis:
-# reckless-aggressive volume bomber (imperfect, not suicidal).
+# exists, then flees to safety before wandering. Reckless-aggressive
+# volume bomber (imperfect, not suicidal).
 """Bomb-every-cooldown sparring agent (eval-only outsider)."""
 from collections import deque
 

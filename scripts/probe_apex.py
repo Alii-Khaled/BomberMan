@@ -1,4 +1,4 @@
-"""E49 apex scaffold probes (static parts; callbacks/train next).
+"""Apex scaffold probes (static parts).
 
 Groups (fail loudly; never touch training/checkpoints):
  1. shapes: ApexNet fwd (1,12,17,17)+(1,16) -> Q(1,6) + aux(1,).
@@ -6,7 +6,7 @@ Groups (fail loudly; never touch training/checkpoints):
  3. extras: determinism + finiteness + bounds on random states.
  4. extras rotation-invariance (aggregate-only design claim).
  5. safety parity: apex action_safety == overlord action_safety.
- 6. trunk transfer: o3sbest loads with ONLY fc/v/aux mismatched.
+ 6. trunk transfer: o3sbest loads with only fc/v/aux mismatched.
 """
 import os
 import sys
@@ -122,8 +122,9 @@ for s in states:
 check('mask parity apex==overlord (30/30)', mismatch == 0)
 
 # 6. trunk transfer: every non-head key loads byte-exact; head re-inits.
-# (strict=False skips missing keys but NOT shape mismatches, so the head
-# keys — whose shapes legitimately change 392->400 — are excluded first.)
+# (strict=False skips missing keys but still raises on shape mismatches,
+# so the head keys, whose shapes legitimately change 392->400, are
+# excluded first.)
 ckpt = torch.load('results/archive/overlord_val_best_O3s.pt',
                    map_location='cpu', weights_only=False)['q_net']
 HEAD = {'fc.0.weight', 'fc.0.bias', 'v.weight', 'v.bias',

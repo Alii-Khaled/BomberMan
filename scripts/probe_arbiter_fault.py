@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""ARBITER fault-injection probe (P1.1: gates before games, E21 rule).
+"""ARBITER fault-injection probe.
 
-Calls act() on malformed/degenerate game states and asserts it ALWAYS
+Calls act() on malformed/degenerate game states and asserts it always
 returns a legal action string (never raises). The engine has no fallback
 agent: an unguarded act() exception kills the whole tournament game
 (environment.py:440-447), or benches us for the round under
---silence-errors. The P1.1 armor (act wrapper -> WAIT) must hold.
+--silence-errors. The act wrapper's WAIT armor must hold.
 
 Usage: python3 scripts/probe_arbiter_fault.py
 Exit nonzero on any failure.
@@ -121,7 +121,7 @@ def main():
             check(f'act-{name}-latency', False, f'{dt:.2f}s > 2s')
 
     # Success-path sanity: base state answered through the real policy
-    # (not the armor) — the armor must be inert on valid input.
+    # (not the armor); the armor must be inert on valid input.
     try:
         impl_action = AC._act_impl(fake, base_state(),
                                    time.perf_counter())

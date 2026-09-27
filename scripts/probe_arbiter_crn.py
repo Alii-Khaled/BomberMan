@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""E88 probe: ARBITER_CRN common-random-numbers rollout seeds.
+"""ARBITER_CRN common-random-numbers rollout seeds.
 
 Groups:
   G1 default off: search_action uses a distinct rollout seed per plan
-     (the validated unpaired P1 flow) and returns a legal action.
+     (the default unpaired flow) and returns a legal action.
   G2 CRN on: every plan in a step shares one rollout seed (paired
      comparison; the per-tick opponent RNG inside score_plan then keys
      on (seed, tick, opponent)).
   G3 CRN determinism: repeated search_action calls on one state agree.
-  G4 score_plan bit-parity: CRN=0 reproduces the legacy score exactly.
+  G4 score_plan parity: CRN=0 reproduces the legacy score exactly.
 Exit nonzero on any failure.
 """
 import importlib

@@ -1,4 +1,4 @@
-"""CNN spatial features for overlord: 12x17x17 float32. Numpy only, vectorized."""
+"""CNN spatial features for apex: 12x17x17 float32. Numpy only, vectorized."""
 import numpy as np
 
 N_CHANNELS = 12
@@ -29,7 +29,7 @@ def state_to_tensor(game_state, safety_info=None, power=3):
     t[3, int(x), int(y)] = 1.0
     for (n, s, b, xy) in others:
         t[4, int(xy[0]), int(xy[1])] = 1.0
-    # bombs: need owner? game_state bombs lack owner; mark timer + assume not self
+    # game_state bombs lack owner; mark timer + assume not self
     for (xy, timer) in bombs:
         xb, yb = int(xy[0]), int(xy[1])
         t[5, xb, yb] = min(float(timer), 4.0) / 4.0
@@ -56,5 +56,5 @@ def state_to_tensor(game_state, safety_info=None, power=3):
                 if not (0 <= nx < W and 0 <= ny < H) or arena[nx, ny] == -1:
                     break
                 t[11, nx, ny] = 1.0
-    # transpose to [C,H,W]? No: keep [C,x,y] consistently; model treats dim1,2 as spatial.
+    # keep [C,x,y] consistently (no transpose to [C,H,W]); the model treats dims 1,2 as spatial.
     return t

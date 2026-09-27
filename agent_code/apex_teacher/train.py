@@ -1,13 +1,13 @@
 """Apex_teacher training hooks: flush the final round's demo buffer.
 
 act() in callbacks.py buffers (img, sc, act) per step and flushes on
-round-change, but the LAST round of an invocation never sees a next
-round — without this hook its npz is silently dropped (E51: 150 played
--> 149 files, 75 -> 74 x2). end_of_round() flushes unconditionally.
+round-change, but the last round of an invocation never sees a next
+round and its npz would be dropped. end_of_round() flushes
+unconditionally.
 
-game_events_occurred is a no-op: recording happens in act() (teacher
-action is known there; here we would only see our own delegated action
-again).
+game_events_occurred is a no-op: recording happens in act() (the
+teacher action is known there; here we would only see our own
+delegated action again).
 """
 
 

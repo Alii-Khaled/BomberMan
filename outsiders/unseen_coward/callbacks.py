@@ -1,7 +1,7 @@
-# Unseen sparring agents — EVAL ONLY, never shipped in a tournament zip.
+# Unseen sparring agents. Eval only, never shipped in a tournament zip.
 # unseen_coward: never bombs; maximizes distance from opponents and bombs,
-# prefers edges/corners. Behavior axis: passive-defensive (unlike
-# rule_based/warden/collector — no balancing, no hunting, no economy).
+# prefers edges and corners. Passive-defensive (unlike
+# rule_based/warden/collector, no balancing, no hunting, no economy).
 """Coward-fleer sparring agent (eval-only outsider)."""
 import os
 from collections import deque

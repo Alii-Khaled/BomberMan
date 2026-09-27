@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""E99 Phase B: exact-outcome V targets from the search's own rollouts.
+"""Exact-outcome V targets from the search's own rollouts.
 
 For sampled states (apex demos by default) roll the exact simulator with
 the SAME continuation/opponent model the search uses at leaves
 (`score_plan` with an empty prefix), then label V with the realized score
-margin delta (clipped +-10). This attacks the E66 V-null at its root:
-the legacy label (teacher margin-to-go at round end) has ~2.6 std noise;
-these targets are short-horizon and model-consistent.
+margin delta (clipped +-10). The legacy label (teacher margin-to-go at
+round end) carries ~2.6 std noise; these targets are short-horizon and
+model-consistent.
 
 Output cache (compatible with pretrain_arbiter.py, teacher id 6):
   feats (N, D_v2), feats98 (N, 98 or NaN), acts (N,), vlabel (N,),

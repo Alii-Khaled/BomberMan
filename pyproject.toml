@@ -1,7 +1,7 @@
 [project]
 name = "bomberman"
 version = "0.1.0"
-description = "Add your description here"
+description = "Reinforcement learning agents for Bomberman, built on the course bomberman_rl framework"
 readme = "README.md"
 authors = [
     { name = "Alii-Khaled", email = "alii.khaled97@gmail.com" }

@@ -1,7 +1,7 @@
 """Exact blast + time-expanded escape solver (numpy only, no torch).
 
 Mirrors items.py:Bomb.get_blast_coords and environment.py movement rules,
-but fixes rule_based_agent flaws:
+with three fixes over rule_based_agent:
  - wall-aware blast (rule_based ignores walls in bomb_map)
  - future danger for t=0..H (rule_based only checks timer==0)
  - time-expanded BFS escape (rule_based uses same-row/col heuristic)
@@ -215,8 +215,8 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
         if a not in safe:
             safe[a] = False
     # BOMB safety: can we escape if we drop now?
-    # NOTE: after dropping, own tile becomes a bomb tile (blocked for re-entry).
-    # escape_bfs blocks bomb tiles, so pass bombs+own for hypothetical.
+    # After dropping, own tile becomes a bomb tile (blocked for re-entry);
+    # escape_bfs blocks bomb tiles, so pass bombs+own for the hypothetical.
     danger_hyp = with_hypothetical_bomb(danger, arena, x, y, horizon, bomb_timer, power)
     bombs_hyp = list(bombs or []) + [((x, y), bomb_timer)]
     safe_hyp, dist_hyp = escape_bfs((x, y), arena, bombs_hyp, others_xy, danger_hyp, horizon)
@@ -245,10 +245,10 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                     can_escape = False
     except Exception:
         pass
-    # E14b margin rule (audit 60rd: dist_hyp 4.0 plants 23/27 fatal vs 2.4%
-    # at <=3.0 — a dist==timer escape always loses the race, even for kills:
-    # all 27 dist-4 plants had opponents in blast and still died 85%).
-    # Require one full step of margin, kill or not.
+    # Margin rule: in a 60-round audit, dist_hyp 4.0 plants were 23/27 fatal
+    # vs 2.4% at <=3.0. A dist==timer escape always loses the race, even for
+    # kills (all 27 dist-4 plants had opponents in blast and still died 85%),
+    # so require one full step of margin, kill or not.
     if valid.get('BOMB', False) and can_escape:
         try:
             if float(dist_hyp) > 3:
@@ -256,13 +256,8 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                 can_escape = False
         except Exception:
             pass
-    # NOTE (E21): a crate-payoff gate lived here (veto 0-crate waste plants).
-    # It was silently dead on arrival (UnboundLocalError swallowed by except;
-    # see ledger E21) and, once truly enabled, measured neutral-to-negative
-    # (200rd pooled: 3.61 vs 3.70, suicide +0.07, crates flat — freed bomb
-    # slots don't convert without a crate-approach pull). Removed 2026-09-06.
-    # CRITICAL: staying (WAIT/BOMB) dies if current tile explodes THIS step.
-    # Moving away can still save you, but staying cannot.
+    # Staying (WAIT/BOMB) dies if the current tile explodes this step.
+    # Moving away can still save you; staying cannot.
     try:
         if bool(danger[0, x, y]):
             safe['WAIT'] = False

@@ -1,13 +1,14 @@
-"""Arbiter self-distillation recorder (P2-C): the SHIP arbiter acts,
+"""Arbiter self-distillation recorder: the tournament arbiter acts,
 and every acted state is saved as (98-dim feats, executed action) for
-offline pi retraining. Training-time only — never ships.
+offline pi retraining. Training-time only, never part of the
+tournament entry.
 
-Delegation is exact (same self object, same env/defaults as the ship),
-so the recorded distribution IS the ship's own visitation. Labels are
-the ship's executed actions (search first-steps included) — this is
-DAgger-style self-distillation: supervision on the student's own
-distribution, mixed with the teacher corpus at extract time
-(ARBITER_PI_TEACHERS="0 1 2 4").
+Delegation is exact (same self object, same env/defaults as the
+tournament run), so the recorded distribution is the arbiter's own
+visitation. Labels are the executed actions (search first-steps
+included): DAgger-style self-distillation, supervision on the
+student's own distribution, mixed with the teacher corpus at extract
+time (ARBITER_PI_TEACHERS="0 1 2 4").
 
 Action encoding matches arbiter.model.ACTION_LIST exactly
 (['UP','RIGHT','DOWN','LEFT','WAIT','BOMB']).
@@ -25,9 +26,9 @@ if _ROOT not in sys.path:
 
 _ACTION_LIST = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 _ACTION_TO_IDX = {a: i for i, a in enumerate(_ACTION_LIST)}
-# E98 label transfer: record warden_v2's move at every ship-visited state
-# (ARBITER_DAGGER_WARDEN=1) into acts_w. The ship still acts exactly as
-# the ship (pure observer; no behavior change).
+# Label transfer: record warden_v2's move at every visited state
+# (ARBITER_DAGGER_WARDEN=1) into acts_w. The arbiter still acts as
+# usual; warden_v2 observes only.
 _DAG_WARDEN = os.environ.get('ARBITER_DAGGER_WARDEN', '0') == '1'
 
 
@@ -67,9 +68,9 @@ def setup(self):
     self._state_to_features = state_to_features
     self._action_safety = action_safety
     self._arb = arb
-    # Ship policy setup on this same object (model, histories, timers).
-    # Recorder state below uses _dag_* names exclusively (no collision
-    # with arbiter's model/coord_history/bomb_history/current_round).
+    # The arbiter's policy setup runs on this same object (model,
+    # histories, timers). Recorder state below uses _dag_* names
+    # exclusively (no collision with the arbiter's fields).
     self._arb.setup(self)
     self._dag_feats = []
     self._dag_acts = []

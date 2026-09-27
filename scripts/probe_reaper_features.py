@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reaper probes (E21 rule: nothing ships without a direct unit probe).
+"""Reaper feature/safety probes.
 
 Checks:
   1. feature shape/dtype/finiteness/determinism
@@ -171,7 +171,7 @@ def main():
     print('ok: model shapes + zero-init heads')
     n_checks += 1
 
-    # 7. vectorized helpers == brute force (E37/P1 latency rewrite)
+    # 7. vectorized helpers == brute force (latency rewrite)
     from agent_code.reaper.features import (_blast_tiles, _blast_crate_counts,
                                             _blast_hits_opp_mask)
     from agent_code.reaper.safety import future_danger, first_lethal
@@ -212,7 +212,7 @@ def main():
     print('ok: vectorized blast/first-lethal == brute force (10 arenas)')
     n_checks += 1
 
-    # 8. kill-block correctness (E37/P2): constructed trap + cross-checks
+    # 8. kill-block correctness: constructed trap + cross-checks
     from agent_code.reaper.features import _adj_kill_info, _blast_tiles as _bt
     W = H = 17
     arena = np.zeros((W, H), dtype=int)
@@ -280,7 +280,7 @@ def main():
     print('ok: kill-block trap/mask/crates/opps (constructed + 10 states)')
     n_checks += 1
 
-    # 9. tactical overlay (E37/P5): exact kill proof + BOMB override
+    # 9. tactical overlay: exact kill proof + BOMB override
     from agent_code.reaper.safety import bomb_here_traps
     from agent_code.reaper import callbacks as rc
     # self ON the corridor exit (5,6): our bomb covers (5,5) whose only
