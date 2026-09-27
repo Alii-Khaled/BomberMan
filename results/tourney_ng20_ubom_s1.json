@@ -1,0 +1,336 @@
+{
+ "agents": [
+  "arbiter_ng",
+  "unseen_bomber_0",
+  "unseen_bomber_1",
+  "unseen_bomber_2"
+ ],
+ "n_rounds": 40,
+ "seed": 1,
+ "scenario": "classic",
+ "runtime_s": 468.68,
+ "per_round": [
+  {
+   "arbiter_ng": 0,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 6,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 0,
+   "unseen_bomber_0": 2,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 10
+  },
+  {
+   "arbiter_ng": 12,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter_ng": 10,
+   "unseen_bomber_0": 3,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 5
+  },
+  {
+   "arbiter_ng": 15,
+   "unseen_bomber_0": 2,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 6
+  },
+  {
+   "arbiter_ng": 1,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 16,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter_ng": 10,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 5,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 7,
+   "unseen_bomber_0": 6,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 10,
+   "unseen_bomber_0": 2,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter_ng": 5,
+   "unseen_bomber_0": 7,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 6,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 2,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 4,
+   "unseen_bomber_0": 3,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 14,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 2,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter_ng": 10,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 2,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 6,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 7,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 0,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 10,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter_ng": 14,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 4
+  },
+  {
+   "arbiter_ng": 7,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 14,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 2,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 10,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 3
+  },
+  {
+   "arbiter_ng": 11,
+   "unseen_bomber_0": 3,
+   "unseen_bomber_1": 5,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 11,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter_ng": 3,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 7,
+   "unseen_bomber_2": 3
+  },
+  {
+   "arbiter_ng": 7,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter_ng": 2,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 19,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 7,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 5,
+   "unseen_bomber_2": 12
+  },
+  {
+   "arbiter_ng": 10,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter_ng": 4,
+   "unseen_bomber_0": 7,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 6
+  },
+  {
+   "arbiter_ng": 3,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 7,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 11,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter_ng": 1,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 2,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter_ng": 16,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter_ng": 1,
+   "unseen_bomber_0": 6,
+   "unseen_bomber_1": 2,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter_ng": 6,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 6,
+   "unseen_bomber_2": 6
+  },
+  {
+   "arbiter_ng": 5,
+   "unseen_bomber_0": 11,
+   "unseen_bomber_1": 2,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter_ng": 16,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter_ng": 8,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  }
+ ],
+ "summary": {
+  "arbiter_ng": {
+   "score_total": 314,
+   "score_mean": 7.85,
+   "score_ci95": [
+    6.199375,
+    9.55
+   ],
+   "round_wins": 26.666666666666664,
+   "win_rate": 0.6666666666666666,
+   "win_rate_ci95": [
+    0.525,
+    0.8083333333333333
+   ],
+   "mean_rank": 1.575,
+   "kills_total": 26,
+   "suicides_total": 3,
+   "coins_total": 184,
+   "bombs_total": 709,
+   "crates_total": 1553
+  },
+  "unseen_bomber_0": {
+   "score_total": 69,
+   "score_mean": 1.725,
+   "score_ci95": [
+    1.05,
+    2.575624999999997
+   ],
+   "round_wins": 4.333333333333333,
+   "win_rate": 0.10833333333333332,
+   "win_rate_ci95": [
+    0.025,
+    0.20833333333333334
+   ],
+   "mean_rank": 2.8,
+   "kills_total": 6,
+   "suicides_total": 24,
+   "coins_total": 39,
+   "bombs_total": 1151,
+   "crates_total": 971
+  },
+  "unseen_bomber_1": {
+   "score_total": 85,
+   "score_mean": 2.125,
+   "score_ci95": [
+    1.375,
+    2.95
+   ],
+   "round_wins": 6.666666666666666,
+   "win_rate": 0.16666666666666666,
+   "win_rate_ci95": [
+    0.06666666666666667,
+    0.2833333333333333
+   ],
+   "mean_rank": 2.6625,
+   "kills_total": 10,
+   "suicides_total": 22,
+   "coins_total": 35,
+   "bombs_total": 1248,
+   "crates_total": 993
+  },
+  "unseen_bomber_2": {
+   "score_total": 72,
+   "score_mean": 1.8,
+   "score_ci95": [
+    1.025,
+    2.725
+   ],
+   "round_wins": 2.333333333333333,
+   "win_rate": 0.05833333333333333,
+   "win_rate_ci95": [
+    0.0,
+    0.13333333333333336
+   ],
+   "mean_rank": 2.9625,
+   "kills_total": 8,
+   "suicides_total": 25,
+   "coins_total": 32,
+   "bombs_total": 1113,
+   "crates_total": 913
+  }
+ }
+}

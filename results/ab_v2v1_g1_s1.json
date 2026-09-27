@@ -1,0 +1,696 @@
+{
+ "agents": [
+  "warden_v2",
+  "warden_v1",
+  "rule_based_agent_0",
+  "rule_based_agent_1"
+ ],
+ "n_rounds": 100,
+ "seed": 1,
+ "scenario": "classic",
+ "runtime_s": 58.1,
+ "per_round": [
+  {
+   "warden_v2": 3,
+   "warden_v1": 4,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 0
+  },
+  {
+   "warden_v2": 8,
+   "warden_v1": 4,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 1,
+   "warden_v1": 6,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 5
+  },
+  {
+   "warden_v2": 5,
+   "warden_v1": 2,
+   "rule_based_agent_0": 6,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 16,
+   "warden_v1": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 5,
+   "warden_v1": 3,
+   "rule_based_agent_0": 8,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 8,
+   "warden_v1": 1,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 3,
+   "warden_v1": 9,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 4,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 6,
+   "warden_v1": 6,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 7,
+   "warden_v1": 4,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 7
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 12,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 12,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 5,
+   "warden_v1": 1,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 4,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 7
+  },
+  {
+   "warden_v2": 12,
+   "warden_v1": 1,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 4
+  },
+  {
+   "warden_v2": 15,
+   "warden_v1": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 0
+  },
+  {
+   "warden_v2": 1,
+   "warden_v1": 3,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 8
+  },
+  {
+   "warden_v2": 7,
+   "warden_v1": 10,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 10,
+   "warden_v1": 1,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 0
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 0,
+   "rule_based_agent_0": 9,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 1,
+   "warden_v1": 8,
+   "rule_based_agent_0": 4,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 3,
+   "warden_v1": 8,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 3,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 4,
+   "warden_v1": 7,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 0,
+   "warden_v1": 5,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 3,
+   "warden_v1": 1,
+   "rule_based_agent_0": 12,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 0,
+   "warden_v1": 1,
+   "rule_based_agent_0": 4,
+   "rule_based_agent_1": 4
+  },
+  {
+   "warden_v2": 4,
+   "warden_v1": 8,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 10,
+   "warden_v1": 3,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 9
+  },
+  {
+   "warden_v2": 11,
+   "warden_v1": 4,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 10,
+   "warden_v1": 5,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 5,
+   "warden_v1": 7,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 6
+  },
+  {
+   "warden_v2": 1,
+   "warden_v1": 8,
+   "rule_based_agent_0": 4,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 4,
+   "warden_v1": 1,
+   "rule_based_agent_0": 12,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 1,
+   "warden_v1": 4,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 7
+  },
+  {
+   "warden_v2": 6,
+   "warden_v1": 8,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 0
+  },
+  {
+   "warden_v2": 1,
+   "warden_v1": 8,
+   "rule_based_agent_0": 7,
+   "rule_based_agent_1": 8
+  },
+  {
+   "warden_v2": 7,
+   "warden_v1": 4,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 8
+  },
+  {
+   "warden_v2": 7,
+   "warden_v1": 4,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 8,
+   "warden_v1": 8,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 0
+  },
+  {
+   "warden_v2": 3,
+   "warden_v1": 2,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 8,
+   "warden_v1": 1,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 4
+  },
+  {
+   "warden_v2": 4,
+   "warden_v1": 1,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 3,
+   "rule_based_agent_0": 11,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 3,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 6,
+   "warden_v1": 9,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 3,
+   "rule_based_agent_0": 9,
+   "rule_based_agent_1": 0
+  },
+  {
+   "warden_v2": 6,
+   "warden_v1": 3,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 5,
+   "warden_v1": 7,
+   "rule_based_agent_0": 6,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 16,
+   "warden_v1": 1,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 6,
+   "warden_v1": 1,
+   "rule_based_agent_0": 5,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 0,
+   "warden_v1": 3,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 4
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 7,
+   "rule_based_agent_0": 4,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 7,
+   "warden_v1": 5,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 15,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 1,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 4
+  },
+  {
+   "warden_v2": 5,
+   "warden_v1": 8,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 5
+  },
+  {
+   "warden_v2": 7,
+   "warden_v1": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 8
+  },
+  {
+   "warden_v2": 10,
+   "warden_v1": 5,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 8
+  },
+  {
+   "warden_v2": 14,
+   "warden_v1": 4,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 1,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 5
+  },
+  {
+   "warden_v2": 4,
+   "warden_v1": 5,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 8
+  },
+  {
+   "warden_v2": 7,
+   "warden_v1": 3,
+   "rule_based_agent_0": 4,
+   "rule_based_agent_1": 0
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 2,
+   "rule_based_agent_0": 5,
+   "rule_based_agent_1": 0
+  },
+  {
+   "warden_v2": 0,
+   "warden_v1": 5,
+   "rule_based_agent_0": 8,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 3,
+   "warden_v1": 2,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 6,
+   "warden_v1": 5,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 4,
+   "warden_v1": 1,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 1,
+   "warden_v1": 3,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 5,
+   "warden_v1": 7,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 3,
+   "warden_v1": 2,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 0,
+   "warden_v1": 5,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 11
+  },
+  {
+   "warden_v2": 12,
+   "warden_v1": 0,
+   "rule_based_agent_0": 6,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 4,
+   "warden_v1": 2,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 17,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 5
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 9,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 9,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 3,
+   "rule_based_agent_0": 4,
+   "rule_based_agent_1": 0
+  },
+  {
+   "warden_v2": 8,
+   "warden_v1": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 0,
+   "warden_v1": 1,
+   "rule_based_agent_0": 6,
+   "rule_based_agent_1": 7
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 2,
+   "rule_based_agent_0": 7,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 0,
+   "warden_v1": 2,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 6
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 3,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 0,
+   "rule_based_agent_0": 6,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 4,
+   "warden_v1": 3,
+   "rule_based_agent_0": 6,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 8,
+   "warden_v1": 2,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 0,
+   "warden_v1": 9,
+   "rule_based_agent_0": 4,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 4,
+   "warden_v1": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 6
+  },
+  {
+   "warden_v2": 3,
+   "warden_v1": 4,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 3,
+   "warden_v1": 1,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 10
+  },
+  {
+   "warden_v2": 3,
+   "warden_v1": 8,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 3,
+   "warden_v1": 9,
+   "rule_based_agent_0": 5,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 4,
+   "warden_v1": 2,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 7
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 2,
+   "rule_based_agent_0": 8,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 1,
+   "warden_v1": 2,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 3
+  },
+  {
+   "warden_v2": 5,
+   "warden_v1": 0,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 1
+  },
+  {
+   "warden_v2": 5,
+   "warden_v1": 0,
+   "rule_based_agent_0": 4,
+   "rule_based_agent_1": 5
+  },
+  {
+   "warden_v2": 14,
+   "warden_v1": 2,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 2
+  },
+  {
+   "warden_v2": 2,
+   "warden_v1": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3
+  }
+ ],
+ "summary": {
+  "warden_v2": {
+   "score_total": 455,
+   "score_mean": 4.55,
+   "score_ci95": [
+    3.83,
+    5.28
+   ],
+   "round_wins": 31.5,
+   "win_rate": 0.315,
+   "win_rate_ci95": [
+    0.225,
+    0.4
+   ],
+   "mean_rank": 2.255,
+   "kills_total": 42,
+   "suicides_total": 46,
+   "coins_total": 245,
+   "bombs_total": 2455,
+   "crates_total": 3252
+  },
+  "warden_v1": {
+   "score_total": 419,
+   "score_mean": 4.19,
+   "score_ci95": [
+    3.59,
+    4.85
+   ],
+   "round_wins": 32.0,
+   "win_rate": 0.32,
+   "win_rate_ci95": [
+    0.24,
+    0.405
+   ],
+   "mean_rank": 2.295,
+   "kills_total": 32,
+   "suicides_total": 49,
+   "coins_total": 259,
+   "bombs_total": 2439,
+   "crates_total": 3168
+  },
+  "rule_based_agent_0": {
+   "score_total": 282,
+   "score_mean": 2.82,
+   "score_ci95": [
+    2.34,
+    3.36
+   ],
+   "round_wins": 16.5,
+   "win_rate": 0.165,
+   "win_rate_ci95": [
+    0.1,
+    0.24
+   ],
+   "mean_rank": 2.845,
+   "kills_total": 19,
+   "suicides_total": 54,
+   "coins_total": 187,
+   "bombs_total": 1808,
+   "crates_total": 2933
+  },
+  "rule_based_agent_1": {
+   "score_total": 295,
+   "score_mean": 2.95,
+   "score_ci95": [
+    2.47,
+    3.4402499999999985
+   ],
+   "round_wins": 20.0,
+   "win_rate": 0.2,
+   "win_rate_ci95": [
+    0.13,
+    0.28
+   ],
+   "mean_rank": 2.605,
+   "kills_total": 18,
+   "suicides_total": 41,
+   "coins_total": 205,
+   "bombs_total": 1887,
+   "crates_total": 2917
+  }
+ }
+}

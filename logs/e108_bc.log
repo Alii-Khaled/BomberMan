@@ -1,0 +1,35 @@
+featurizing 1511 files...
+  100/1511 files | 24444 rows | 43s
+  200/1511 files | 50563 rows | 90s
+  300/1511 files | 74696 rows | 133s
+  400/1511 files | 97471 rows | 171s
+  500/1511 files | 120459 rows | 211s
+  600/1511 files | 147058 rows | 257s
+  700/1511 files | 169732 rows | 298s
+  800/1511 files | 189925 rows | 336s
+  900/1511 files | 212653 rows | 374s
+  1000/1511 files | 216164 rows | 381s
+  1100/1511 files | 239903 rows | 422s
+  1200/1511 files | 265996 rows | 466s
+  1300/1511 files | 291615 rows | 510s
+  1400/1511 files | 315939 rows | 553s
+  1500/1511 files | 342324 rows | 599s
+wrote cache /home/jovyan/work/BomberMan/results/arbiter_ng_scalars.npz (11.2 MB, 346263 rows)
+rows 346263 | val 34835 (10.1%) | files 1511
+loaded 1511 img arrays (3s)
+device: cuda
+ep 1/14 19s train loss 0.6962 acc 0.721 | val loss 0.5836 acc 0.773
+ep 2/14 19s train loss 0.5392 acc 0.789 | val loss 0.5287 acc 0.789
+ep 3/14 19s train loss 0.5168 acc 0.797 | val loss 0.5205 acc 0.794
+ep 4/14 19s train loss 0.5041 acc 0.800 | val loss 0.5115 acc 0.800
+ep 5/14 19s train loss 0.4924 acc 0.805 | val loss 0.5079 acc 0.799
+ep 6/14 19s train loss 0.4855 acc 0.806 | val loss 0.4959 acc 0.804
+ep 7/14 19s train loss 0.4773 acc 0.809 | val loss 0.4892 acc 0.806
+ep 8/14 18s train loss 0.4713 acc 0.811 | val loss 0.4927 acc 0.805
+ep 9/14 18s train loss 0.4653 acc 0.812 | val loss 0.4989 acc 0.805
+ep 10/14 18s train loss 0.4601 acc 0.815 | val loss 0.4911 acc 0.806
+ep 11/14 18s train loss 0.4557 acc 0.816 | val loss 0.4905 acc 0.805
+ep 12/14 19s train loss 0.4512 acc 0.818 | val loss 0.4997 acc 0.801
+ep 13/14 19s train loss 0.4481 acc 0.819 | val loss 0.5160 acc 0.798
+ep 14/14 19s train loss 0.4437 acc 0.820 | val loss 0.4978 acc 0.801
+saved best results/arbiter_ng_d1.pt (val_acc 0.806)

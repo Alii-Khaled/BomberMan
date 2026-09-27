@@ -1,0 +1,360 @@
+{
+  "protocol": "report_ablation_v1",
+  "seeds": 10,
+  "rounds_per_seed": 20,
+  "cohorts": {
+    "final/g1": {
+      "score": 4.345,
+      "joint_top": 0.38,
+      "fractional_win": 0.35,
+      "kills": 0.35,
+      "coins": 2.595,
+      "suicides": 0.325,
+      "bombs": 23.73,
+      "invalid": 3.815,
+      "timeouts": 0.0,
+      "search_actions": 67.775,
+      "other_actions": 180.04,
+      "p99_act_s": 0.029713511466979967,
+      "max_act_s": 0.15031719207763672
+    },
+    "neutral/g1": {
+      "score": 2.565,
+      "joint_top": 0.15,
+      "fractional_win": 0.12666666666666668,
+      "kills": 0.2,
+      "coins": 1.565,
+      "suicides": 0.135,
+      "bombs": 19.405,
+      "invalid": 1.87,
+      "timeouts": 0.0,
+      "search_actions": 83.52,
+      "other_actions": 207.365,
+      "p99_act_s": 0.032366304397583,
+      "max_act_s": 0.1195068359375
+    },
+    "search_off/g1": {
+      "score": 4.61,
+      "joint_top": 0.475,
+      "fractional_win": 0.42291666666666666,
+      "kills": 0.455,
+      "coins": 2.335,
+      "suicides": 0.19,
+      "bombs": 18.475,
+      "invalid": 3.395,
+      "timeouts": 0.0,
+      "search_actions": 0.0,
+      "other_actions": 321.04,
+      "p99_act_s": 0.005632622241973877,
+      "max_act_s": 0.07563924789428711
+    },
+    "bc/g1": {
+      "score": 4.66,
+      "joint_top": 0.455,
+      "fractional_win": 0.4308333333333333,
+      "kills": 0.385,
+      "coins": 2.735,
+      "suicides": 0.305,
+      "bombs": 24.16,
+      "invalid": 4.025,
+      "timeouts": 0.0,
+      "search_actions": 69.115,
+      "other_actions": 187.875,
+      "p99_act_s": 0.02967032432556152,
+      "max_act_s": 0.10266804695129395
+    },
+    "final/strong": {
+      "score": 4.975,
+      "joint_top": 0.365,
+      "fractional_win": 0.3258333333333333,
+      "kills": 0.38,
+      "coins": 3.075,
+      "suicides": 0.3,
+      "bombs": 20.35,
+      "invalid": 3.31,
+      "timeouts": 0.0,
+      "search_actions": 72.07,
+      "other_actions": 155.545,
+      "p99_act_s": 0.02857355117797851,
+      "max_act_s": 0.10519528388977051
+    },
+    "neutral/strong": {
+      "score": 3.195,
+      "joint_top": 0.205,
+      "fractional_win": 0.18916666666666668,
+      "kills": 0.255,
+      "coins": 1.92,
+      "suicides": 0.205,
+      "bombs": 16.875,
+      "invalid": 1.5,
+      "timeouts": 0.0,
+      "search_actions": 80.89,
+      "other_actions": 163.97,
+      "p99_act_s": 0.029809658527374272,
+      "max_act_s": 0.11139464378356934
+    },
+    "search_off/strong": {
+      "score": 2.33,
+      "joint_top": 0.215,
+      "fractional_win": 0.18916666666666665,
+      "kills": 0.19,
+      "coins": 1.38,
+      "suicides": 0.12,
+      "bombs": 8.855,
+      "invalid": 2.045,
+      "timeouts": 0.0,
+      "search_actions": 0.0,
+      "other_actions": 295.435,
+      "p99_act_s": 0.005384168624877929,
+      "max_act_s": 0.07710480690002441
+    },
+    "bc/strong": {
+      "score": 5.175,
+      "joint_top": 0.38,
+      "fractional_win": 0.36,
+      "kills": 0.42,
+      "coins": 3.075,
+      "suicides": 0.24,
+      "bombs": 20.47,
+      "invalid": 2.64,
+      "timeouts": 0.0,
+      "search_actions": 74.95,
+      "other_actions": 157.475,
+      "p99_act_s": 0.02834930419921874,
+      "max_act_s": 0.10570859909057617
+    },
+    "final/archetypes": {
+      "score": 9.7,
+      "joint_top": 0.915,
+      "fractional_win": 0.91,
+      "kills": 0.745,
+      "coins": 5.975,
+      "suicides": 0.14,
+      "bombs": 31.235,
+      "invalid": 1.365,
+      "timeouts": 0.0,
+      "search_actions": 133.365,
+      "other_actions": 229.655,
+      "p99_act_s": 0.02895511388778687,
+      "max_act_s": 0.13300085067749023
+    },
+    "neutral/archetypes": {
+      "score": 5.235,
+      "joint_top": 0.71,
+      "fractional_win": 0.6691666666666666,
+      "kills": 0.3,
+      "coins": 3.735,
+      "suicides": 0.055,
+      "bombs": 22.96,
+      "invalid": 0.265,
+      "timeouts": 0.0,
+      "search_actions": 118.825,
+      "other_actions": 239.505,
+      "p99_act_s": 0.03005330562591553,
+      "max_act_s": 0.13313937187194824
+    },
+    "search_off/archetypes": {
+      "score": 2.425,
+      "joint_top": 0.505,
+      "fractional_win": 0.425,
+      "kills": 0.2,
+      "coins": 1.425,
+      "suicides": 0.035,
+      "bombs": 5.775,
+      "invalid": 0.34,
+      "timeouts": 0.0,
+      "search_actions": 0.0,
+      "other_actions": 390.52,
+      "p99_act_s": 0.005217537879943848,
+      "max_act_s": 0.07809996604919434
+    },
+    "bc/archetypes": {
+      "score": 9.89,
+      "joint_top": 0.865,
+      "fractional_win": 0.85125,
+      "kills": 0.795,
+      "coins": 5.915,
+      "suicides": 0.145,
+      "bombs": 30.15,
+      "invalid": 1.24,
+      "timeouts": 0.0,
+      "search_actions": 132.35,
+      "other_actions": 222.135,
+      "p99_act_s": 0.028652420043945276,
+      "max_act_s": 0.11684727668762207
+    }
+  },
+  "contrasts": {
+    "final-minus-neutral/g1": {
+      "score_delta": 1.78,
+      "seed_block_deltas": [
+        1.55,
+        2.6,
+        1.7,
+        1.5,
+        2.85,
+        2.2,
+        1.3,
+        0.8,
+        2.05,
+        1.25
+      ],
+      "bootstrap_95_seed_blocks": [
+        1.4200000000000002,
+        2.16
+      ]
+    },
+    "final-minus-search_off/g1": {
+      "score_delta": -0.265,
+      "seed_block_deltas": [
+        0.0,
+        -0.2,
+        0.2,
+        -1.35,
+        1.65,
+        -1.1,
+        -1.7,
+        -1.2,
+        1.0,
+        0.05
+      ],
+      "bootstrap_95_seed_blocks": [
+        -0.8849999999999998,
+        0.39
+      ]
+    },
+    "final-minus-bc/g1": {
+      "score_delta": -0.31499999999999995,
+      "seed_block_deltas": [
+        0.55,
+        0.55,
+        -1.7,
+        1.15,
+        -1.1,
+        -0.05,
+        -0.55,
+        -0.85,
+        1.1,
+        -2.25
+      ],
+      "bootstrap_95_seed_blocks": [
+        -0.9949999999999999,
+        0.375
+      ]
+    },
+    "final-minus-neutral/strong": {
+      "score_delta": 1.7799999999999994,
+      "seed_block_deltas": [
+        0.7,
+        3.15,
+        2.0,
+        2.55,
+        3.3,
+        1.15,
+        1.5,
+        1.85,
+        1.9,
+        -0.3
+      ],
+      "bootstrap_95_seed_blocks": [
+        1.1250000000000002,
+        2.3999999999999995
+      ]
+    },
+    "final-minus-search_off/strong": {
+      "score_delta": 2.645,
+      "seed_block_deltas": [
+        2.85,
+        2.45,
+        2.55,
+        3.75,
+        3.55,
+        3.35,
+        2.7,
+        1.7,
+        3.4,
+        0.15
+      ],
+      "bootstrap_95_seed_blocks": [
+        1.935,
+        3.21
+      ]
+    },
+    "final-minus-bc/strong": {
+      "score_delta": -0.2,
+      "seed_block_deltas": [
+        0.25,
+        -0.6,
+        -1.15,
+        0.45,
+        1.4,
+        0.45,
+        -1.6,
+        0.2,
+        0.3,
+        -1.7
+      ],
+      "bootstrap_95_seed_blocks": [
+        -0.7949999999999999,
+        0.375
+      ]
+    },
+    "final-minus-neutral/archetypes": {
+      "score_delta": 4.465,
+      "seed_block_deltas": [
+        3.45,
+        5.8,
+        4.9,
+        4.55,
+        3.65,
+        5.5,
+        6.65,
+        2.1,
+        2.6,
+        5.45
+      ],
+      "bootstrap_95_seed_blocks": [
+        3.5799999999999996,
+        5.3
+      ]
+    },
+    "final-minus-search_off/archetypes": {
+      "score_delta": 7.275,
+      "seed_block_deltas": [
+        6.45,
+        7.3,
+        8.25,
+        7.2,
+        6.3,
+        8.4,
+        9.1,
+        6.5,
+        6.1,
+        7.15
+      ],
+      "bootstrap_95_seed_blocks": [
+        6.714874999999999,
+        7.890000000000001
+      ]
+    },
+    "final-minus-bc/archetypes": {
+      "score_delta": -0.19,
+      "seed_block_deltas": [
+        -1.7,
+        -1.4,
+        -0.8,
+        0.2,
+        -0.95,
+        0.35,
+        2.6,
+        -0.2,
+        -0.8,
+        0.8
+      ],
+      "bootstrap_95_seed_blocks": [
+        -0.8800000000000001,
+        0.5951249999999982
+      ]
+    }
+  }
+}

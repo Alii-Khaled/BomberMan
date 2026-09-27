@@ -1,0 +1,3 @@
+# Keep archived CSV bytes unchanged; the original CRLF is hash-verified.
+results/diag_e107b1_attribution.csv -text -diff
+results/diag_e109d1_attribution.csv -text -diff

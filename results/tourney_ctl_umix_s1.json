@@ -1,0 +1,696 @@
+{
+ "agents": [
+  "arbiter",
+  "unseen_coward",
+  "unseen_bomber",
+  "unseen_rusher"
+ ],
+ "n_rounds": 100,
+ "seed": 1,
+ "scenario": "classic",
+ "runtime_s": 1848.7,
+ "per_round": [
+  {
+   "arbiter": 11,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 14,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 1,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 7,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 1
+  },
+  {
+   "arbiter": 5,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 1
+  },
+  {
+   "arbiter": 11,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 2,
+   "unseen_coward": 0,
+   "unseen_bomber": 3,
+   "unseen_rusher": 1
+  },
+  {
+   "arbiter": 11,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 8
+  },
+  {
+   "arbiter": 12,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 17,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 4,
+   "unseen_rusher": 6
+  },
+  {
+   "arbiter": 4,
+   "unseen_coward": 0,
+   "unseen_bomber": 5,
+   "unseen_rusher": 1
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 16,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 19,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 5,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 5
+  },
+  {
+   "arbiter": 4,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 5,
+   "unseen_coward": 1,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 7,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 10,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 1,
+   "unseen_bomber": 5,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 9,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 5,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 16,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 3,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 10,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 5,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 1
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 14,
+   "unseen_coward": 0,
+   "unseen_bomber": 10,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 4,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 11,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 14,
+   "unseen_coward": 0,
+   "unseen_bomber": 5,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 11,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 7,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 7,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 7,
+   "unseen_coward": 0,
+   "unseen_bomber": 10,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 21,
+   "unseen_coward": 1,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 4,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 18,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 3,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 7,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 5
+  },
+  {
+   "arbiter": 11,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 11,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 10,
+   "unseen_coward": 0,
+   "unseen_bomber": 3,
+   "unseen_rusher": 1
+  },
+  {
+   "arbiter": 3,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 5,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 10,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 11,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 3,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 4,
+   "unseen_rusher": 1
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 5,
+   "unseen_coward": 0,
+   "unseen_bomber": 14,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 7,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 2,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 11,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 3,
+   "unseen_coward": 0,
+   "unseen_bomber": 3,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 17,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 7,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 5
+  },
+  {
+   "arbiter": 5,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 2,
+   "unseen_coward": 0,
+   "unseen_bomber": 4,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 15,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 10,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 11,
+   "unseen_coward": 1,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 9,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 12,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 14,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 9,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 5
+  },
+  {
+   "arbiter": 9,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 1
+  },
+  {
+   "arbiter": 4,
+   "unseen_coward": 0,
+   "unseen_bomber": 3,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 13,
+   "unseen_coward": 0,
+   "unseen_bomber": 6,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 4,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 6,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 8,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 4,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 10,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 13,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 9,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 17,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 16,
+   "unseen_coward": 0,
+   "unseen_bomber": 0,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 17,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 5,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 11,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 5,
+   "unseen_coward": 0,
+   "unseen_bomber": 2,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 18,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 7,
+   "unseen_coward": 0,
+   "unseen_bomber": 7,
+   "unseen_rusher": 0
+  },
+  {
+   "arbiter": 6,
+   "unseen_coward": 0,
+   "unseen_bomber": 1,
+   "unseen_rusher": 0
+  }
+ ],
+ "summary": {
+  "arbiter": {
+   "score_total": 876,
+   "score_mean": 8.76,
+   "score_ci95": [
+    7.93975,
+    9.610249999999999
+   ],
+   "round_wins": 92.5,
+   "win_rate": 0.925,
+   "win_rate_ci95": [
+    0.875,
+    0.97
+   ],
+   "mean_rank": 1.075,
+   "kills_total": 62,
+   "suicides_total": 8,
+   "coins_total": 566,
+   "bombs_total": 2374,
+   "crates_total": 6621
+  },
+  "unseen_coward": {
+   "score_total": 5,
+   "score_mean": 0.05,
+   "score_ci95": [
+    0.01,
+    0.1
+   ],
+   "round_wins": 0.0,
+   "win_rate": 0.0,
+   "win_rate_ci95": [
+    0.0,
+    0.0
+   ],
+   "mean_rank": 3.35,
+   "kills_total": 0,
+   "suicides_total": 0,
+   "coins_total": 5,
+   "bombs_total": 0,
+   "crates_total": 0
+  },
+  "unseen_bomber": {
+   "score_total": 169,
+   "score_mean": 1.69,
+   "score_ci95": [
+    1.27975,
+    2.1902499999999985
+   ],
+   "round_wins": 6.5,
+   "win_rate": 0.065,
+   "win_rate_ci95": [
+    0.025,
+    0.115
+   ],
+   "mean_rank": 2.38,
+   "kills_total": 10,
+   "suicides_total": 52,
+   "coins_total": 119,
+   "bombs_total": 3464,
+   "crates_total": 3108
+  },
+  "unseen_rusher": {
+   "score_total": 42,
+   "score_mean": 0.42,
+   "score_ci95": [
+    0.17,
+    0.6902499999999986
+   ],
+   "round_wins": 1.0,
+   "win_rate": 0.01,
+   "win_rate_ci95": [
+    0.0,
+    0.025
+   ],
+   "mean_rank": 3.195,
+   "kills_total": 6,
+   "suicides_total": 20,
+   "coins_total": 12,
+   "bombs_total": 307,
+   "crates_total": 147
+  }
+ }
+}

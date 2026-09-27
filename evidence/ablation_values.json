@@ -1,0 +1,298 @@
+{
+  "sources_sha256": {
+    "results/report_ablation/final_g1_s0_n20.json": "dfd9848968fbfcc25fde3f570af3ce7e921bc9e8e8bcbc35b05bd3739ab0bd4f",
+    "results/report_ablation/final_g1_s1_n20.json": "0a5a5396c4c304ce2b50850ac2e4919310f78061e53f5f38d32c39531173355c",
+    "results/report_ablation/final_g1_s2_n20.json": "f9a5f59ccc71e527a15c1d6efbcb4ce9d43b46eb0922b43524e35a0ba85f0642",
+    "results/report_ablation/final_g1_s3_n20.json": "0d328d48af10f5d2d142375ccaa6f01a75a2e5fe3387e2e8e708aef9bf04a664",
+    "results/report_ablation/final_g1_s4_n20.json": "c89a8fab1a7d000d6877a29334332f5b44a54a6aa298dfe5af4e97e86113d2ef",
+    "results/report_ablation/final_g1_s5_n20.json": "c440da482a76c8b0bc60e4e6d9dc87ce0507a2c0f12752a1858e38c246af90c1",
+    "results/report_ablation/final_g1_s6_n20.json": "0c1f1bf8b4a7d9a8e515575c370a1f978245273714eb3b1371012a373d518e55",
+    "results/report_ablation/final_g1_s7_n20.json": "733ca3eb70732419383be3b4e27aa22a3aa800948c2fb2d240af3ec03b47bd92",
+    "results/report_ablation/final_g1_s8_n20.json": "610cbeec1f6b6ca04c215798513fed6553df491fcb433365718dd8112870e508",
+    "results/report_ablation/final_g1_s9_n20.json": "ec6791e9a8bb9ca9adc704cd4c458f375f88b9efc9b66e45d48a3ab8eb387c29",
+    "results/report_ablation/final_strong_s0_n20.json": "92db8b969bcab562cac6bde8295d710ae1d4e4f81d50e05037458aa9b31a004b",
+    "results/report_ablation/final_strong_s1_n20.json": "33b7cb341e138327e7532dd3f142dd504b5b5802fb6d90c72015b2c4a98abf03",
+    "results/report_ablation/final_strong_s2_n20.json": "2663993dec595e0982ddc1d2862a18712bce40bdaa4c1ad9275d65ead53b78b3",
+    "results/report_ablation/final_strong_s3_n20.json": "ec1de7971e55ebdaceb8b04425f15f377bdeda65fa2ebef304e763d0ff948935",
+    "results/report_ablation/final_strong_s4_n20.json": "f2ab242c0d3415e0c7bfff579e14a06abaa1c4d2d570134465b42d86ba28fa10",
+    "results/report_ablation/final_strong_s5_n20.json": "540381eeb0eedd5cbc963c75cfbdf55e46754cb6f1c208173f9014a8d92a624d",
+    "results/report_ablation/final_strong_s6_n20.json": "ad8f3daf98f47a69eae02a57c1affddb498c07d29afd4c217b24a7934eb30727",
+    "results/report_ablation/final_strong_s7_n20.json": "fdfc3395fde616c9326c942674d5d24069a0089d65ae99d9d295ae96e7a847db",
+    "results/report_ablation/final_strong_s8_n20.json": "dbdfb873e09abd1831dd779bd39fa558b363a64b65e1250ec088110cc5a2cd21",
+    "results/report_ablation/final_strong_s9_n20.json": "58eaf3267a6c3712fe7a0bc312d393862b70246cacf7896f1742b7a1e2a2e046",
+    "results/report_ablation/final_archetypes_s0_n20.json": "aabeaaaafb6d62378c84c88b3b952bfd083256ededf59d0a279eef1377626387",
+    "results/report_ablation/final_archetypes_s1_n20.json": "ca01f68331221fe6a47ef0c7ba901588b0edd68a4582742ed9f346716e1256e0",
+    "results/report_ablation/final_archetypes_s2_n20.json": "e1e3ade0c53f0f341531593a3cf6b59cd48ecee0120cc59dbeb18dd2b90d4591",
+    "results/report_ablation/final_archetypes_s3_n20.json": "baa0fed08fd71c9ef88b6b76fd574187ea5656e3b4a07bdfc78e9a03117424e9",
+    "results/report_ablation/final_archetypes_s4_n20.json": "01156acc1598907d06488092b563a7aee76e668310e56ff4073b309ebb715181",
+    "results/report_ablation/final_archetypes_s5_n20.json": "104a41926b074a7ad43486fc2f3be061062a91e257a8971555beff39515d5838",
+    "results/report_ablation/final_archetypes_s6_n20.json": "00608ab29fb8e1135453c7dd5ac3eac2766c7e315bda766d5e29469011cf26c1",
+    "results/report_ablation/final_archetypes_s7_n20.json": "8fed339566a406618183edd3da86dcecc77461f2eb7bff2fe2ccd2f01ed8819b",
+    "results/report_ablation/final_archetypes_s8_n20.json": "c4724ffd034125f3ca3d18f538edcb1b3a3946d1c9f9036f8deacdee5cdefd09",
+    "results/report_ablation/final_archetypes_s9_n20.json": "a8b1b7bc90329a2e96560878708c8f6584a0948e43857bbd1e6e718b23b72efe",
+    "results/report_ablation/neutral_g1_s0_n20.json": "47c1e4ea1b442452e7c3221fda42aebed5644c9995d1ae0b438bf02876b9eed7",
+    "results/report_ablation/neutral_g1_s1_n20.json": "a9b4b90a58aa214ca4f115e02d45fc332c40c9982f79be3d34a016e36334ec2c",
+    "results/report_ablation/neutral_g1_s2_n20.json": "69f606ba0731ac6b91c617e0b17de29b4f37e731d9b2f5fedfea639fd7dff405",
+    "results/report_ablation/neutral_g1_s3_n20.json": "a947f4013f5a55405c4aab9623f80f85387c46d58d41a5f606fca9347c64d836",
+    "results/report_ablation/neutral_g1_s4_n20.json": "aca79fcff40140a6931717cf492d47e8b6b1675ce971923a628dbc34761f9dcc",
+    "results/report_ablation/neutral_g1_s5_n20.json": "f83e1412c4f68215cf4536c85481a18354a5d55d65466156dfa2d1fa56d4f072",
+    "results/report_ablation/neutral_g1_s6_n20.json": "647f4bac7c13573ea85c2b2a1dcf1a3594d14ea4ee57a5c7531ed9b774250d4d",
+    "results/report_ablation/neutral_g1_s7_n20.json": "0480015aea551353c27158f82bd74b26928862a24960a8013d643408900f2a1e",
+    "results/report_ablation/neutral_g1_s8_n20.json": "e56d8f20e06b27445ef1c76e96def5bb4991d00f35245230e36896e52c6ee67c",
+    "results/report_ablation/neutral_g1_s9_n20.json": "63eca1219f3b503d550a269446ad9c6efbc9ebfe19e87d1a263648703750a958",
+    "results/report_ablation/neutral_strong_s0_n20.json": "4a762c8b3f115927c61df0fb924ad9871fa954be753a6ac90770b236a632f4b7",
+    "results/report_ablation/neutral_strong_s1_n20.json": "cfdfee4ab80c65d16c7232d383e36a05b47c55eddea9897508005c95e1dba54a",
+    "results/report_ablation/neutral_strong_s2_n20.json": "7b71217893a44b11c9c93d64844b04dbca68c3c080571f45d604359835414a30",
+    "results/report_ablation/neutral_strong_s3_n20.json": "ab46aecd5c68bef8c8a769646408a40ebe3b07890455ea1929065d26b625aceb",
+    "results/report_ablation/neutral_strong_s4_n20.json": "768af6dfc5e103b243382c04a1c32d7838281251f084cece463c6b0ace94e96e",
+    "results/report_ablation/neutral_strong_s5_n20.json": "d34d208fac79e4487605fbb86a6d249b57154b99057b09c1d770db9c038b3fb3",
+    "results/report_ablation/neutral_strong_s6_n20.json": "6f9cf0fc8b272067ce728a87b8edcc7a5108c72fd3f083c0e0f59622bf72602d",
+    "results/report_ablation/neutral_strong_s7_n20.json": "31cdca5c05cf4fcfa0f903eb86ddd69639f867b30f0929d696a79a796a9ca95c",
+    "results/report_ablation/neutral_strong_s8_n20.json": "f058be5a1965c0dd755e07d3732b1ba84ca36026defac85508176713daf4074f",
+    "results/report_ablation/neutral_strong_s9_n20.json": "bac7c2054ca3b4e226c4cece0a9e8a7353e7e938e8f5ef430edb888d70856e89",
+    "results/report_ablation/neutral_archetypes_s0_n20.json": "052f8b971a8c5f811a849297c5c860a6943fdcc96b94e3a1250e200d7a2fdc97",
+    "results/report_ablation/neutral_archetypes_s1_n20.json": "6203cfd56709583576517f11c24f1914b52fd6558ee0a48f654ce394cc0792b1",
+    "results/report_ablation/neutral_archetypes_s2_n20.json": "489dfab5c017147276b2d3ee3b413e31d20eb92c77ed97ce159a1bd745da2116",
+    "results/report_ablation/neutral_archetypes_s3_n20.json": "b998728a46926e9fd2abe4c55eaa43c0003613e59b0e1fc88907b96e10fcdf64",
+    "results/report_ablation/neutral_archetypes_s4_n20.json": "4acce56f3e4ab8c74e14b97b0e6f6b6871e161561eeb7af44497a08dbdc3260c",
+    "results/report_ablation/neutral_archetypes_s5_n20.json": "30d067e40ce6dd922bf1219cde95c0d217407ec624c32c2117f56c5c3d2e4563",
+    "results/report_ablation/neutral_archetypes_s6_n20.json": "aa30f554cec106b6a8a1ac7709fed1a9812771e83bad5dbdaaa23cec03bcfbee",
+    "results/report_ablation/neutral_archetypes_s7_n20.json": "6b25fb92736126efb25919b6147a4d015d5d6de9509810161bcde145cee68683",
+    "results/report_ablation/neutral_archetypes_s8_n20.json": "acbc7f4aef0546b89966c118abbca6ca0705dd1c554996db0679f60c8d400c3d",
+    "results/report_ablation/neutral_archetypes_s9_n20.json": "4a337fbcb324062d23f5fd8c86601cd99c42918e4775da77675422d6f434d239",
+    "results/report_ablation/search_off_g1_s0_n20.json": "ff4d2b3e3aa0071924f0cac79d9a7eba12477666c79b44b7f60880a0f851d261",
+    "results/report_ablation/search_off_g1_s1_n20.json": "8c338fff15af4f40d0fb458dcd473fab64bbd05acf01b8f096b585cdde60f70c",
+    "results/report_ablation/search_off_g1_s2_n20.json": "5d887d68a1103d7a76dbbca1b7c8b128301e65a5506454155e3289ea1216aeb1",
+    "results/report_ablation/search_off_g1_s3_n20.json": "16b295454089ba5cb4b68ae2376d2903d094f7d95fde5a5d3acab3da6e3468ad",
+    "results/report_ablation/search_off_g1_s4_n20.json": "7191dbfb0532dd282207fb97d202e704fc81596721f9b8bc78a6c7897c6a14ee",
+    "results/report_ablation/search_off_g1_s5_n20.json": "9eaaf49be1a9b6b9d421317122a47a2d3cf796e08c96a95af7e6c9f7f3395af1",
+    "results/report_ablation/search_off_g1_s6_n20.json": "cc9c33d95bee5dc55d166a0de770f6962f5a581e757c7fd0c90b7752d67c402f",
+    "results/report_ablation/search_off_g1_s7_n20.json": "ed58e88280f6d40ad74a42c76b9f81aafdaeab003bfcc81506f874a4abbf879e",
+    "results/report_ablation/search_off_g1_s8_n20.json": "ff78fd930f1413f8e978b1d3b8a4d54307829061f6a73c03747de68dee970dfe",
+    "results/report_ablation/search_off_g1_s9_n20.json": "6a89d87b7a777a3e83ce98237befdb373c6b231b8d147695ce33721ce3eeba31",
+    "results/report_ablation/search_off_strong_s0_n20.json": "734a1e0b17389d11a2c397f78d5705f55a166cb27abff6f6095b8817c51302d8",
+    "results/report_ablation/search_off_strong_s1_n20.json": "122933a43a93037c9f032097b2ed10ced4c6d6b27144e99923b9a642dc637e83",
+    "results/report_ablation/search_off_strong_s2_n20.json": "ac2a23578a817dbaedac7eab4b9e0c5a86d8a8448131c0e653e327f17c27992c",
+    "results/report_ablation/search_off_strong_s3_n20.json": "98e3009b68638645b3ef2b6b72469c1c0f2f734432e747f2d15113df350e28bb",
+    "results/report_ablation/search_off_strong_s4_n20.json": "cd59bfd82b9ff137710c5a42f701b3f6fcbd9823db530f63584cb5d8c2f39b53",
+    "results/report_ablation/search_off_strong_s5_n20.json": "9c4381a469a35d82679de8cf233ba6f1a17b486a6fb076dcf91e2833a5ee6d93",
+    "results/report_ablation/search_off_strong_s6_n20.json": "d905bbca0107f28ee1572ac9925c860eb35bb81b364fa3dac9901458b4c77f80",
+    "results/report_ablation/search_off_strong_s7_n20.json": "d70883b7b089cc30243efee1d9cd0f2ee4fbe3acafb98cff65d5107664c27f48",
+    "results/report_ablation/search_off_strong_s8_n20.json": "8f052c57a2514d9850ef99f1055fe0f10f8d9be453f5a49471ac1d43bb2d39a2",
+    "results/report_ablation/search_off_strong_s9_n20.json": "194dd71f59cfd981741cdcf43506ec096cb16c6d5caa66d67368100e6ec5f9f5",
+    "results/report_ablation/search_off_archetypes_s0_n20.json": "a5fe2a4fc6b726f3b26ef3ff2892dc8452a66a99e0ec4a07dc32b9f077a3cc4f",
+    "results/report_ablation/search_off_archetypes_s1_n20.json": "a7b0c12912a227e6d7f4a10ffc5086a3dd6ec32ed0465eb88f68525c12ea8d64",
+    "results/report_ablation/search_off_archetypes_s2_n20.json": "1d5de087fc7ae9e1b90cc9fe6a7459c341f78056a3a43fa03ae0c29e8d0542c9",
+    "results/report_ablation/search_off_archetypes_s3_n20.json": "80ef467e9c7d3f32bd302e7939f105ef06307be8470be4f60cc1ee8e3fd890e8",
+    "results/report_ablation/search_off_archetypes_s4_n20.json": "51346277c92f8affa1654125954ab1d4e75e1f97b9c17790b5fadc809c836952",
+    "results/report_ablation/search_off_archetypes_s5_n20.json": "1d1e8a0921b8933550e95aa579c0c7cf17d5529f740de2834a8c8c72ebe29e7d",
+    "results/report_ablation/search_off_archetypes_s6_n20.json": "8a1c1f10ef4665e260f6ce2899e071251c7071646c7f6e910ac5a5019d67c19f",
+    "results/report_ablation/search_off_archetypes_s7_n20.json": "809f6c837cc9cd5362aefcb7b02c95c8c43cdc3052882a04b7fbb0190bd2a8ea",
+    "results/report_ablation/search_off_archetypes_s8_n20.json": "c2c52a1c823baa5391806bdc53d7401cc4467d291c08192998e0eb5ea3e608f3",
+    "results/report_ablation/search_off_archetypes_s9_n20.json": "fa496eb97beb3de707816ebccd5bad68bf499047130d4e72279240dfc53aef28",
+    "results/report_ablation/bc_g1_s0_n20.json": "963378222e6e6a68a5b27884fa4659b200dae222aafdc48fd8958674ce5a9e36",
+    "results/report_ablation/bc_g1_s1_n20.json": "8cfb3dd3e1ba9c309bcf18221481a0e783b6cd06d078a1ff5c22fcdb804f12c4",
+    "results/report_ablation/bc_g1_s2_n20.json": "ebb38ca1be1bac3ff1139452bc4ec98c20b78ff251b56bd4e97028541f85da9c",
+    "results/report_ablation/bc_g1_s3_n20.json": "64946bfc59f1da521d3b751be26a422f2da5b7016f4d2fc457b51c4ba6d4f646",
+    "results/report_ablation/bc_g1_s4_n20.json": "ff188109fc855b8c8155819f57be4a03a07a5f0718440c8f66275b5d54d34032",
+    "results/report_ablation/bc_g1_s5_n20.json": "6a536c233c7c135af471f0090e6171c8906af24b1e96942119dbe00e9910310d",
+    "results/report_ablation/bc_g1_s6_n20.json": "9b3c166cd6edd75f069823e1b70f3a49658fae4b3580981361ddc3540f1601c1",
+    "results/report_ablation/bc_g1_s7_n20.json": "50fa90a30a0f4a17050fd67970f0c75e375b0325d45477142aa361694eb91089",
+    "results/report_ablation/bc_g1_s8_n20.json": "816947e639bf998af5f8b8492175ddce2b27de351cfa763b3f4c9bb43c5fbc66",
+    "results/report_ablation/bc_g1_s9_n20.json": "0f5a66a61c3eb6d3c21bbcb91466624bd2882622626f1074e44bf9e6ba6a9526",
+    "results/report_ablation/bc_strong_s0_n20.json": "7a6361a1a7323761647e7670fb52e94ffd23cf9b33455fa2364bd2770e8d1f81",
+    "results/report_ablation/bc_strong_s1_n20.json": "3c5d5efda756990d73205e8810997e9658ea8640bb2025d841fd7f79b6ad2db9",
+    "results/report_ablation/bc_strong_s2_n20.json": "2e4bca80d72a9cda69bd3f1e8032868cf259d1b5f7bfa8a366488ddb53b7cd7e",
+    "results/report_ablation/bc_strong_s3_n20.json": "7a567ea15b91a3a7ca0ae0392acdb93dc79fb865795f68dfb5291f9321c06370",
+    "results/report_ablation/bc_strong_s4_n20.json": "eef10822e2dbff130ce9c358ac4a4e2ef624aa12b543e858d2166c623317808a",
+    "results/report_ablation/bc_strong_s5_n20.json": "13250a8b16ca708f6e538a43c11bf4b74fe81deba0e82074c7a0652b4033035e",
+    "results/report_ablation/bc_strong_s6_n20.json": "f92521464a9e45924be3881f9e836abce7153982e2bf65747f825ede155f238a",
+    "results/report_ablation/bc_strong_s7_n20.json": "6b5f1255fcbc31b97f1639c70be20138577b298db1cc5082597ef85f4d09b0dd",
+    "results/report_ablation/bc_strong_s8_n20.json": "ad5f638d8dc2dbd0e54d8a0bc883e98cb9e4433788cb2807847da233ad17d57a",
+    "results/report_ablation/bc_strong_s9_n20.json": "0e4614aae81069cd60badc4af3766f56a8f337908f372d9b396c77f548cbccdf",
+    "results/report_ablation/bc_archetypes_s0_n20.json": "e42f691b1d8bf80c5fb0bcb610556f3dfc38ea60ade746412b8e0ff2bf7fdf49",
+    "results/report_ablation/bc_archetypes_s1_n20.json": "f0ae40cbd9af615c20a6236a23ec4acaf2d6dcb96d99cf04d73838187c11b739",
+    "results/report_ablation/bc_archetypes_s2_n20.json": "fd1f0c122553a3051c7db5fe8b28462714044a2fc552c979071f46b75b06dace",
+    "results/report_ablation/bc_archetypes_s3_n20.json": "cbb2c92bd76fcf7adfd1dc66016decbcd226c03ae4564655dafb7bc7bcb19660",
+    "results/report_ablation/bc_archetypes_s4_n20.json": "7f2107c3785e15b5cfc00dfc0d950603a1d089cadc635f04922f78a122a20292",
+    "results/report_ablation/bc_archetypes_s5_n20.json": "e7b27c943037213e9da80ef11a96f384c5001b1f966479df327e517e20289211",
+    "results/report_ablation/bc_archetypes_s6_n20.json": "e2bd29b04b043457a9b4109a0fac0cce33c2ddd8611cdba86cdcf175cda77cc0",
+    "results/report_ablation/bc_archetypes_s7_n20.json": "93da02cc7d869c797099ecfbbb7e45445b69fc0ca41254a59eb8084437c74a08",
+    "results/report_ablation/bc_archetypes_s8_n20.json": "bbdc5d4fa74f9438bcc50d5a9e51c75eb06f6debccef0406a5580eba663e79aa",
+    "results/report_ablation/bc_archetypes_s9_n20.json": "d888462c0e46e695632912e19fc9901a9799ad2ce6a2b8bf3acd956f0665a41c",
+    "results/report_ablation/summary_s10_n20.json": "ba8ea3db36055fb236479e953cc4a63c082a66f2228f8e11a044a84720bee22c"
+  },
+  "contrasts": {
+    "final-minus-neutral/g1": {
+      "score_delta": 1.78,
+      "seed_block_deltas": [
+        1.55,
+        2.6,
+        1.7,
+        1.5,
+        2.85,
+        2.2,
+        1.3,
+        0.8,
+        2.05,
+        1.25
+      ],
+      "bootstrap_95_seed_blocks": [
+        1.4200000000000002,
+        2.16
+      ]
+    },
+    "final-minus-search_off/g1": {
+      "score_delta": -0.265,
+      "seed_block_deltas": [
+        0.0,
+        -0.2,
+        0.2,
+        -1.35,
+        1.65,
+        -1.1,
+        -1.7,
+        -1.2,
+        1.0,
+        0.05
+      ],
+      "bootstrap_95_seed_blocks": [
+        -0.8849999999999998,
+        0.39
+      ]
+    },
+    "final-minus-bc/g1": {
+      "score_delta": -0.31499999999999995,
+      "seed_block_deltas": [
+        0.55,
+        0.55,
+        -1.7,
+        1.15,
+        -1.1,
+        -0.05,
+        -0.55,
+        -0.85,
+        1.1,
+        -2.25
+      ],
+      "bootstrap_95_seed_blocks": [
+        -0.9949999999999999,
+        0.375
+      ]
+    },
+    "final-minus-neutral/strong": {
+      "score_delta": 1.7799999999999994,
+      "seed_block_deltas": [
+        0.7,
+        3.15,
+        2.0,
+        2.55,
+        3.3,
+        1.15,
+        1.5,
+        1.85,
+        1.9,
+        -0.3
+      ],
+      "bootstrap_95_seed_blocks": [
+        1.1250000000000002,
+        2.3999999999999995
+      ]
+    },
+    "final-minus-search_off/strong": {
+      "score_delta": 2.645,
+      "seed_block_deltas": [
+        2.85,
+        2.45,
+        2.55,
+        3.75,
+        3.55,
+        3.35,
+        2.7,
+        1.7,
+        3.4,
+        0.15
+      ],
+      "bootstrap_95_seed_blocks": [
+        1.935,
+        3.21
+      ]
+    },
+    "final-minus-bc/strong": {
+      "score_delta": -0.2,
+      "seed_block_deltas": [
+        0.25,
+        -0.6,
+        -1.15,
+        0.45,
+        1.4,
+        0.45,
+        -1.6,
+        0.2,
+        0.3,
+        -1.7
+      ],
+      "bootstrap_95_seed_blocks": [
+        -0.7949999999999999,
+        0.375
+      ]
+    },
+    "final-minus-neutral/archetypes": {
+      "score_delta": 4.465,
+      "seed_block_deltas": [
+        3.45,
+        5.8,
+        4.9,
+        4.55,
+        3.65,
+        5.5,
+        6.65,
+        2.1,
+        2.6,
+        5.45
+      ],
+      "bootstrap_95_seed_blocks": [
+        3.5799999999999996,
+        5.3
+      ]
+    },
+    "final-minus-search_off/archetypes": {
+      "score_delta": 7.275,
+      "seed_block_deltas": [
+        6.45,
+        7.3,
+        8.25,
+        7.2,
+        6.3,
+        8.4,
+        9.1,
+        6.5,
+        6.1,
+        7.15
+      ],
+      "bootstrap_95_seed_blocks": [
+        6.714874999999999,
+        7.890000000000001
+      ]
+    },
+    "final-minus-bc/archetypes": {
+      "score_delta": -0.19,
+      "seed_block_deltas": [
+        -1.7,
+        -1.4,
+        -0.8,
+        0.2,
+        -0.95,
+        0.35,
+        2.6,
+        -0.2,
+        -0.8,
+        0.8
+      ],
+      "bootstrap_95_seed_blocks": [
+        -0.8800000000000001,
+        0.5951249999999982
+      ]
+    }
+  }
+}

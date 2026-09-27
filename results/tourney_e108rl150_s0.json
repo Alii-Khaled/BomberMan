@@ -1,0 +1,336 @@
+{
+ "agents": [
+  "arbiter_ng",
+  "rule_based_agent_0",
+  "rule_based_agent_1",
+  "rule_based_agent_2"
+ ],
+ "n_rounds": 40,
+ "seed": 0,
+ "scenario": "classic",
+ "runtime_s": 393.93,
+ "per_round": [
+  {
+   "arbiter_ng": 13,
+   "rule_based_agent_0": 4,
+   "rule_based_agent_1": 2,
+   "rule_based_agent_2": 0
+  },
+  {
+   "arbiter_ng": 1,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 3
+  },
+  {
+   "arbiter_ng": 5,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 0,
+   "rule_based_agent_2": 3
+  },
+  {
+   "arbiter_ng": 8,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 2,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 3,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 1,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 4,
+   "rule_based_agent_2": 1
+  },
+  {
+   "arbiter_ng": 4,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 2,
+   "rule_based_agent_2": 3
+  },
+  {
+   "arbiter_ng": 3,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 1
+  },
+  {
+   "arbiter_ng": 7,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 1,
+   "rule_based_agent_2": 3
+  },
+  {
+   "arbiter_ng": 2,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 8,
+   "rule_based_agent_2": 8
+  },
+  {
+   "arbiter_ng": 2,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 8
+  },
+  {
+   "arbiter_ng": 8,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 1,
+   "rule_based_agent_2": 7
+  },
+  {
+   "arbiter_ng": 4,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 1,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 4,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 6,
+   "rule_based_agent_2": 3
+  },
+  {
+   "arbiter_ng": 4,
+   "rule_based_agent_0": 8,
+   "rule_based_agent_1": 0,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 1
+  },
+  {
+   "arbiter_ng": 8,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 0,
+   "rule_based_agent_2": 8
+  },
+  {
+   "arbiter_ng": 5,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 8,
+   "rule_based_agent_2": 0
+  },
+  {
+   "arbiter_ng": 1,
+   "rule_based_agent_0": 5,
+   "rule_based_agent_1": 1,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 4,
+   "rule_based_agent_2": 1
+  },
+  {
+   "arbiter_ng": 3,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 7
+  },
+  {
+   "arbiter_ng": 4,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 2,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 4,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 0
+  },
+  {
+   "arbiter_ng": 8,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 1,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 6,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 4,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 4,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 0,
+   "rule_based_agent_2": 4
+  },
+  {
+   "arbiter_ng": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 3,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 1
+  },
+  {
+   "arbiter_ng": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 7,
+   "rule_based_agent_2": 8
+  },
+  {
+   "arbiter_ng": 3,
+   "rule_based_agent_0": 5,
+   "rule_based_agent_1": 4,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 0,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 4
+  },
+  {
+   "arbiter_ng": 1,
+   "rule_based_agent_0": 7,
+   "rule_based_agent_1": 0,
+   "rule_based_agent_2": 1
+  },
+  {
+   "arbiter_ng": 7,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 1,
+   "rule_based_agent_2": 3
+  },
+  {
+   "arbiter_ng": 6,
+   "rule_based_agent_0": 1,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 4
+  },
+  {
+   "arbiter_ng": 5,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 10,
+   "rule_based_agent_2": 2
+  },
+  {
+   "arbiter_ng": 2,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 5,
+   "rule_based_agent_2": 0
+  },
+  {
+   "arbiter_ng": 13,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 3,
+   "rule_based_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "rule_based_agent_0": 3,
+   "rule_based_agent_1": 1,
+   "rule_based_agent_2": 1
+  },
+  {
+   "arbiter_ng": 8,
+   "rule_based_agent_0": 0,
+   "rule_based_agent_1": 1,
+   "rule_based_agent_2": 15
+  },
+  {
+   "arbiter_ng": 0,
+   "rule_based_agent_0": 2,
+   "rule_based_agent_1": 9,
+   "rule_based_agent_2": 3
+  }
+ ],
+ "summary": {
+  "arbiter_ng": {
+   "score_total": 177,
+   "score_mean": 4.425,
+   "score_ci95": [
+    3.5,
+    5.425
+   ],
+   "round_wins": 17.5,
+   "win_rate": 0.4375,
+   "win_rate_ci95": [
+    0.3,
+    0.5875
+   ],
+   "mean_rank": 1.9875,
+   "kills_total": 15,
+   "suicides_total": 12,
+   "coins_total": 102,
+   "bombs_total": 864,
+   "crates_total": 1151
+  },
+  "rule_based_agent_0": {
+   "score_total": 90,
+   "score_mean": 2.25,
+   "score_ci95": [
+    1.775,
+    2.8006249999999966
+   ],
+   "round_wins": 4.0,
+   "win_rate": 0.1,
+   "win_rate_ci95": [
+    0.025,
+    0.2
+   ],
+   "mean_rank": 2.9,
+   "kills_total": 2,
+   "suicides_total": 26,
+   "coins_total": 80,
+   "bombs_total": 628,
+   "crates_total": 1137
+  },
+  "rule_based_agent_1": {
+   "score_total": 121,
+   "score_mean": 3.025,
+   "score_ci95": [
+    2.3,
+    3.875
+   ],
+   "round_wins": 11.5,
+   "win_rate": 0.2875,
+   "win_rate_ci95": [
+    0.1625,
+    0.41281249999999825
+   ],
+   "mean_rank": 2.4375,
+   "kills_total": 6,
+   "suicides_total": 23,
+   "coins_total": 91,
+   "bombs_total": 802,
+   "crates_total": 1262
+  },
+  "rule_based_agent_2": {
+   "score_total": 123,
+   "score_mean": 3.075,
+   "score_ci95": [
+    2.2,
+    4.125
+   ],
+   "round_wins": 7.0,
+   "win_rate": 0.175,
+   "win_rate_ci95": [
+    0.075,
+    0.2875
+   ],
+   "mean_rank": 2.675,
+   "kills_total": 8,
+   "suicides_total": 24,
+   "coins_total": 83,
+   "bombs_total": 733,
+   "crates_total": 1255
+  }
+ }
+}

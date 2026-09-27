@@ -1,0 +1,336 @@
+{
+ "agents": [
+  "arbiter_ng",
+  "unseen_rusher_0",
+  "unseen_rusher_1",
+  "unseen_rusher_2"
+ ],
+ "n_rounds": 40,
+ "seed": 1,
+ "scenario": "classic",
+ "runtime_s": 630.73,
+ "per_round": [
+  {
+   "arbiter_ng": 9,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 6,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 1,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 1
+  },
+  {
+   "arbiter_ng": 4,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 5,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 12,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 3,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 5,
+   "unseen_rusher_0": 5,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 3,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 5,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 7,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 5,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 5
+  },
+  {
+   "arbiter_ng": 10,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 11,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 6,
+   "unseen_rusher_0": 5,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 8,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 7,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 7,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 4,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 6,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 3,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 1,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 6,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 10,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 8,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 2,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 5,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 12,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 6,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 5,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 17,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 4,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 14,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 11,
+   "unseen_rusher_0": 1,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 5,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 8,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 6,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 3,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 5,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 7,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  },
+  {
+   "arbiter_ng": 4,
+   "unseen_rusher_0": 0,
+   "unseen_rusher_1": 0,
+   "unseen_rusher_2": 0
+  }
+ ],
+ "summary": {
+  "arbiter_ng": {
+   "score_total": 273,
+   "score_mean": 6.825,
+   "score_ci95": [
+    5.8,
+    7.900624999999997
+   ],
+   "round_wins": 36.5,
+   "win_rate": 0.9125,
+   "win_rate_ci95": [
+    0.8375,
+    0.975
+   ],
+   "mean_rank": 1.0875,
+   "kills_total": 11,
+   "suicides_total": 3,
+   "coins_total": 218,
+   "bombs_total": 840,
+   "crates_total": 2986
+  },
+  "unseen_rusher_0": {
+   "score_total": 11,
+   "score_mean": 0.275,
+   "score_ci95": [
+    0.0,
+    0.65
+   ],
+   "round_wins": 0.5,
+   "win_rate": 0.0125,
+   "win_rate_ci95": [
+    0.0,
+    0.0375
+   ],
+   "mean_rank": 2.975,
+   "kills_total": 2,
+   "suicides_total": 5,
+   "coins_total": 1,
+   "bombs_total": 58,
+   "crates_total": 28
+  },
+  "unseen_rusher_1": {
+   "score_total": 11,
+   "score_mean": 0.275,
+   "score_ci95": [
+    0.0,
+    0.675
+   ],
+   "round_wins": 2.0,
+   "win_rate": 0.05,
+   "win_rate_ci95": [
+    0.0,
+    0.125
+   ],
+   "mean_rank": 2.9375,
+   "kills_total": 2,
+   "suicides_total": 4,
+   "coins_total": 1,
+   "bombs_total": 85,
+   "crates_total": 51
+  },
+  "unseen_rusher_2": {
+   "score_total": 6,
+   "score_mean": 0.15,
+   "score_ci95": [
+    0.0,
+    0.425
+   ],
+   "round_wins": 1.0,
+   "win_rate": 0.025,
+   "win_rate_ci95": [
+    0.0,
+    0.0625
+   ],
+   "mean_rank": 3.0,
+   "kills_total": 1,
+   "suicides_total": 3,
+   "coins_total": 1,
+   "bombs_total": 45,
+   "crates_total": 32
+  }
+ }
+}

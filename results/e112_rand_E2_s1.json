@@ -1,0 +1,336 @@
+{
+ "agents": [
+  "arbiter_ng",
+  "random_agent_0",
+  "random_agent_1",
+  "random_agent_2"
+ ],
+ "n_rounds": 40,
+ "seed": 1,
+ "scenario": "classic",
+ "runtime_s": 447.58,
+ "per_round": [
+  {
+   "arbiter_ng": 0,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 8,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 8,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 0,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 4,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 8,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 1,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 2,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 8,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 1,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 8,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 5,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 6,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 9,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  },
+  {
+   "arbiter_ng": 1,
+   "random_agent_0": 0,
+   "random_agent_1": 0,
+   "random_agent_2": 0
+  }
+ ],
+ "summary": {
+  "arbiter_ng": {
+   "score_total": 294,
+   "score_mean": 7.35,
+   "score_ci95": [
+    6.4,
+    8.25
+   ],
+   "round_wins": 38.5,
+   "win_rate": 0.9625,
+   "win_rate_ci95": [
+    0.90625,
+    1.0
+   ],
+   "mean_rank": 1.075,
+   "kills_total": 0,
+   "suicides_total": 0,
+   "coins_total": 294,
+   "bombs_total": 962,
+   "crates_total": 3658
+  },
+  "random_agent_0": {
+   "score_total": 0,
+   "score_mean": 0.0,
+   "score_ci95": [
+    0.0,
+    0.0
+   ],
+   "round_wins": 0.5,
+   "win_rate": 0.0125,
+   "win_rate_ci95": [
+    0.0,
+    0.03125
+   ],
+   "mean_rank": 2.975,
+   "kills_total": 0,
+   "suicides_total": 40,
+   "coins_total": 0,
+   "bombs_total": 43,
+   "crates_total": 111
+  },
+  "random_agent_1": {
+   "score_total": 0,
+   "score_mean": 0.0,
+   "score_ci95": [
+    0.0,
+    0.0
+   ],
+   "round_wins": 0.5,
+   "win_rate": 0.0125,
+   "win_rate_ci95": [
+    0.0,
+    0.03125
+   ],
+   "mean_rank": 2.975,
+   "kills_total": 0,
+   "suicides_total": 40,
+   "coins_total": 0,
+   "bombs_total": 42,
+   "crates_total": 103
+  },
+  "random_agent_2": {
+   "score_total": 0,
+   "score_mean": 0.0,
+   "score_ci95": [
+    0.0,
+    0.0
+   ],
+   "round_wins": 0.5,
+   "win_rate": 0.0125,
+   "win_rate_ci95": [
+    0.0,
+    0.03125
+   ],
+   "mean_rank": 2.975,
+   "kills_total": 0,
+   "suicides_total": 40,
+   "coins_total": 0,
+   "bombs_total": 43,
+   "crates_total": 116
+  }
+ }
+}

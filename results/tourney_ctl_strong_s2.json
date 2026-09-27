@@ -1,0 +1,336 @@
+{
+ "agents": [
+  "arbiter",
+  "warden_v2",
+  "overlord",
+  "sentinel"
+ ],
+ "n_rounds": 40,
+ "seed": 2,
+ "scenario": "classic",
+ "runtime_s": 467.25,
+ "per_round": [
+  {
+   "arbiter": 0,
+   "warden_v2": 2,
+   "overlord": 11,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 3,
+   "warden_v2": 1,
+   "overlord": 0,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 2,
+   "warden_v2": 1,
+   "overlord": 3,
+   "sentinel": 6
+  },
+  {
+   "arbiter": 8,
+   "warden_v2": 12,
+   "overlord": 1,
+   "sentinel": 3
+  },
+  {
+   "arbiter": 2,
+   "warden_v2": 9,
+   "overlord": 0,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 15,
+   "warden_v2": 0,
+   "overlord": 3,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 8,
+   "warden_v2": 2,
+   "overlord": 2,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 8,
+   "warden_v2": 5,
+   "overlord": 1,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 1,
+   "warden_v2": 9,
+   "overlord": 0,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 2,
+   "warden_v2": 3,
+   "overlord": 2,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 2,
+   "warden_v2": 16,
+   "overlord": 0,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 2,
+   "warden_v2": 11,
+   "overlord": 0,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 2,
+   "warden_v2": 4,
+   "overlord": 6,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 10,
+   "warden_v2": 0,
+   "overlord": 1,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 5,
+   "warden_v2": 1,
+   "overlord": 0,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 5,
+   "warden_v2": 3,
+   "overlord": 8,
+   "sentinel": 6
+  },
+  {
+   "arbiter": 3,
+   "warden_v2": 3,
+   "overlord": 2,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 2,
+   "warden_v2": 16,
+   "overlord": 1,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 7,
+   "warden_v2": 0,
+   "overlord": 0,
+   "sentinel": 4
+  },
+  {
+   "arbiter": 1,
+   "warden_v2": 4,
+   "overlord": 8,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 3,
+   "warden_v2": 8,
+   "overlord": 7,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 1,
+   "warden_v2": 2,
+   "overlord": 7,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 4,
+   "warden_v2": 2,
+   "overlord": 7,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 1,
+   "warden_v2": 16,
+   "overlord": 1,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 4,
+   "warden_v2": 1,
+   "overlord": 0,
+   "sentinel": 2
+  },
+  {
+   "arbiter": 8,
+   "warden_v2": 2,
+   "overlord": 0,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 2,
+   "warden_v2": 4,
+   "overlord": 6,
+   "sentinel": 7
+  },
+  {
+   "arbiter": 0,
+   "warden_v2": 9,
+   "overlord": 0,
+   "sentinel": 5
+  },
+  {
+   "arbiter": 9,
+   "warden_v2": 3,
+   "overlord": 2,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 2,
+   "warden_v2": 16,
+   "overlord": 0,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 1,
+   "warden_v2": 11,
+   "overlord": 0,
+   "sentinel": 5
+  },
+  {
+   "arbiter": 7,
+   "warden_v2": 2,
+   "overlord": 8,
+   "sentinel": 0
+  },
+  {
+   "arbiter": 5,
+   "warden_v2": 7,
+   "overlord": 0,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 5,
+   "warden_v2": 7,
+   "overlord": 1,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 3,
+   "warden_v2": 10,
+   "overlord": 1,
+   "sentinel": 5
+  },
+  {
+   "arbiter": 5,
+   "warden_v2": 13,
+   "overlord": 0,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 3,
+   "warden_v2": 1,
+   "overlord": 1,
+   "sentinel": 6
+  },
+  {
+   "arbiter": 1,
+   "warden_v2": 20,
+   "overlord": 1,
+   "sentinel": 2
+  },
+  {
+   "arbiter": 6,
+   "warden_v2": 2,
+   "overlord": 0,
+   "sentinel": 1
+  },
+  {
+   "arbiter": 3,
+   "warden_v2": 1,
+   "overlord": 8,
+   "sentinel": 2
+  }
+ ],
+ "summary": {
+  "arbiter": {
+   "score_total": 161,
+   "score_mean": 4.025,
+   "score_ci95": [
+    3.075,
+    5.05
+   ],
+   "round_wins": 11.5,
+   "win_rate": 0.2875,
+   "win_rate_ci95": [
+    0.15,
+    0.425
+   ],
+   "mean_rank": 2.125,
+   "kills_total": 11,
+   "suicides_total": 11,
+   "coins_total": 106,
+   "bombs_total": 635,
+   "crates_total": 1587
+  },
+  "warden_v2": {
+   "score_total": 239,
+   "score_mean": 5.975,
+   "score_ci95": [
+    4.325,
+    7.75
+   ],
+   "round_wins": 17.5,
+   "win_rate": 0.4375,
+   "win_rate_ci95": [
+    0.2875,
+    0.5875
+   ],
+   "mean_rank": 2.0125,
+   "kills_total": 24,
+   "suicides_total": 21,
+   "coins_total": 119,
+   "bombs_total": 890,
+   "crates_total": 1800
+  },
+  "overlord": {
+   "score_total": 99,
+   "score_mean": 2.475,
+   "score_ci95": [
+    1.6,
+    3.4256249999999966
+   ],
+   "round_wins": 8.0,
+   "win_rate": 0.2,
+   "win_rate_ci95": [
+    0.075,
+    0.325
+   ],
+   "mean_rank": 2.8375,
+   "kills_total": 11,
+   "suicides_total": 11,
+   "coins_total": 44,
+   "bombs_total": 581,
+   "crates_total": 489
+  },
+  "sentinel": {
+   "score_total": 69,
+   "score_mean": 1.725,
+   "score_ci95": [
+    1.15,
+    2.35
+   ],
+   "round_wins": 3.0,
+   "win_rate": 0.075,
+   "win_rate_ci95": [
+    0.0,
+    0.175
+   ],
+   "mean_rank": 3.025,
+   "kills_total": 7,
+   "suicides_total": 14,
+   "coins_total": 34,
+   "bombs_total": 443,
+   "crates_total": 369
+  }
+ }
+}

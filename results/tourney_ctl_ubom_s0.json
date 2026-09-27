@@ -1,0 +1,336 @@
+{
+ "agents": [
+  "arbiter",
+  "unseen_bomber_0",
+  "unseen_bomber_1",
+  "unseen_bomber_2"
+ ],
+ "n_rounds": 40,
+ "seed": 0,
+ "scenario": "classic",
+ "runtime_s": 517.87,
+ "per_round": [
+  {
+   "arbiter": 3,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 3,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 9,
+   "unseen_bomber_0": 3,
+   "unseen_bomber_1": 7,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 16,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 8,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 11,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 2,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 13,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 7,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 5,
+   "unseen_bomber_0": 3,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 5,
+   "unseen_bomber_0": 2,
+   "unseen_bomber_1": 7,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 3,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 4,
+   "unseen_bomber_2": 6
+  },
+  {
+   "arbiter": 0,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 3,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter": 10,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 2,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter": 21,
+   "unseen_bomber_0": 2,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 11,
+   "unseen_bomber_0": 6,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 10,
+   "unseen_bomber_0": 2,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 12,
+   "unseen_bomber_0": 5,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 6
+  },
+  {
+   "arbiter": 9,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter": 6,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 2,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 11,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter": 5,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 3,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 2,
+   "unseen_bomber_0": 6,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 0,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 6
+  },
+  {
+   "arbiter": 11,
+   "unseen_bomber_0": 3,
+   "unseen_bomber_1": 5,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 2,
+   "unseen_bomber_0": 7,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter": 18,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 5,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 10,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 6,
+   "unseen_bomber_0": 2,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 5,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 7
+  },
+  {
+   "arbiter": 6,
+   "unseen_bomber_0": 5,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter": 6,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter": 5,
+   "unseen_bomber_0": 6,
+   "unseen_bomber_1": 0,
+   "unseen_bomber_2": 3
+  },
+  {
+   "arbiter": 7,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 5,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 2,
+   "unseen_bomber_0": 1,
+   "unseen_bomber_1": 8,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 2,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 8,
+   "unseen_bomber_2": 2
+  },
+  {
+   "arbiter": 1,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 3,
+   "unseen_bomber_2": 10
+  },
+  {
+   "arbiter": 6,
+   "unseen_bomber_0": 2,
+   "unseen_bomber_1": 10,
+   "unseen_bomber_2": 1
+  },
+  {
+   "arbiter": 5,
+   "unseen_bomber_0": 7,
+   "unseen_bomber_1": 2,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 1,
+   "unseen_bomber_0": 2,
+   "unseen_bomber_1": 7,
+   "unseen_bomber_2": 6
+  },
+  {
+   "arbiter": 10,
+   "unseen_bomber_0": 6,
+   "unseen_bomber_1": 7,
+   "unseen_bomber_2": 0
+  },
+  {
+   "arbiter": 13,
+   "unseen_bomber_0": 0,
+   "unseen_bomber_1": 1,
+   "unseen_bomber_2": 0
+  }
+ ],
+ "summary": {
+  "arbiter": {
+   "score_total": 293,
+   "score_mean": 7.325,
+   "score_ci95": [
+    5.824375,
+    8.825
+   ],
+   "round_wins": 25.5,
+   "win_rate": 0.6375,
+   "win_rate_ci95": [
+    0.5,
+    0.775
+   ],
+   "mean_rank": 1.575,
+   "kills_total": 20,
+   "suicides_total": 5,
+   "coins_total": 193,
+   "bombs_total": 713,
+   "crates_total": 1634
+  },
+  "unseen_bomber_0": {
+   "score_total": 78,
+   "score_mean": 1.95,
+   "score_ci95": [
+    1.325,
+    2.65
+   ],
+   "round_wins": 4.0,
+   "win_rate": 0.1,
+   "win_rate_ci95": [
+    0.025,
+    0.2
+   ],
+   "mean_rank": 3.0,
+   "kills_total": 8,
+   "suicides_total": 23,
+   "coins_total": 38,
+   "bombs_total": 1164,
+   "crates_total": 1008
+  },
+  "unseen_bomber_1": {
+   "score_total": 108,
+   "score_mean": 2.7,
+   "score_ci95": [
+    1.875,
+    3.600624999999997
+   ],
+   "round_wins": 6.5,
+   "win_rate": 0.1625,
+   "win_rate_ci95": [
+    0.0625,
+    0.2875
+   ],
+   "mean_rank": 2.5125,
+   "kills_total": 11,
+   "suicides_total": 25,
+   "coins_total": 53,
+   "bombs_total": 1195,
+   "crates_total": 1005
+  },
+  "unseen_bomber_2": {
+   "score_total": 73,
+   "score_mean": 1.825,
+   "score_ci95": [
+    1.15,
+    2.575
+   ],
+   "round_wins": 4.0,
+   "win_rate": 0.1,
+   "win_rate_ci95": [
+    0.025,
+    0.2
+   ],
+   "mean_rank": 2.9125,
+   "kills_total": 7,
+   "suicides_total": 21,
+   "coins_total": 38,
+   "bombs_total": 1227,
+   "crates_total": 947
+  }
+ }
+}
