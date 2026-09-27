@@ -1,18 +1,16 @@
 """Exact blast + time-expanded escape solver (numpy only, no torch).
 
 Mirrors items.py:Bomb.get_blast_coords and environment.py movement rules,
-but fixes rule_based_agent flaws:
+with three fixes over rule_based_agent:
  - wall-aware blast (rule_based ignores walls in bomb_map)
  - future danger for t=0..H (rule_based only checks timer==0)
  - time-expanded BFS escape (rule_based uses same-row/col heuristic)
 
-Latency (E37/P1): the tournament allows 0.5 s/step on ONE Ryzen 5 2600
-thread and an overrun also costs the NEXT step (environment.py:448-460),
-so the escape solver is written against flat byte/int buffers instead of
-numpy scalar indexing, and the "is this tile lethal at any t >= ct" scan is
-collapsed to an O(1) lookup against a precomputed first-lethal map. Both
-are semantics-preserving: `scripts/probe_reaper_features.py` group 4 still
-asserts exact `valid`/`safe` parity with the frozen overlord copy.
+Latency: the tournament allows 0.5 s/step on one Ryzen 5 2600 thread and an
+overrun also costs the next step (environment.py:448-460), so the escape
+solver runs on flat byte/int buffers instead of numpy scalar indexing, and
+the "is this tile lethal at any t >= ct" scan is an O(1) lookup against a
+precomputed last-lethal map.
 """
 from collections import deque
 import os
@@ -33,8 +31,8 @@ def _env_int(name, default, lo, hi):
     return max(lo, min(hi, v))
 
 
-# Default stays 8 so the overlord parity probe is exact; bombs can only
-# threaten t <= BOMB_TIMER+1 == 5, so REAPER_HORIZON=6 is the A/B candidate.
+# Default 8 matches the other safety copies; bombs can only
+# threaten t <= BOMB_TIMER+1 == 5, so REAPER_HORIZON=6 would also cover it.
 HORIZON = _env_int('REAPER_HORIZON', 8, 4, 12)
 
 
@@ -95,12 +93,26 @@ def with_hypothetical_bomb(danger, arena, x, y, horizon=HORIZON,
 
 def first_lethal(danger, horizon=HORIZON):
     """first_lethal[x, y] = earliest t in 0..horizon that is lethal, else
-    horizon+1 (sentinel). Lets the escape BFS answer "is this tile lethal at
-    some t >= ct?" in O(1) instead of rescanning the whole time axis."""
+    horizon+1 (sentinel). Kept for API compatibility; the escape BFS uses
+    last_lethal below (earliest is insufficient when danger windows are
+    non-contiguous, e.g. a timer-0 bomb at t=0..1 plus another at t=3..4)."""
     d = np.asarray(danger)
     any_d = d.any(axis=0)
     fl = np.where(any_d, d.argmax(axis=0), horizon + 1).astype(np.int32)
     return fl
+
+
+def last_lethal(danger, horizon=HORIZON):
+    """last_lethal[x, y] = latest t in 0..horizon that is lethal, else -1.
+
+    The O(1) predicate for "is this tile lethal at some t >= ct"
+    is last_lethal >= ct: danger windows may be non-contiguous (a
+    timer-0 bomb marks t=0 and t=1; a farther bomb marks t=3 and t=4), so
+    the earliest lethal time alone can miss a later window."""
+    d = np.asarray(danger)
+    any_d = d.any(axis=0)
+    ll = np.where(any_d, horizon - d[::-1].argmax(axis=0), -1).astype(np.int32)
+    return ll
 
 
 def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
@@ -111,7 +123,7 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
     dist_to_safe: steps to nearest tile with no future danger, inf if none.
 
     Hot path: everything is flattened to bytes/ints once per call (arena,
-    danger, first-lethal) so the BFS inner loop is pure Python integer work.
+    danger, last-lethal) so the BFS inner loop is pure Python integer work.
     """
     x0, y0 = int(pos[0]), int(pos[1])
     W, H = arena.shape[0], arena.shape[1]
@@ -122,7 +134,7 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
     free_b = (ar == 0).reshape(-1).tobytes()          # 1 == walkable floor
     dng = np.asarray(danger, dtype=bool)
     dang_b = dng.reshape(-1).tobytes()                # (t*W + x)*H + y
-    fl_flat = first_lethal(dng, horizon).reshape(-1).tolist()
+    ll_flat = last_lethal(dng, horizon).reshape(-1).tolist()
     plane = W * H
 
     bomb_cells = set()
@@ -161,18 +173,20 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
     while q:
         cx, cy, ct, fmi = q.popleft()
         ci = cx * H + cy
-        fl = fl_flat[ci]
-        # lethal at some t in [ct, horizon]?  (fl is the earliest lethal t)
-        future_hit = fl <= horizon and fl >= ct
+        ll = ll_flat[ci]
+        # lethal at some t in [ct, horizon]? (ll is the latest lethal t;
+        # danger windows may be non-contiguous, so the earliest misses)
+        future_hit = ll >= ct
         if not future_hit:
             found_safe.add(fmi)
             if ct < dist_to_safe:
                 dist_to_safe = ct
+        # Check arrival before accepting a path that reaches the horizon.
+        if dang_b[ct * plane + ci]:
+            continue                                   # died on this tile
         if ct == horizon:
             safe_first.add(fmi)
             continue
-        if dang_b[ct * plane + ci]:
-            continue                                   # died on this tile
         if ct >= 1 and not future_hit:
             safe_first.add(fmi)
         nt = ct + 1
@@ -211,7 +225,7 @@ def danger_no_explosion(arena, bombs, horizon=HORIZON,
 
     Same convention as opp_can_escape's internal danger (no explosion map:
     an opponent standing in a current explosion is already dead). Callers
-    that evaluate many hypothetical bomb spots compute this ONCE per step
+    that evaluate many hypothetical bomb spots compute this once per step
     and pass it via `danger=` instead of rebuilding it per spot.
     """
     return future_danger(arena, bombs, None, horizon, bomb_timer, power)
@@ -228,7 +242,7 @@ def opp_can_escape(arena, bombs, opp_pos, bomb_pos, others_xy=None,
     Returns (can_survive, dist_to_safe).
 
     Used by features.py as the trap signal: opps_hit with no escape
-    for the opponent = a kill opportunity. Pass a precomputed `danger`
+    for the opponent = a kill opportunity. Pass a precomputed danger
     (from danger_no_explosion) to skip the per-call rebuild.
     """
     try:
@@ -250,15 +264,14 @@ def opp_can_escape(arena, bombs, opp_pos, bomb_pos, others_xy=None,
 
 
 def bomb_here_traps(game_state, safety=None, danger=None):
-    """Does bombing HERE right now guarantee a kill? (E37/P5 tactical.)
+    """Does bombing here right now guarantee a kill? (tactical overlay)
 
     For each opponent in our current blast, runs the exact opponent escape
     BFS against a hypothetical bomb at our tile. Returns (traps, min_esc)
-    where traps=True iff some opponent cannot escape. Exact computation —
-    no learning, no approximation — so a True here is a forced +5.
-    Shares one danger map across opponents (same convention as the trap
-    feature: no explosion map). Returns (False, inf) when we have no bomb,
-    nobody is in our blast, or anything fails.
+    where traps=True iff some opponent cannot escape (the kill is forced,
+    +5 in engine score). Shares one danger map across opponents (same
+    convention as the trap feature: no explosion map). Returns (False, inf)
+    when we have no bomb, nobody is in our blast, or anything fails.
     """
     try:
         arena = np.asarray(game_state['field'])
@@ -342,8 +355,8 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
         if a not in safe:
             safe[a] = False
     # BOMB safety: can we escape if we drop now?
-    # NOTE: after dropping, own tile becomes a bomb tile (blocked for re-entry).
-    # escape_bfs blocks bomb tiles, so pass bombs+own for hypothetical.
+    # After dropping, own tile becomes a bomb tile (blocked for re-entry);
+    # escape_bfs blocks bomb tiles, so pass bombs+own for the hypothetical.
     danger_hyp = with_hypothetical_bomb(danger, arena, x, y, horizon, bomb_timer, power)
     bombs_hyp = list(bombs or []) + [((x, y), bomb_timer)]
     safe_hyp, dist_hyp = escape_bfs((x, y), arena, bombs_hyp, others_xy, danger_hyp, horizon)
@@ -372,8 +385,8 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                     can_escape = False
     except Exception:
         pass
-    # E14b margin rule (sentinel audit 60rd: dist_hyp 4.0 plants 23/27 fatal
-    # vs 2.4% at <=3.0 — a dist==timer escape always loses the race).
+    # Margin rule: in a 60-round sentinel audit, dist_hyp 4.0 plants were
+    # 23/27 fatal vs 2.4% at <=3.0; a dist==timer escape always loses the race.
     if valid.get('BOMB', False) and can_escape:
         try:
             if float(dist_hyp) > 3:
@@ -381,12 +394,8 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                 can_escape = False
         except Exception:
             pass
-    # NOTE (E21 lesson): a crate-payoff gate was tried on sentinel and
-    # REJECTED after a true live test (200rd pooled neutral-to-negative:
-    # vetoed slots don't convert without a crate-approach pull). Margin gate
-    # only here; payoff stays an open research item, not a mask rule.
-    # CRITICAL: staying (WAIT/BOMB) dies if current tile explodes THIS step.
-    # Moving away can still save you, but staying cannot.
+    # Staying (WAIT/BOMB) dies if the current tile explodes this step.
+    # Moving away can still save you; staying cannot.
     try:
         if bool(danger[0, x, y]):
             safe['WAIT'] = False
