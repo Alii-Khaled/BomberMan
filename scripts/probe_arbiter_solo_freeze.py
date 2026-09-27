@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""E125 (P0) solo approach-oscillation probe.
+"""Solo approach-oscillation probe.
 
-Fixture = the verified freeze board (solo seed-0 round 18, t=80,
+Fixture = the freeze board (solo seed-0 round 18, t=80,
 agent at (11,8), 3 visible coins, no bombs): the K-cap membership flip
 makes the winning bomb plan's first step alternate with the agent's
 position and the round runs 400 steps with 6 bombs / 0 coins collected.
 
-  G0  ship (arms off): reproduces the oscillation — no bomb planted in
+  G0  ship (arms off): reproduces the oscillation -- no bomb planted in
       the freeze window (60 sim ticks from (11,9), position cycle).
-  G1  Arm B (SOLO_COMMIT): the committed approach completes — bombs
+  G1  Arm B (SOLO_COMMIT): the committed approach completes; bombs
       planted, crates destroyed, no death.
   G2  Arm B abandon: a target whose first step is inside a live blast
       clears the commitment and falls back to arbitration (legal act).
-  G3  Arm A (BOMB_HYST): no death, legal action (documented outcome).
-  G4  opponent-ful bit-parity: search_action results identical with and
+  G3  Arm A (BOMB_HYST): no death, legal action.
+  G4  opponent-ful parity: search_action results identical with and
       without the state dict when an opponent is present.
 
 Usage: python3 scripts/probe_arbiter_solo_freeze.py
@@ -32,10 +32,10 @@ os.environ.setdefault('OMP_NUM_THREADS', '1')
 
 import numpy as np
 
-import agent_code.Harvy.search as S
-import agent_code.Harvy.callbacks as WC
-from agent_code.Harvy.safety import action_safety
-from agent_code.Harvy.sim import (from_game_state, to_game_state,
+import agent_code.Harvey.search as S
+import agent_code.Harvey.callbacks as WC
+from agent_code.Harvey.safety import action_safety
+from agent_code.Harvey.sim import (from_game_state, to_game_state,
                                        step as sim_step)
 
 fails = []
@@ -145,7 +145,7 @@ check('G2 commit with a live threat: action safe or None',
       a2 is None or bool(action_safety(gs2).get('safe', {}).get(a2, False)),
       'act=%s commit_left=%s' % (a2, state.get('commit')))
 
-# G3 Arm A (hysteresis) — no death, legal -------------------------------------
+# G3 Arm A (hysteresis) -- no death, legal -------------------------------------
 S.SOLO_COMMIT = 0
 S.BOMB_HYST = 0.25
 agent = mk_agent()

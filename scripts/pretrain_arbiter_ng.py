@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""E101 ARBITER-NG stage-1 training: expert-iteration BC on apex-format
-league recordings (img 12x17x17 uint8 + sc + act).
+"""Stage-1 training: expert-iteration BC on apex-format league
+recordings (img 12x17x17 uint8 + sc + act).
 
 Pipeline: reconstruct game_state per tick -> action_safety -> 98-dim
 scalar cache (with safety, matching inference) + dihedral augmentation
 on the fly (spatial transforms on the board tensor, AUG_PERMS on the
 scalars, map_action on the label). Loss = CE(pi) + aux_w * MSE(aux,
-margin/10) with the margin from sc[:,12] (E65 channel).
+margin/10) with the margin from sc[:,12] (the score_margin channel).
 
 Usage:
   python3 scripts/pretrain_arbiter_ng.py [--epochs 20] [--batch 256]
@@ -27,9 +27,9 @@ sys.path.insert(0, REPO)
 
 import numpy as np
 
-import agent_code.Harvy.features as F
-import agent_code.Harvy.model as M
-import agent_code.Harvy.safety as SAFE
+import agent_code.Harvey.features as F
+import agent_code.Harvey.model as M
+import agent_code.Harvey.safety as SAFE
 
 ACTION_LIST = list(M.ACTION_LIST)
 

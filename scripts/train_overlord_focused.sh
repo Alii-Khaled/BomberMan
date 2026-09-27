@@ -1,14 +1,14 @@
 #!/bin/bash
-# Overlord focused W-curriculum (E26 program): fewer rounds, weakpoint-first.
+# Overlord focused W-curriculum: fewer rounds, weakpoint-first.
 # Base: ep_1400 weights in last.pt (EMA cleared, eps re-warm 0.40 applied at
-# restore) + E28 crate-approach pull (probed 7/7 in scripts/probe_crate_pull.py).
+# restore) + the crate-approach pull (probed in scripts/probe_crate_pull.py).
 #   W1 economy  300: solo classic (crate pull must convert to crates/coins)
 #   W2 sparring 300: vs warden_vN + 2x rule_based (discipline by example)
 #   W3 gate     300: vs 3x rule_based (gate-matchup consolidation)
 #   + frozen evals: 100 vs 3x rb (gate, comparable to 3.70) + 60 warden-mix.
 # Resumable per stage: re-run with W*_N=0 to skip finished stages.
 # Env: identical L40S aggressive path as validation (never change arch mid-run:
-# shapes are baked — BASE/FC/NORM/DEEP must stay 96/512/bn/0).
+# shapes are baked -- BASE/FC/NORM/DEEP must stay 96/512/bn/0).
 # Launch detached: nohup bash scripts/train_overlord_focused.sh > logs/overlord_focused.log 2>&1 &
 # Guard: bash scripts/watch_overlord_focused.sh (kill-switch only, no auto-launch).
 set -e

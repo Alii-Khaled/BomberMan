@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E101 ARBITER-NG league corpus: apex-format (img 12x17x17 + sc + act)
+# League corpus: apex-format (img 12x17x17 + sc + act)
 # recordings from a warden-heavy teacher league. Consumed by
 # scripts/pretrain_arbiter_ng.py.
 # Usage: bash scripts/collect_arbiter_ng_league.sh

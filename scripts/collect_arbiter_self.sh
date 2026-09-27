@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# P2-C self-distillation demos: the SHIP arbiter acts (exact ship
+# Self-distillation demos: the ship arbiter acts (exact ship
 # defaults from the environment), arbiter_dagger records (feats, acts)
 # to results/demos/arbiter_self[_<field>]/ (training-time only).
 # Field split mirrors the gate distribution so the retrain sees the
-# eval distribution (cf. collect_demos.sh E37/P4).
+# eval distribution (cf. collect_demos.sh).
 # Usage: DAGGER_N=200 bash scripts/collect_arbiter_self.sh
 #   DEMO_PREFIX=arbiter_self_e88 selects the corpus subdirectory prefix
-#   (default arbiter_self; E88 uses a fresh prefix so the buggy-feature
-#   E80 corpus is never mixed with corrected-feature rows).
-# Box-sequential: run ONLY when no other gate is active.
+#   (default arbiter_self; use a fresh prefix so buggy-feature rows
+#   never mix with corrected-feature rows).
+# Box-sequential: run only when no other gate is active.
 set -e
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"

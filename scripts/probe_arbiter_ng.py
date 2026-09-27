@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E101 ARBITER-NG probe: package gates before any game.
+"""Package gates for the arbiter_ng model, before any game.
 
   G0  dims: FEATURE_DIM 3566 = 12*17*17 + 98; AUG_PERMS bijective.
   G1  tensor augmentation consistency: board_tensor(transform_state(s))
@@ -25,10 +25,10 @@ import numpy as np
 import torch
 
 torch.set_num_threads(1)
-import agent_code.Harvy.features as F
-import agent_code.Harvy.safety as SAFE
-import agent_code.Harvy.model as M
-import agent_code.Harvy.callbacks as WC
+import agent_code.Harvey.features as F
+import agent_code.Harvey.safety as SAFE
+import agent_code.Harvey.model as M
+import agent_code.Harvey.callbacks as WC
 
 N = 60
 for a in sys.argv[1:]:

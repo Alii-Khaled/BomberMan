@@ -1,5 +1,5 @@
 #!/bin/bash
-# Reaper parallel hyperparameter sweep (E37/P4a).
+# Reaper parallel hyperparameter sweep.
 # Launches K independent curriculum runs (scripts/train_reaper.sh) with
 # isolated REAPER_RUN_DIR + REAPER_TAG each, sharing the L40S for gradient
 # steps (tiny MLP) while rollout Python spreads over the 128 cores.

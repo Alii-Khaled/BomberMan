@@ -1,6 +1,6 @@
 #!/bin/bash
 # Deferred eval: waits for Stage-2 training to finish, then runs the
-# trimmed matrix (M5-M8 at 40 rounds x 2 seeds; M1-M4 already done),
+# remaining matrix (matchups m5-m8 at 40 rounds x 2 seeds),
 # aggregates tables and renders report figures.
 # Usage: nohup bash scripts/eval_after_stage2.sh > logs/eval_deferred.log 2>&1 &
 # Eval uses CPU inference (tournament conditions) once training frees the machine.

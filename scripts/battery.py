@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Canonical battery/triage runner + tally (E109+).
+"""Canonical battery/triage runner + tally.
 
-Replaces the ad-hoc bash drivers (three field-splitting bugs taught us
-better). Runs games nice'd on CPU with per-game /tmp log dirs, skips
+Runs games nice'd on CPU with per-game /tmp log dirs, skips
 existing outputs, wave-limited concurrency, then prints a pooled tally.
 
 Usage:
@@ -62,11 +61,11 @@ def run_leg(tag, name, seed, rounds, opps, model, jobs_left):
     ldir = f'/tmp/opencode/battery/{tag}_{name}_s{seed}'
     os.makedirs(ldir, exist_ok=True)
     env = dict(os.environ)
-    env.update({'ARBITER_DEVICE': 'cpu'})
+    env.update({'HARVEY_DEVICE': 'cpu'})
     if model:
-        env['ARBITER_NG_MODEL'] = model
+        env['HARVEY_WEIGHTS'] = model
     cmd = (['nice', '-n', '10', 'python3', 'scripts/tournament_eval.py',
-            '--agents', 'Harvy'] + opps.split() +
+            '--agents', 'Harvey'] + opps.split() +
            ['--n-rounds', str(rounds), '--seed', str(seed),
             '--scenario', 'classic', '--log-dir', ldir,
             '--match-name', f'{tag}_{name}_s{seed}', '--out', out])

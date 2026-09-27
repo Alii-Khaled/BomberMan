@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E108 D1 triage: e108rl snapshots vs fresh control, G1 40x1 s0 (cap 4).
+# Triage: e108rl snapshots vs fresh control, G1 40x1 s0 (cap 4).
 set -u
 cd /home/jovyan/work/BomberMan
 mkdir -p logs results /tmp/opencode/e108
@@ -10,9 +10,9 @@ run() { # tag seed model
   local ldir="/tmp/opencode/e108/${tag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
-  nice -n 10 env ARBITER_DEVICE=cpu ARBITER_NG_MODEL="$model" \
+  nice -n 10 env HARVEY_DEVICE=cpu HARVEY_WEIGHTS="$model" \
     python3 scripts/tournament_eval.py \
-    --agents Harvy rule_based_agent rule_based_agent rule_based_agent \
+    --agents Harvey rule_based_agent rule_based_agent rule_based_agent \
     --n-rounds 40 --seed "$seed" --scenario classic \
     --log-dir "$ldir" --match-name "${tag}_s${seed}" --out "$out" \
     > "logs/tourney_${tag}_s${seed}.log" 2>&1
@@ -20,7 +20,7 @@ run() { # tag seed model
 }
 
 JOBS=(
-  "e108ctl 0 $PWD/agent_code/Harvy/my-saved-model.pt"
+  "e108ctl 0 $PWD/agent_code/Harvey/my-saved-model.pt"
   "e108rl075 0 $PWD/results/e108rl.pt.ep075"
   "e108rl150 0 $PWD/results/e108rl.pt.ep150"
   "e108rl225 0 $PWD/results/e108rl.pt.ep225"

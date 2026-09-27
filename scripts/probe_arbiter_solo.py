@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E112 (P0) ARBITER-NG solo/endgame unfreeze probe.
+"""Solo/endgame unfreeze probe.
 
   G0  flags OFF: gen_plans has no trek plans (ship behavior).
   G1  coin trek: with flags ON and a reachable visible coin, a coin trek
@@ -12,7 +12,7 @@
   G5  safety gate: trek first steps must be mask-safe; on a state whose
       trek path starts in a ticking blast the search never returns it.
   G6  fixture regression (seed-3 solo freeze): 200 sim ticks from the
-      verified freeze state -> no death, >=40 crates cleared, no
+      freeze state -> no death, >=40 crates cleared, no
       stay-put streak > 4.
   G7  loop penalty math: escalating formula + cap; OFF == LOOP3/LOOP2.
   G8  latency: search_action on the solo fixture < 50 ms.
@@ -33,9 +33,9 @@ os.environ.setdefault('OMP_NUM_THREADS', '1')
 
 import numpy as np
 
-import agent_code.Harvy.search as S
-import agent_code.Harvy.callbacks as WC
-from agent_code.Harvy.safety import action_safety
+import agent_code.Harvey.search as S
+import agent_code.Harvey.callbacks as WC
+from agent_code.Harvey.safety import action_safety
 
 fails = []
 
@@ -215,7 +215,7 @@ check('G5 trek never returns an unsafe first step', ok,
 # G6 fixture regression ------------------------------------------------------
 set_flags(trek=True, margin=0.15, loop_esc='2')
 agent = mk_agent()
-from agent_code.Harvy.sim import (from_game_state, to_game_state,
+from agent_code.Harvey.sim import (from_game_state, to_game_state,
                                        step as sim_step)
 fixture_gs = mk_gs(FIXTURE, (13, 5), step=60)
 st = from_game_state(fixture_gs)
@@ -349,7 +349,7 @@ WC.ANTIPIN = False
 WC._SEARCH_ON = True
 WC._TACTICAL_ON = True
 
-# G10 solo radius (E123) -----------------------------------------------------
+# G10 solo radius -----------------------------------------------------------
 set_flags(trek=False, margin=0.15, loop_esc='2')
 S.SOLO_RADIUS = 0
 arena = open_arena()
@@ -379,9 +379,9 @@ if a_r in _DELTA:
     ok = int(dmap0[(pos[0] + dx, pos[1] + dy)]) < int(dmap0[pos])
     check('G10 radius on: steps toward the far cluster', ok,
           'action=%s' % a_r)
-S.SOLO_RADIUS = 8  # E123 ship default
+S.SOLO_RADIUS = 8  # ship default
 
-# G11 backtrack penalty (E123, default off; binding check only) --------------
+# G11 backtrack penalty (default off; binding check only) --------------------
 pkt = open_arena()
 pkt[9, 8] = -1
 pkt[8, 9] = -1

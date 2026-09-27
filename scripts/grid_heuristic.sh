@@ -1,5 +1,5 @@
 #!/bin/bash
-# Track-1 frozen heuristic grid (E31): one-knob variants + all-defaults
+# Track-1 frozen heuristic grid: one-knob variants + all-defaults
 # baseline, 40 rounds seed 0 (paired arenas) vs 3x rule_based, CPU.
 # Top-2 go to 100x2 validation. Artifacts: results/grid_<name>.json.
 set -e

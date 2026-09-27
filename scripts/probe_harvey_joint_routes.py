@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Focused probes for E134's dynamic opponent-route bomb evaluator."""
+"""Focused probes for the dynamic opponent-route bomb evaluator."""
 
 import os
 import sys
@@ -10,13 +10,13 @@ import numpy as np
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
-from agent_code.Harvy import safety as S
+from agent_code.Harvey import safety as S
 
 
 def game(arena, self_pos, opponents):
     return {
         'field': np.asarray(arena, dtype=int),
-        'self': ('Harvy', 0, True, self_pos),
+        'self': ('Harvey', 0, True, self_pos),
         'others': [('opp%d' % i, 0, True, pos)
                    for i, pos in enumerate(opponents)],
         'bombs': [], 'coins': [],
@@ -33,7 +33,7 @@ def open_board(n=7):
 
 
 def main():
-    # A currently occupied exit is not a permanent wall.  The old static
+    # A currently occupied exit is not a permanent wall. The static
     # blocker certificate says "dead"; the dynamic route profile finds the
     # route that opens after the blocker moves.
     ar = np.full((7, 7), -1, dtype=int)

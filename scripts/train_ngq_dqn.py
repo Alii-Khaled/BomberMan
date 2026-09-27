@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""E105 NGQ trainer: offline Double-DQN over the ngq dataset.
+"""Offline Double-DQN over the ngq dataset.
 
 The Q head trains into the model's `pi` weight slot, so the existing
-arbiter_ng agent loads the result unchanged (ARBITER_MODEL). Trunk is
-warm-started from the NG-1 BC checkpoint; V/aux heads stay zero (V_BLEND
-default 0 for NG keeps the search pure-exact).
+arbiter_ng agent loads the result unchanged (HARVEY_MODEL). Trunk is
+warm-started from the BC checkpoint; V/aux heads stay zero (V_BLEND
+default 0 keeps the search pure-exact).
 
 Usage: python3 scripts/train_ngq_dqn.py [--init results/arbiter_ng_full.pt.ep04]
 """
@@ -23,7 +23,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-import agent_code.Harvy.model as M
+import agent_code.Harvey.model as M
 
 
 def main():

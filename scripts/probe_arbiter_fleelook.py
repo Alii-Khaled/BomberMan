@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""E107 C2 probe: flee-lookahead wiring, survival choice, latency.
+"""Flee-lookahead wiring, survival choice, latency.
 
 Gates:
-  P1 constructed corner-pin: myopic best move dies in rollout, another
-     move survives -> lookahead returns the surviving move (not the
-     myopic one) when both are admissible.
-  P2 determinism: identical state -> identical choice (10 calls).
-  P3 latency: choice p99 < 30 ms on a populated board.
-  P4 fallback: no admissible move survives -> returns some move (best
+  constructed corner-pin: myopic best move dies in rollout, another
+     move survives -> lookahead prefers the surviving move when both
+     are admissible.
+  determinism: identical state -> identical choice (10 calls).
+  latency: choice p99 < 30 ms on a populated board.
+  fallback: no admissible move survives -> returns some move (best
      partial) or None without raising.
 
 Usage: python3 scripts/probe_arbiter_fleelook.py
@@ -24,7 +24,7 @@ sys.path.insert(0, REPO)
 
 import numpy as np
 
-os.environ['ARBITER_DEVICE'] = 'cpu'
+os.environ['HARVEY_DEVICE'] = 'cpu'
 
 
 def _state(arena, self_xy, others, bombs=(), coins=(), bomb_left=True,
@@ -33,9 +33,9 @@ def _state(arena, self_xy, others, bombs=(), coins=(), bomb_left=True,
         'round': 1, 'step': step, 'field': arena,
         'bombs': [((int(bx), int(by)), int(t)) for (bx, by), t in bombs],
         'explosion_map': np.zeros_like(arena, dtype=float),
-        'coins': [], 'self': ('arbiter_ng', 0, bomb_left := bomb_left,
+        'coins': [], 'self': ('Harvey', 0, bomb_left := bomb_left,
                               (int(self_xy[0]), int(self_xy[1])))
-        if False else ('arbiter_ng', 0, bomb_left, (int(self_xy[0]),
+        if False else ('Harvey', 0, bomb_left, (int(self_xy[0]),
                                                     int(self_xy[1]))),
         'others': [(f'o{i}', 0, False, (int(ox), int(oy)))
                    for i, (ox, oy) in enumerate(others)],
@@ -64,16 +64,16 @@ def main():
     gs = _state(a, (13, 7), [(11, 1), (1, 1), (1, 15)],
                 bombs=[((15, 7), 1)], coins=[])
     # safety mask
-    from arbiter_ng import safety as S
-    from arbiter_ng.features import state_to_features
+    from Harvey import safety as S
+    from Harvey.features import state_to_features
     mask = S.action_safety(gs)
     valid = {k: bool(v) for k, v in mask.get('valid', {}).items()} \
         if isinstance(mask.get('valid'), dict) else None
     safe = {k: bool(v) for k, v in mask.get('safe', {}).items()} \
         if isinstance(mask.get('safe'), dict) else None
 
-    from arbiter_ng.callbacks import _flee_lookahead_choice
-    import arbiter_ng.callbacks as C
+    from Harvey.callbacks import _flee_lookahead_choice
+    import Harvey.callbacks as C
 
     pi = np.zeros(len(C.ACTION_LIST))
     for i, act in enumerate(C.ACTION_LIST):
@@ -90,7 +90,7 @@ def main():
     else:
         print('P1 FAIL: chose', choice)
 
-    # P2 determinism
+    # determinism
     picks = set()
     for _ in range(10):
         picks.add(_flee_lookahead_choice(gs, valid, safe, pi, 13, 7))
@@ -98,7 +98,7 @@ def main():
     if len(picks) == 1:
         ok += 1
 
-    # P3 latency on a busy board (10 bombs)
+    # latency on a busy board (10 bombs)
     gs2 = _state(a, (13, 7), [(11, 1), (1, 1), (1, 15)],
                  bombs=[((15, 7), 1), ((3, 3), 2), ((3, 13), 2),
                         ((13, 3), 2), ((13, 13), 2), ((7, 15), 2)], coins=[])
@@ -113,7 +113,7 @@ def main():
     if ts[-1] < 30.0:
         ok += 1
 
-    # P4 no-crash on empty admissible set
+    # no-crash on empty admissible set
     bad = {'UP': False, 'DOWN': False, 'LEFT': False, 'RIGHT': False,
            'WAIT': True, 'BOMB': False}
     try:

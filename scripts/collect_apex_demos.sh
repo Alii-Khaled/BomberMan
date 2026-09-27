@@ -1,15 +1,14 @@
 #!/bin/bash
-# Re-collect apex-format BC demos (S3): the 2026-09-09 disk cleanup wiped
-# results/apex_demos/ (400 npz, E51). Restores warden_vN/sentinel/overlord
-# at E51 parity and ADDS coin_collector_agent (100) — the only agent in the
-# repo realizing 3.39 crates/bomb, hence the only source of high-yield
-# placement demonstrations for ARBITER's V (E62/S3 decision).
+# Re-collect apex-format BC demos: warden_vN/sentinel/overlord plus
+# coin_collector_agent (100 games), the only agent in the repo realizing
+# 3.39 crates/bomb and thus the only source of high-yield placement
+# demonstrations for ARBITER's V.
 # Recorder: agent_code/apex_teacher/ delegates act() to APEX_TEACHER and
-# writes B3 npz (img uint8 T,12,17,17 x4 + sc T,16 + act T,) to
+# writes npz (img uint8 T,12,17,17 x4 + sc T,16 + act T,) to
 # results/apex_demos/<teacher>/ (resume-safe: appends round IDs).
 # Fields per teacher: rb 50% / warden-mix 25% / 3x collector 12.5% /
-# crate-light 12.5% (E41 mixed-density coverage lesson). No random field:
-# random agents die early and boards are unrepresentative.
+# crate-light 12.5% (mixed-density coverage). No random field: random
+# agents die early and boards are unrepresentative.
 # Usage: bash scripts/collect_apex_demos.sh [teacher ...]
 #   (default: warden_v2 sentinel overlord coin_collector_agent)
 set -e

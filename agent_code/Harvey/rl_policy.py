@@ -11,14 +11,14 @@ def _env_float(name, default):
         return default
 
 
-TEMP = _env_float('ARBITER_RL_TEMP', 1.0)
+TEMP = _env_float('HARVEY_RL_TEMP', 1.0)
 NAMES = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'WAIT', 'BOMB']
 
 
 def sample_action(self, pi, valid, safe, must_flee, flee_locked, feats):
     """Sample a move from masked softmax(pi/T); record the training trace.
 
-    Admissible = valid, and safe under flee semantics (ship S0 filter).
+    Admissible = valid, and safe under flee semantics.
     Records (round, step, feats, allowed_idx, chosen_j) for train.py,
     which recomputes the log-probs with gradients at round end.
     """

@@ -1,18 +1,22 @@
-"""Harvey bounded best-first search: exact-dynamics plans ranked by
-exact payoff + learned leaf value. The net NEVER votes on root actions
-— it evaluates consequences the heuristic cannot see.
+"""Bounded best-first search over exact-dynamics plans.
 
-Plan = committed own-action prefix (BFS path to a bomb tile + BOMB, or a
-single move) + cheap continuation to detonation settle. Opponents use an
-avoid-lethal-if-possible + random policy (seeded, deterministic per
-round/step). Kills count at full value only when certified against
-optimal flight (opp_can_escape); rollout-luck kills are ignored.
+Plans are scored by exact payoff plus a learned leaf value. The network
+does not vote on root actions; it prices consequences that the payoff
+terms cannot see.
+
+A plan is a committed own-action prefix (a BFS path to a bomb tile plus
+BOMB, or a single move) followed by a cheap continuation to detonation.
+Opponents follow an avoid-lethal-if-possible policy with seeded,
+deterministic randomness per round and step. Kills count at full value
+only when certified against optimal flight (opp_can_escape); kills
+that depend on rollout luck are ignored.
 Score(plan) = exact margin delta (crates*w + coins + 5*certified kills
 - 8*own death + coin-reveal expectation) + V_BLEND * V(s_end).
 
-Budgets: wall-clock (shares ARBITER_TIME_BUDGET with act), plan cap,
-leaf-V cap (features cost 1.18 ms vs sim.step 0.031 ms — V is the
-binding constraint). Exhaustion degrades to the S0 ranking.
+Budgets: wall-clock (shared with act via HARVEY_TIME_BUDGET), a plan
+cap, and a leaf-value cap (features cost 1.18 ms against 0.031 ms for
+sim.step, so leaf evaluation is the binding constraint). Exhaustion
+falls back to the policy ranking.
 """
 import os
 import time
@@ -40,92 +44,92 @@ def _env_int(name, default, lo, hi):
     return max(lo, min(hi, v))
 
 
-H = _env_int('ARBITER_SEARCH_H', 6, 2, 12)
+H = _env_int('HARVEY_SEARCH_H', 6, 2, 12)
 # Rollout averaging reduces opponent-policy noise; leaf V uses one rollout.
-SEEDS = _env_int('ARBITER_SEEDS', 1, 1, 8)
+SEEDS = _env_int('HARVEY_SEEDS', 1, 1, 8)
 # Move plans may average more seeds; bomb plans retain a single hard death veto.
-MOVE_SEEDS = _env_int('ARBITER_MOVE_SEEDS', 1, 1, 8)
+MOVE_SEEDS = _env_int('HARVEY_MOVE_SEEDS', 1, 1, 8)
 # Common random numbers compare plans against identical opponent draws.
-CRN = os.environ.get('ARBITER_CRN', '1') == '1'
-K = _env_int('ARBITER_SEARCH_K', 8, 0, 32)
-RADIUS = _env_int('ARBITER_SEARCH_R', 4, 1, 8)
-PLAN_CAP = _env_int('ARBITER_SEARCH_PLANS', 48, 1, 256)
+CRN = os.environ.get('HARVEY_CRN', '1') == '1'
+K = _env_int('HARVEY_SEARCH_K', 8, 0, 32)
+RADIUS = _env_int('HARVEY_SEARCH_R', 4, 1, 8)
+PLAN_CAP = _env_int('HARVEY_SEARCH_PLANS', 48, 1, 256)
 # Leaf-value inference is disabled by default to preserve the search budget.
-V_BLEND = _env_float('ARBITER_V_BLEND', 0.0)
+V_BLEND = _env_float('HARVEY_V_BLEND', 0.0)
 # Explicit leaf-value ablation, equivalent to a zero V blend.
-V_OFF = os.environ.get('ARBITER_V_OFF', '0') == '1'
-W_CRATE = _env_float('ARBITER_W_CRATE', 0.1)
-W_DEATH = _env_float('ARBITER_W_DEATH', 8.0)
+V_OFF = os.environ.get('HARVEY_V_OFF', '0') == '1'
+W_CRATE = _env_float('HARVEY_W_CRATE', 0.1)
+W_DEATH = _env_float('HARVEY_W_DEATH', 8.0)
 # Search chooses a bomb only when it beats the best move by this score margin.
-# The legacy ARBITER_BOMB_MARGIN name remains supported for old scripts.
+# The legacy HARVEY_BOMB_MARGIN name remains supported for old scripts.
 BOMB_MARGIN = _env_float(
-    'ARBITER_BOMB_SCORE_MARGIN',
-    _env_float('ARBITER_BOMB_MARGIN', 0.6))
+    'HARVEY_BOMB_SCORE_MARGIN',
+    _env_float('HARVEY_BOMB_MARGIN', 0.6))
 # Optional extra score margin for an immediate plant near an opponent.
-DUEL_BOMB_MARGIN = _env_float('ARBITER_DUEL_BOMB_MARGIN', 0.0)
-DUEL_BOMB_D = _env_int('ARBITER_DUEL_BOMB_D', 3, 1, 6)
+DUEL_BOMB_MARGIN = _env_float('HARVEY_DUEL_BOMB_MARGIN', 0.0)
+DUEL_BOMB_D = _env_int('HARVEY_DUEL_BOMB_D', 3, 1, 6)
 # Prefer productive bomb tiles that do not strand the agent far from coins.
-W_COIN_TILE = _env_float('ARBITER_W_COIN_TILE', 0.5)
+W_COIN_TILE = _env_float('HARVEY_W_COIN_TILE', 0.5)
 # Low-yield bomb tiles may be required to clear a higher score margin.
 # margin_eff = BOMB_MARGIN + YIELD_GAMMA * max(0, 2 - tile_yield),
 # tile_yield = crates_in_blast + 2 * opps_in_blast at the bomb tile.
-YIELD_GAMMA = _env_float('ARBITER_YIELD_GAMMA', 0.0)
+YIELD_GAMMA = _env_float('HARVEY_YIELD_GAMMA', 0.0)
 # Ranking bonus per opponent in a candidate bomb's blast.
-W_OPP_TILE = _env_float('ARBITER_W_OPP_TILE', 2.0)
+W_OPP_TILE = _env_float('HARVEY_W_OPP_TILE', 2.0)
 # Zero accepts any escape; positive values cap distance to persistent safety.
-ESC_DIST = _env_float('ARBITER_ESC_DIST', 3.0)
+ESC_DIST = _env_float('HARVEY_ESC_DIST', 3.0)
 # Minimum distinct escape directions required by the search bomb gate.
-PLANT_ESC = _env_int('ARBITER_PLANT_ESC', 1, 1, 4)
+PLANT_ESC = _env_int('HARVEY_PLANT_ESC', 1, 1, 4)
 # Optional opponent-shadow gate; it vetoes bombs but never re-ranks moves.
-PLANT_OPP = _env_int('ARBITER_PLANT_OPP', 0, 0, 4)
-PLANT_OPP_K = _env_int('ARBITER_PLANT_OPP_K', 1, 1, 3)
+PLANT_OPP = _env_int('HARVEY_PLANT_OPP', 0, 0, 4)
+PLANT_OPP_K = _env_int('HARVEY_PLANT_OPP_K', 1, 1, 3)
 # Optional BFS coin route scored as a move plan.
-COINRUN = os.environ.get('ARBITER_COINRUN', '0') == '1'
+COINRUN = os.environ.get('HARVEY_COINRUN', '0') == '1'
 # Optional chain candidates bypass ranking, but not the escape gate.
-CHAIN = os.environ.get('ARBITER_CHAIN', '0') == '1'
+CHAIN = os.environ.get('HARVEY_CHAIN', '0') == '1'
 # Guarded chain candidates additionally require immediate tactical value.
-CHAIN_GUARD = os.environ.get('ARBITER_CHAIN_GUARD', '0') == '1'
+CHAIN_GUARD = os.environ.get('HARVEY_CHAIN_GUARD', '0') == '1'
 # Optional expected credit for opponents with difficult but possible escapes.
-TRAP_HARD = _env_float('ARBITER_TRAP_HARD', 0.0)
-TRAP_P = _env_float('ARBITER_TRAP_P', 0.5)
+TRAP_HARD = _env_float('HARVEY_TRAP_HARD', 0.0)
+TRAP_P = _env_float('HARVEY_TRAP_P', 0.5)
 # Scale certified-kill payoff without changing rollout dynamics.
-KILL_P = _env_float('ARBITER_KILL_P', 1.0)
+KILL_P = _env_float('HARVEY_KILL_P', 1.0)
 # Optional pursuit plans target free bomb tiles whose blast reaches a foe.
-HUNT = os.environ.get('ARBITER_HUNT', '0') == '1'
-HUNT_PLANS = _env_int('ARBITER_HUNT_PLANS', 2, 1, 4)
+HUNT = os.environ.get('HARVEY_HUNT', '0') == '1'
+HUNT_PLANS = _env_int('HARVEY_HUNT_PLANS', 2, 1, 4)
 # Cap pursuit distance because only the destination receives full certification.
-HUNT_DIST = _env_int('ARBITER_HUNT_DIST', 4, 1, 11)
+HUNT_DIST = _env_int('HARVEY_HUNT_DIST', 4, 1, 11)
 # Optionally credit forced kills only for our or unknown-owner bombs.
-CERT_OWN = os.environ.get('ARBITER_CERT_OWN', '0') == '1'
+CERT_OWN = os.environ.get('HARVEY_CERT_OWN', '0') == '1'
 # Rollout opponents use either a cheap warden-like or random policy.
-OPPMODEL = os.environ.get('ARBITER_OPPMODEL', 'wardenlite').strip().lower()
+OPPMODEL = os.environ.get('HARVEY_OPPMODEL', 'wardenlite').strip().lower()
 # Solo-only controls counter policy oscillation after all opponents are gone.
 # SOLO_TREK adds exact BFS move plans; SOLO_MARGIN sets their bomb comparison.
-SOLO_TREK = os.environ.get('ARBITER_SOLO_TREK', '0') == '1'
-SOLO_MARGIN = _env_float('ARBITER_SOLO_MARGIN', 0.15)
-SOLO_TREK_COINS = _env_int('ARBITER_SOLO_TREK_COINS', 2, 1, 4)
-SOLO_TREK_YIELD_N = _env_int('ARBITER_SOLO_TREK_YIELD_N', 3, 1, 8)
-SOLO_TREK_YIELD_MIN = _env_float('ARBITER_SOLO_TREK_YIELD_MIN', 2.0)
+SOLO_TREK = os.environ.get('HARVEY_SOLO_TREK', '0') == '1'
+SOLO_MARGIN = _env_float('HARVEY_SOLO_MARGIN', 0.15)
+SOLO_TREK_COINS = _env_int('HARVEY_SOLO_TREK_COINS', 2, 1, 4)
+SOLO_TREK_YIELD_N = _env_int('HARVEY_SOLO_TREK_YIELD_N', 3, 1, 8)
+SOLO_TREK_YIELD_MIN = _env_float('HARVEY_SOLO_TREK_YIELD_MIN', 2.0)
 # Solo search may use a wider deterministic candidate radius; zero uses RADIUS.
-SOLO_RADIUS = _env_int('ARBITER_SOLO_RADIUS', 8, 0, 16)
+SOLO_RADIUS = _env_int('HARVEY_SOLO_RADIUS', 8, 0, 16)
 # A short-lived committed target prevents approach-direction oscillation.
 # BOMB_HYST optionally biases arbitration toward the previous target.
-SOLO_COMMIT = _env_int('ARBITER_SOLO_COMMIT', 6, 0, 8)
-SOLO_COMMIT_MAX = _env_int('ARBITER_SOLO_COMMIT_MAX', 6, 1, 12)
-BOMB_HYST = _env_float('ARBITER_BOMB_HYST', 0.0)
+SOLO_COMMIT = _env_int('HARVEY_SOLO_COMMIT', 6, 0, 8)
+SOLO_COMMIT_MAX = _env_int('HARVEY_SOLO_COMMIT_MAX', 6, 1, 12)
+BOMB_HYST = _env_float('HARVEY_BOMB_HYST', 0.0)
 # Extend committed approaches to opponent-present states when enabled.
-COMMIT_OPP = os.environ.get('ARBITER_COMMIT_OPP', '1') == '1'
+COMMIT_OPP = os.environ.get('HARVEY_COMMIT_OPP', '1') == '1'
 # Optional opening-only bomb margin and opponent-pursuit window.
-OPEN_MARGIN = _env_float('ARBITER_OPEN_MARGIN', -1.0)
-OPEN_T = _env_int('ARBITER_OPEN_T', 100, 0, 400)
-HUNT_OPEN = os.environ.get('ARBITER_HUNT_OPEN', '0') == '1'
-HUNT_OPEN_STEP = _env_int('ARBITER_HUNT_OPEN_STEP', 150, 0, 400)
-HUNT_OPEN_D = _env_int('ARBITER_HUNT_OPEN_D', 5, 1, 11)
+OPEN_MARGIN = _env_float('HARVEY_OPEN_MARGIN', -1.0)
+OPEN_T = _env_int('HARVEY_OPEN_T', 100, 0, 400)
+HUNT_OPEN = os.environ.get('HARVEY_HUNT_OPEN', '0') == '1'
+HUNT_OPEN_STEP = _env_int('HARVEY_HUNT_OPEN_STEP', 150, 0, 400)
+HUNT_OPEN_D = _env_int('HARVEY_HUNT_OPEN_D', 5, 1, 11)
 # A positive duel distance widens candidates, plan cap, and move seeds nearby.
-DUEL_D = _env_int('ARBITER_DUEL_D', 0, 0, 11)
-DUEL_K = _env_int('ARBITER_DUEL_K', 12, 0, 32)
-DUEL_PLAN_CAP = _env_int('ARBITER_DUEL_PLANS', 96, 1, 256)
-DUEL_MOVE_SEEDS = _env_int('ARBITER_DUEL_MOVE_SEEDS', 3, 1, 8)
+DUEL_D = _env_int('HARVEY_DUEL_D', 0, 0, 11)
+DUEL_K = _env_int('HARVEY_DUEL_K', 12, 0, 32)
+DUEL_PLAN_CAP = _env_int('HARVEY_DUEL_PLANS', 96, 1, 256)
+DUEL_MOVE_SEEDS = _env_int('HARVEY_DUEL_MOVE_SEEDS', 3, 1, 8)
 
 
 def duel_state(game_state):
@@ -147,7 +151,7 @@ def _snap(st):
     """Fast structural copy of a SimState (deepcopy is ~10x slower).
 
     Copies every container sim.step mutates: arena, coins, agents,
-    bombs, explosions list + entries. explosion['coords'] is shared —
+    bombs, explosions list + entries. explosion['coords'] is shared:
     step() only ever REPLACES coords (fresh blast_coords list), never
     mutates one in place (verified across step/certification reads).
     """
@@ -267,12 +271,12 @@ def _shadow_cells(arena, others_xy, k):
 
 
 def chain_guard_ok(arena, blocked, bombs, others_xy, danger, tx, ty):
-    """E77 warden-rule admission predicate for chain tiles.
+    """Admission predicate for chain tiles, matching the warden payoff rule.
 
-    Returns (admit, tile_yield). Pure function (directly probed):
-    a chain tile is admitted iff it has a proven escape (same recipe
-    as the plan gate) AND warden's want_bomb payoff guard holds
-    (opps_hit > 0, or crates_hit >= 2 with hyp_dist <= 3, or
+    Returns (admit, tile_yield). Pure, so the probes can call it
+    directly: a chain tile is admitted when it has a proven escape (the
+    same recipe as the plan gate) and the warden want_bomb payoff guard
+    holds (opps_hit > 0, or crates_hit >= 2 with hyp_dist <= 3, or
     crates_hit == 1 with hyp_dist <= 2).
     """
     from .safety import escape_bfs, with_hypothetical_bomb
@@ -312,10 +316,10 @@ def chain_guard_ok(arena, blocked, bombs, others_xy, danger, tx, ty):
 
 def _try_bomb_plan(arena, blocked, bombs, others_xy, danger,
                    plans, x, y, cx, cy, tile_yield):
-    """Shared bomb-tile admission: BFS path + proven-escape gate.
+    """Shared bomb-tile admission: BFS path plus the proven-escape gate.
 
-    Single gate authority for ranked and chain tiles alike (E14b
-    lesson: one gate, no special cases). Returns True on admission.
+    One gate serves ranked and chain tiles alike. Returns True on
+    admission.
     """
     from .safety import escape_bfs, with_hypothetical_bomb
     path = _bfs_path(arena, blocked, (x, y), (cx, cy))
@@ -360,7 +364,7 @@ def _try_bomb_plan(arena, blocked, bombs, others_xy, danger,
 
 
 def hunt_trigger_ok(arena, n_coins, others_xy, x, y, step):
-    """Warden hunt predicate (pure, directly probed): opponents present
+    """Warden hunt predicate: opponents present
     AND (loot <= 6 | step > 200 | opponent within Manhattan 3)."""
     if not others_xy:
         return False
@@ -588,7 +592,7 @@ def gen_plans(game_state, safety, K=K, radius=RADIUS):
         except Exception:
             pass
     # Solo trek order: visible coins, productive bomb tiles, then crates.
-    # Append these plans so validated candidate order and seeds stay stable.
+    # Append these plans so the candidate order and seed indices stay stable.
     if SOLO_TREK and not others_xy:
         try:
             from .sim import yield_field as _solo_yf
@@ -660,7 +664,7 @@ def _sim_bombs(st):
 
 
 def _opp_move(rng, st, i, danger_now):
-    """Avoid-lethal-if-possible + random (seeded); wardenlite overlay."""
+    """Cheap opponent model: avoid lethal tiles, then seeded random."""
     from .sim import valid_actions
     a = st['agents'][i]
     opts = valid_actions(st, i)
@@ -739,11 +743,12 @@ def _opp_move(rng, st, i, danger_now):
 
 
 def _continuation(game_state, st, i, danger=None):
-    """Cheap post-prefix policy. Danger-aware: if own tile is lethal
+    """Cheap post-prefix policy. Danger-aware: if our own tile is lethal
     within 2 steps, flee to the valid move minimizing near-term danger
-    (tie-break: coin-greedy); else coin-greedy. No net — V prices the
-    leaf. (Fix: coin-greedy continuation walked bomb plans into their
-    own blast, pricing every bomb at -8 — bombs never won.)"""
+    (tie-break: coin-greedy); else coin-greedy. The value head prices
+    the leaf, so no network runs here. The danger check comes first
+    because a pure coin-greedy continuation walks bomb plans into their
+    own blast and prices every bomb at -8."""
     arena = st['arena']
     bombs = [(b[0], b[1]) for b in st['bombs']]
     bomb_set = set(bombs)
@@ -805,7 +810,7 @@ def _continuation(game_state, st, i, danger=None):
 
 def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
                w_death=W_DEATH):
-    """Exact rollout of a plan.     Returns (margin_delta, end_state, info).
+    """Exact rollout of a plan. Returns (margin_delta, end_state, info).
     Kills count only when certified against optimal flight."""
     from .sim import step as sim_step, margin, to_game_state
     from .safety import opp_can_escape, future_danger
@@ -907,7 +912,7 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
             break
     payoff += KILL_P * 5.0 * certified_kills
     payoff += margin(st) - m0 - (st['agents'][0]['score'] - st0['agents'][0]['score'])
-    # NOTE: margin() already includes score deltas; the last line adds the
+    # margin() already includes score deltas; the last line adds the
     # OPPONENT-score movement only (own score counted once via margin).
     return payoff, st
 
@@ -915,9 +920,9 @@ def score_plan(st0, plan, horizon=H, seed=0, w_crate=W_CRATE,
 def search_action(game_state, safety, model, t0, budget, state=None):
     """Bounded best-first over plans. Returns (action|None, debug).
 
-    `state` (E125): optional dict persisted by the caller across ticks
-    for the solo-gated fix arms (commit approach / sticky target).
-    None or empty dict = ship behavior.
+    `state` is an optional dict the caller persists across ticks, used
+    by the committed-approach and sticky-target handling. None or an
+    empty dict gives the plain behavior.
     """
     import torch
     from .sim import from_game_state, to_game_state, margin
@@ -1010,7 +1015,7 @@ def search_action(game_state, safety, model, t0, budget, state=None):
             if end is None:
                 end = end_j
         if end is None:
-            continue  # budget died mid-plan: drop it, keep S0 fallback
+            continue  # budget died mid-plan: drop it, keep the fallback
         scored.append([pay_sum / n_seeds - (W_DEATH if died_any else 0.0),
                        plan, end])
         v_batch.append(end)
@@ -1052,7 +1057,7 @@ def search_action(game_state, safety, model, t0, budget, state=None):
     bombs = [r for r in scored if r[1]['bomb_at'] is not None]
     moves = [r for r in scored if r[1]['bomb_at'] is None]
     best_move = max([r[0] for r in moves], default=float('-inf'))
-    # Recomputed block retained for behavior compatibility with the trained ship.
+    # Recomputed block retained for behavior compatibility with the trained net.
     if moves:
         _bm = max(moves, key=lambda r: r[0])
         dbg['best_move_first'] = _bm[1]['first']
@@ -1081,7 +1086,7 @@ def search_action(game_state, safety, model, t0, budget, state=None):
         dbg['phase'] = ('solo' if (_solo and SOLO_MARGIN >= 0.0)
                         else ('open' if (OPEN_MARGIN >= 0.0
                                          and margin_eff == OPEN_MARGIN)
-                              else 'ship'))
+                              else 'default'))
         # Save top targets for diagnostics and committed-approach state.
         try:
             dbg['committed_bomb_at'] = bombs[0][1].get('bomb_at')
@@ -1104,9 +1109,9 @@ def search_action(game_state, safety, model, t0, budget, state=None):
                             break
             except Exception:
                 pass
-        # Risk-price only an immediate plant in a close duel.  Applying the
-        # surcharge after hysteresis ensures it follows the actual selected
-        # plan, and checking first == BOMB leaves approach movement intact.
+        # Risk-price only an immediate plant in a close duel. Applying the
+        # surcharge after hysteresis keeps it on the selected plan, and
+        # checking first == BOMB leaves approach movement intact.
         _duel_margin = 0.0
         if DUEL_BOMB_MARGIN > 0.0 and not _solo_board \
                 and _pick[1].get('first') == 'BOMB':

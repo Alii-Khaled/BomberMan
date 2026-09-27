@@ -19,9 +19,7 @@ Layout (indices), directions in DELTAS order (UP DOWN LEFT RIGHT):
   44     dist to safe tile (escape solver)        [scalar]
   45-48  safe first moves (mask x4)
   49     min bomb timer in line-of-sight (norm)
-  50     bomb-here hits opponent (opps in own blast / 2)
-         (E37: repurposed — the old can_escape_if_bomb was mask-invariant
-         and therefore a constant-1 dead input whenever BOMB was legal)
+  50     escape margin for a bomb here (1 = escape now, 0 = infeasible)
   51     crates_hit_if_bomb (norm)
   52     opps_hit_if_bomb (norm)
   53     bombs_left
@@ -57,7 +55,7 @@ Layout (indices), directions in DELTAS order (UP DOWN LEFT RIGHT):
   91     min opponent escape distance under our best adjacent bomb (/8)
   92     nearest opponent cornered (free_nb <= 2)
   93     kill-progress potential PHI_kill in [0,1] (trap 1.0 > threat >
-         pressure; the dense signal that makes rare kills learnable)
+         pressure)
   94     coin closeness (1 - dist_to_coin)
   95     steps remaining (1 - step/400)
   96     live bombs on board (/4)
@@ -78,7 +76,7 @@ FEATURE_DIM = 12 * 17 * 17 + SCALAR_DIM
 DELTAS = [(0, -1), (0, 1), (-1, 0), (1, 0)]          # UP DOWN LEFT RIGHT
 DELTA_TO_DIR = {tuple(d): i for i, d in enumerate(DELTAS)}
 
-# --- dihedral group D4 on a 17x17 board (coords 0..16) ---------------------
+# dihedral group D4 on a 17x17 board (coords 0..16)
 # each symmetry = (A, b): new = A @ old + b, keeps the wall lattice intact
 SYMS = [
     (np.array([[1, 0], [0, 1]]), (0, 0)),     # identity
@@ -174,15 +172,15 @@ def transform_state(game_state, sym):
     return gs
 
 
-# --- BFS helpers ------------------------------------------------------------
+# BFS helpers
 
 def _bfs_dist4(arena, bombs, start):
     """BFS distance maps from each first-step direction.
 
-    Returns dist4: (4, W, H) int32 — dist4[d, t] = distance from start to t
-    via first step DELTAS[d] (9999 unreachable). Canonical BFS distances
-    are order-independent, so the per-direction maps are equivariant under
-    the board symmetries (no tie-break ambiguity).
+    Returns dist4: (4, W, H) int32, where dist4[d, t] is the distance from
+    start to t via first step DELTAS[d] (9999 unreachable). Canonical BFS
+    distances are order-independent, so the per-direction maps are
+    equivariant under the board symmetries (no tie-break ambiguity).
     """
     W, H = arena.shape[0], arena.shape[1]
     bomb_set = set((int(xy[0]), int(xy[1])) for (xy, _t) in (bombs or []))
@@ -252,7 +250,7 @@ def _nearest_multi(dist4, targets, start):
     return min(float(best_d), 20.0) / 20.0 if best_d < 9999 else 1.0, best_mask
 
 
-# --- main feature builder ----------------------------------------------------
+# main feature builder
 
 def _blast_tiles(arena, x, y, power=3):
     tiles = [(x, y)]
@@ -273,7 +271,7 @@ def _blast_crate_counts(arena, power=3):
 
     Returns (crate_adj_mask, blast_crates) where blast_crates[x, y] = number
     of crates a bomb at (x, y) would hit (origin + 4 arms, blast stops at
-    stone walls only — same convention as _blast_tiles/true_blast).
+    stone walls only, same convention as _blast_tiles/true_blast).
     crate_adj_mask = free tiles adjacent to at least one crate.
     Borders are stone walls, so arm scans never run off the board.
     """
@@ -338,7 +336,7 @@ def _adj_kill_info(arena, bombs, others_xy, x, y, blast_counts, full=True):
 
     For each of the 4 adjacent tiles returns:
       trap[d]   1.0 if a bomb there traps an opponent (in blast + cannot
-                escape) — the directionalized f[63]
+                escape), the directionalized f[63]
       opps[d]   opponents in blast there / 2
       crates[d] crates hit there / 4 (from the vectorized table)
       esc[d]    own escape distance after move-then-bomb there / 8;
@@ -542,9 +540,8 @@ def scalar_features(game_state, safety_info=None, own_bomb=None):
                 min_t = min(min_t, float(t))
     f[49] = min_t / 5.0
     if safety_info is not None:
-        # f[50]: bomb-HERE escape margin (1 = immediate escape, 0 =
-        # infeasible). Replaces can_escape_if_bomb, which is mask-invariant
-        # and therefore a dead constant-1 input whenever BOMB is legal.
+        # f[50]: escape margin for a bomb dropped here (1 = immediate
+        # escape, 0 = infeasible).
         try:
             _dh = float(safety_info.get('dist_hyp', float('inf')))
         except (TypeError, ValueError):
@@ -569,7 +566,7 @@ def scalar_features(game_state, safety_info=None, own_bomb=None):
         f[58] = min(float(abs(obx - x) + abs(oby - y)), 20.0) / 20.0
         f[59] = 1.0 if (x, y) in set(true_blast(arena, obx, oby)) else 0.0
 
-    # 60-64 opponent model (+ 68-97 kill-centric block, E37/P2)
+    # 60-64 opponent model (+ 68-97 kill-centric block)
     # own mobility (floor neighbours that are not bombs / opponents)
     own_free_nb = 0
     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
@@ -631,7 +628,7 @@ def scalar_features(game_state, safety_info=None, own_bomb=None):
         f[90] = min(float(free_nb), 4.0) / 4.0
         f[92] = 1.0 if free_nb <= 2 else 0.0
         f[97] = float(np.clip((score - _nscore) / 5.0, -1.0, 1.0))
-        # directional kill table (E37/P2 core). Expensive escape part runs
+        # directional kill table. The expensive escape part runs
         # only when we can actually bomb.
         _trap, _op, _cr, _es, _moe = _adj_kill_info(
             arena, bombs, others_xy, x, y, blast_counts,
@@ -643,7 +640,7 @@ def scalar_features(game_state, safety_info=None, own_bomb=None):
         f[63] = 1.0 if max(_trap) > 0 else 0.0
         f[91] = min(float(_moe), 8.0) / 8.0 if _moe < 9999 else 1.0
         # kill-progress potential: trap (1.0) > threat (<=0.5) > pressure.
-        # Dense everywhere an opponent exists; the Phase-3 shaping signal.
+        # Dense everywhere an opponent exists, so rare kills stay learnable.
         if max(_trap) > 0:
             f[93] = 1.0
         else:
@@ -678,7 +675,7 @@ def scalar_features(game_state, safety_info=None, own_bomb=None):
     return f
 
 
-# --- ARBITER-NG board tensor (12 channels, apex-compatible) ----------------
+# board tensor, 12 channels
 
 N_CHANNELS = 12
 
@@ -686,7 +683,7 @@ N_CHANNELS = 12
 def board_tensor(game_state, safety_info=None, power=3):
     """Channels: 0 wall, 1 crate, 2 coin, 3 self, 4 others, 5 bomb_timer/4,
     6 bomb_is_self, 7 explosion, 8 danger_t0, 9 danger_t1, 10 danger_t2,
-    11 blast_if_bomb_now. Numpy only, vectorized (apex/features_cnn)."""
+    11 blast_if_bomb_now. Numpy only, vectorized."""
     if game_state is None:
         return np.zeros((N_CHANNELS, 17, 17), dtype=np.float32)
     arena = np.asarray(game_state['field'])
@@ -729,7 +726,7 @@ def board_tensor(game_state, safety_info=None, power=3):
 
 
 def state_to_features(game_state, safety_info=None, own_bomb=None):
-    """Flat NG input: board tensor raveled (12*289=3468) ++ scalars (98)."""
+    """Flat input: board tensor raveled (12*289=3468) then scalars (98)."""
     if game_state is None:
         return np.zeros(FEATURE_DIM, dtype=np.float32)
     t = board_tensor(game_state, safety_info).ravel()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""E122 (P0) certified coin-take overlay probe (ARBITER_COINTAKE).
+"""Certified coin-take overlay probe (HARVEY_COINTAKE).
 
   G0  overlay OFF: act() unchanged on a coin-adjacent state (ship parity).
   G1  overlay ON, adjacent coin: the certified step onto the coin is
@@ -28,9 +28,9 @@ os.environ.setdefault('OMP_NUM_THREADS', '1')
 
 import numpy as np
 
-import agent_code.Harvy.callbacks as WC
-import agent_code.Harvy.search as S
-from agent_code.Harvy.safety import action_safety
+import agent_code.Harvey.callbacks as WC
+import agent_code.Harvey.search as S
+from agent_code.Harvey.safety import action_safety
 
 fails = []
 

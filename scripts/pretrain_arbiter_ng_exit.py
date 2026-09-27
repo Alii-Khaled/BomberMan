@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""E121 ExIt distillation: fit arbiter_ng's pi to the SEARCH's own
+"""ExIt distillation: fit arbiter_ng's pi to the search's own
 arbitrated first-steps recorded by agent_code/exit_recorder.
 
 This is expert-iteration (ExIt) step 1: the exact-rollout search is the
 improver, pi is the distilled student, and the recorded distribution is
-the ship's own visitation (on-manifold, unlike the E115 collector-label
-attempt). Warm start from the ship weights, CE-only on pi (the search
-owns bomb pricing at inference; V stays untouched), dihedral
-augmentation via transform_tensor + AUG_PERMS + map_action.
+the ship's own visitation (on-manifold). Warm start from the ship
+weights, CE-only on pi (the search owns bomb pricing at inference; V
+stays untouched), dihedral augmentation via transform_tensor +
+AUG_PERMS + map_action.
 
 Usage:
   python3 scripts/pretrain_arbiter_ng_exit.py [--epochs 8] [--batch 256]
       [--lr 5e-5] [--out results/arbiter_ng_exit.pt]
-      [--dirs results/demos/arbiter_ng_exit] [--init agent_code/Harvy/my-saved-model.pt]
+      [--dirs results/demos/arbiter_ng_exit] [--init agent_code/Harvey/my-saved-model.pt]
 """
 import argparse
 import glob
@@ -27,8 +27,8 @@ sys.path.insert(0, REPO)
 
 import numpy as np
 
-import agent_code.Harvy.features as F
-import agent_code.Harvy.model as M
+import agent_code.Harvey.features as F
+import agent_code.Harvey.model as M
 
 ACTION_LIST = list(M.ACTION_LIST)
 TENSOR_DIM = F.N_CHANNELS * 17 * 17

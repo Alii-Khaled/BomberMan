@@ -8,8 +8,8 @@
 #   ab     : <agent> warden_v2 + 2x rule_based      (paired head-to-head)
 #
 # Usage:
-#   AGENT=arbiter AGENT_TAG=_e88 bash scripts/run_arbiter_battery.sh g1 100 0 1 2 3 4 5
-#   AGENT=arbiter AGENT_TAG=_e88 bash scripts/run_arbiter_battery.sh strong 40 0 1 2 3 4 5 6 7 8 9
+#   AGENT=arbiter AGENT_TAG=_tag bash scripts/run_arbiter_battery.sh g1 100 0 1 2 3 4 5
+#   AGENT=arbiter AGENT_TAG=_tag bash scripts/run_arbiter_battery.sh strong 40 0 1 2 3 4 5 6 7 8 9
 #
 # Outputs: results/tourney_<agent><tag>_<mode>_s<seed>.json
 set -u

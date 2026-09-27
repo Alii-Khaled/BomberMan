@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E107 C1 completion: wl arm needs g1 100x2 + strong s5-s9 (7 games).
+# Finish the wl arm: g1 100x2 + strong s5-s9 (7 games).
 set -u
 cd /home/jovyan/work/BomberMan
 mkdir -p logs results /tmp/opencode/e107
@@ -11,8 +11,8 @@ run() { # btag seed rounds opponents...
   local ldir="/tmp/opencode/e107/e107wl_${btag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
-  nice -n 10 env ARBITER_DEVICE=cpu ARBITER_OPPMODEL=wardenlite \
-    python3 scripts/tournament_eval.py --agents Harvy "$@" \
+  nice -n 10 env HARVEY_DEVICE=cpu HARVEY_OPPMODEL=wardenlite \
+    python3 scripts/tournament_eval.py --agents Harvey "$@" \
     --n-rounds "$rounds" --seed "$seed" --scenario classic \
     --log-dir "$ldir" --match-name "e107wl_${btag}_s${seed}" --out "$out" \
     > "logs/tourney_e107wl_${btag}_s${seed}.log" 2>&1

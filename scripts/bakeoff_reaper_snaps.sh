@@ -1,7 +1,7 @@
 #!/bin/bash
-# Snapshot bake-off screen for reaper sweep arms (E36 follow-up).
-# best.pt = EMA argmax, which repeatedly failed to equal frozen-best
-# (E13/E30) — so screen C1/C2/C3/C4 snapshots + last at 40 rounds seed 0
+# Snapshot bake-off screen for reaper sweep arms.
+# best.pt = EMA argmax, which repeatedly missed frozen-best quality,
+# so screen each arm's snapshots + last at 40 rounds seed 0
 # (paired arenas), then validate top-2 at 100x2 via bakeoff_reaper.sh.
 # Usage: bash scripts/bakeoff_reaper_snaps.sh
 #   (arms + snapshots hardcoded below; prints pooled rb score per snap)

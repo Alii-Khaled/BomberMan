@@ -1,7 +1,7 @@
 #!/bin/bash
-# A3->A4 stage reset: archive best/last, epsilon re-warm 0.30, KEEP EMA.
-# Differs from A1->A2/A2->A3 (E54 pattern): A4 keeps regime, opponents,
-# scenario and reward mix identical — only the DQfD demo loss turns on
+# Stage reset: archive best/last, epsilon re-warm 0.30, keep EMA.
+# Unlike the earlier stage resets, this one keeps regime, opponents,
+# scenario and reward mix identical -- only the DQfD demo loss turns on
 # (APEX_DEMO). Round-reward EMA stays comparable, so best_ema/ema_reward
 # are kept and best.pt tracking continues. q_net/target/optimizer/
 # total_steps momentum kept; only epsilon_steps rewound. Atomic tmp+replace.

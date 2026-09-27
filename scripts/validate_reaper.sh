@@ -1,5 +1,5 @@
 #!/bin/bash
-# Validate snapshot-screen winners at 100x2 (E36). Usage:
+# Validate snapshot-screen winners at 100x2. Usage:
 #   bash scripts/validate_reaper.sh "arm snap" [...]
 # e.g. bash scripts/validate_reaper.sh "sw01_base ep_000400.pt" "sw07_longhor ep_000400.pt"
 set -e

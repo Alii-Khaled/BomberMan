@@ -6,7 +6,7 @@
 #   C4 gate    150: vs 3x rule_based (gate consolidation)
 #   + frozen gates (CPU): see scripts/eval_reaper.sh
 #
-# Run isolation (E37/P4): REAPER_RUN_DIR redirects checkpoints/metrics/exports
+# Run isolation: REAPER_RUN_DIR redirects checkpoints/metrics/exports
 # (see train.py), REAPER_TAG prefixes results/archive files so K parallel
 # sweep jobs never clobber each other. SKIP_GATES=1 skips the final eval
 # (the sweep does its own bake-off). BC init: if the run has no last.pt but

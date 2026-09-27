@@ -1,18 +1,17 @@
 #!/bin/bash
-# S2 apex skeleton sweep (E62): Q0 fidelity grid + bounded-Q diagnostic.
+# Apex skeleton sweep: Q0 fidelity grid + bounded-Q diagnostic.
 # Question: how much of warden's 5.07 is recoverable by act()-path fidelity
-# (mask-always, WAIT penalty), given the learned Q is net-negative (E61
-# Q-delta -0.42 on both seeds)?
-#   arm0 q0/mask1/wait.30  = A4 Q0 replication (expect ~3.76 pooled; E61)
+# (mask-always, WAIT penalty), given the learned Q is net-negative (Q-delta
+# -0.42 on both seeds)?
+#   arm0 q0/mask1/wait.30  = Q0 replication (expect ~3.76 pooled)
 #   arm1 q0/mask0/wait.30  = warden move filter (mask binds only must_flee)
 #   arm2 q0/mask1/wait0    = no WAIT penalty (warden WAITs 27% of the time)
 #   arm3 q0/mask0/wait0    = full warden fidelity
 #   arm4 q1/mask1/wait.30 + Q_CLIP=0.5 = does bounded authority stop harming?
-# Base: pinned A4 weights (ep3400, my-saved-model.pt sha de8c26d4...3f).
-# RELAX_TIER excluded: E42 exonerated the mask (zero vetoed) and E59 holds
-# it non-binding in combat (~20 bombs/rd). Decision rule: any Q0 arm >= 4.8
-# becomes ARBITER's fallback skeleton (5.07 bar met at S0); all ~3.8 ->
-# re-diagnose before P0.
+# Base: pinned stage-4 weights (ep3400, my-saved-model.pt sha de8c26d4...3f).
+# RELAX_TIER excluded: the mask never vetoes in combat (~20 bombs/rd).
+# Decision rule: any Q0 arm >= 4.8 becomes ARBITER's fallback skeleton
+# (the 5.07 bar); all ~3.8 -> re-diagnose before the confirm batteries.
 # Protocol: frozen CPU, apex vs 3x rule_based, classic, 40rd x seeds 0,1
 # (paired; seed spread is ~+-0.5, so single-seed screens are insufficient).
 set -e

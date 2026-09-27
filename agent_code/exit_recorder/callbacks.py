@@ -1,22 +1,23 @@
-"""ExIt self-distillation recorder (E121): the SHIP arbiter_ng acts, and
-every state where the SEARCH produced a decision is saved as
-(flat 3566-dim NG feats, search-arbitrated label) for offline pi
-distillation. Training-time only — never ships.
+"""ExIt self-distillation recorder: Harvey acts, and
+every state where the search produced a decision is saved as (flat
+3566-dim feats, search-arbitrated label) for offline pi distillation.
+Training-time only, never part of the tournament entry.
 
-Labels are the EXACT-ROLLOUT improver's choice (ExIt / AlphaZero-style
-policy iteration, step 1):
+Labels are the exact-rollout improver's choice (ExIt / AlphaZero-style
+policy iteration):
   - search committed a BOMB (arbitration or the executed action was the
     search/tactical bomb first-step) -> label = BOMB index;
   - otherwise the top-scoring MOVE plan's first step (dbg
     'best_move_first') -> label = that move index.
 Rows where the search exhausted its budget or produced no decision are
-SKIPPED (no reliable improver signal). The executed action is recorded
+skipped (no reliable improver signal). The executed action is recorded
 alongside (acts) for the DAgger-style mix, matching arbiter_dagger.
 
-Delegation is exact (same self object, same env/defaults as the ship),
-so the recorded distribution IS the ship's own visitation.
+Delegation is exact (same self object, same env/defaults as the
+tournament run), so the recorded distribution is the arbiter's own
+visitation.
 
-Flat layout matches arbiter_ng.features.FEATURE_DIM
+Flat layout matches Harvey.features.FEATURE_DIM
 (12x17x17 tensor raveled ++ 98 scalars).
 """
 import os
@@ -38,24 +39,24 @@ BOMB_IDX = _ACTION_TO_IDX['BOMB']
 def setup(self):
     np.random.seed()
     try:
-        from agent_code.Harvy.features import state_to_features
-        from agent_code.Harvy.safety import action_safety
-        import agent_code.Harvy.callbacks as arb
-        import agent_code.Harvy.model as arbm
+        from agent_code.Harvey.features import state_to_features
+        from agent_code.Harvey.safety import action_safety
+        import agent_code.Harvey.callbacks as arb
+        import agent_code.Harvey.model as arbm
         assert list(arbm.ACTION_LIST) == _ACTION_LIST, arbm.ACTION_LIST
     except Exception as ex:
-        raise RuntimeError(f'exit_recorder cannot import arbiter_ng: {ex}')
+        raise RuntimeError(f'exit_recorder cannot import Harvey: {ex}')
     self._state_to_features = state_to_features
     self._action_safety = action_safety
     self._arb = arb
     self._arbm = arbm
-    # Ship policy setup on this same object (model, histories, timers).
-    # Recorder state uses _exit_* names exclusively.
+    # Harvey's policy setup runs on this same object (model,
+    # histories, timers). Recorder state uses _exit_* names exclusively.
     self._arb.setup(self)
     self._exit_feats = []
     self._exit_labels = []
     self._exit_acts = []
-    self.logger.info('exit_recorder delegating to ship arbiter_ng')
+    self.logger.info('exit_recorder delegating to Harvey')
 
 
 def act(self, game_state):
@@ -69,7 +70,7 @@ def act(self, game_state):
         decided = bool(getattr(self, '_search_decided', False))
         label = None
         if decided:
-            # search/tactical-owned commit: the executed first-step IS
+            # search/tactical-owned commit: the executed first-step is
             # the improver's choice (bomb-plan path steps included)
             label = _ACTION_TO_IDX[action]
         elif dbg is not None and not dbg.get('exhausted') \

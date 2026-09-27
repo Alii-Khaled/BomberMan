@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# E86 DAgger round 2: record the E80-teacher policy on a harder field
-# mix (40 rule_based / 40 warden-mix / 20 coin_collector). Round-1
+# DAgger round 2: record the current teacher policy on a harder field
+# mix (40 rule_based / 40 warden-mix / 20 coin_collector); the first
 # corpus (arbiter_self*) was rb-heavy and light vs strong opponents.
 set -u
 PY=python3

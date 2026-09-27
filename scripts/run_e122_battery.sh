@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E122 canonical gate: fresh same-session control (ship defaults) vs the
+# Canonical gate: fresh same-session control (ship defaults) vs the
 # certified coin-take arm. 66 games per arm / 1120 rounds each:
 #   G1 100x2 | STRONG 40x10 | UMIX 100x2 | ucow/ubom/urus/urac 40x2
 # 8 concurrent games, nice'd, engine logs to /tmp.
@@ -18,7 +18,7 @@ run() { # btag leg agent seed rounds opponents...
   local ldir="/tmp/opencode/e122bat/${TAG}_${btag}_${leg}_s${seed}"
   mkdir -p "$ldir"
   [ -f "$out" ] && { echo "SKIP $out"; return 0; }
-  nice -n 10 env ARBITER_DEVICE=cpu $ENVV \
+  nice -n 10 env HARVEY_DEVICE=cpu $ENVV \
     python3 scripts/tournament_eval.py --agents "$agent" "$@" \
     --n-rounds "$rounds" --seed "$seed" --scenario classic \
     --log-dir "$ldir" --match-name "${TAG}_${btag}_${leg}_s${seed}" \
@@ -47,7 +47,7 @@ echo "jobs=${#JOBS[@]}"
 for j in "${JOBS[@]}"; do
   IFS='|' read -r btag leg seed rounds opps <<< "$j"
   # shellcheck disable=SC2086
-  run "$btag" "$leg" Harvy "$seed" "$rounds" $opps &
+  run "$btag" "$leg" Harvey "$seed" "$rounds" $opps &
   while [ "$(jobs -rp | wc -l)" -ge "$MAXJOBS" ]; do wait -n || true; done
 done
 wait

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E99 feature-v2 self-distillation corpus: the SHIP arbiter acts, and
+# Feature-v2 self-distillation corpus: the ship arbiter acts, and
 # arbiter_v2_dagger records (114-dim v2 feats, ship action) per tick.
 # Consumed by: scripts/arbiter_extract.py --pkg=arbiter_v2
 #              --reaper-include=arbiter_v2_self

@@ -1,7 +1,7 @@
 """Solo-DAgger training hooks: flush the final round's buffer.
 
-Same pattern as apex_teacher/train.py (E51 lesson: the last round of an
-invocation never sees a round-change, so flush it explicitly).
+Same pattern as apex_teacher/train.py: the last round of an invocation
+never sees a round-change, so flush it explicitly.
 """
 
 

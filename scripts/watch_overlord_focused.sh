@@ -1,6 +1,6 @@
 #!/bin/bash
-# Focused-run guard (E26 program): divergence kill-switch + completion note.
-# Unlike watch_overlord.sh this watcher NEVER launches anything — the next
+# Focused-run guard: divergence kill-switch + completion note.
+# Unlike watch_overlord.sh this watcher never launches anything; the next
 # step after W3 stays a manual decision ("analyze first" rule).
 # Logs: logs/watcher_focused.log. Progress: tail metrics.csv.
 set -u

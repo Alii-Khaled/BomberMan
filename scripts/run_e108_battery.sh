@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E108 D1 decision battery: e108rl.pt.ep225 (candidate) on the full
+# Decision battery: e108rl.pt.ep225 (candidate) on the full
 # pooled battery. Control = e107wl legs (current ship, same infra/day).
 set -u
 cd /home/jovyan/work/BomberMan
@@ -12,8 +12,8 @@ run() { # tag btag seed rounds opponents...
   local ldir="/tmp/opencode/e108/${tag}_${btag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
-  nice -n 10 env ARBITER_DEVICE=cpu ARBITER_NG_MODEL="$PWD/results/e108rl.pt.ep225" \
-    python3 scripts/tournament_eval.py --agents Harvy "$@" \
+  nice -n 10 env HARVEY_DEVICE=cpu HARVEY_WEIGHTS="$PWD/results/e108rl.pt.ep225" \
+    python3 scripts/tournament_eval.py --agents Harvey "$@" \
     --n-rounds "$rounds" --seed "$seed" --scenario classic \
     --log-dir "$ldir" --match-name "${tag}_${btag}_s${seed}" --out "$out" \
     > "logs/tourney_${tag}_${btag}_s${seed}.log" 2>&1

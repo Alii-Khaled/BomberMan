@@ -1,12 +1,12 @@
 #!/bin/bash
-# Overlord curriculum O1-O4 (Tasks 1-4, Project Description §4).
+# Overlord curriculum O1-O4 (Tasks 1-4, Project Description section 4).
 # Fresh start (pre-O state archived in results/archive/overlord_pre_O1/).
-# Arm-A bundle baked into code (Huber td+aux, clip 1.0, tuned AdamW,
-# epsilon-greedy 1.0->0.05/50k, margin gate, WAIT -0.30, NO stale JIT trace).
+# The tuned bundle is baked into code (Huber td+aux, clip 1.0, tuned AdamW,
+# epsilon-greedy 1.0->0.05/50k, margin gate, WAIT -0.30, no stale JIT trace).
 # Resumable per stage: re-run with O*_N=0 to skip finished stages, e.g.
 #   STAGE_O1_N=0 STAGE_O2_N=0 bash scripts/train_overlord_curriculum.sh
-# Between stages: best_ema reset (cross-regime EMA incomparable — sentinel
-# E04/E10 lesson) + epsilon re-warm to ~0.25 (sentinel S5/S6 lesson).
+# Between stages: best_ema reset (cross-regime EMA is incomparable)
+# + epsilon re-warm to ~0.25.
 # Env: OVERLORD_OPT=adam OVERLORD_TUNED=1, UTD/BATCH/EOR defaults.
 # Device default: auto (CUDA on Colab when available, else CPU).
 # AMP default: on for CUDA (OVERLORD_AMP=0 for fp32).
@@ -21,7 +21,7 @@ O3=${STAGE_O3_N:-1000}
 O4=${STAGE_O4_N:-2000}
 
 reset_for_next_stage() {
-  # $1 = tag (e.g. O1) — archive stage best, reset EMA + re-warm epsilon.
+  # $1 = tag (e.g. O1) -- archive stage best, reset EMA + re-warm epsilon.
   $PY -c "
 import torch, os, shutil
 shutil.copy('agent_code/overlord/checkpoints/best.pt', 'results/archive/overlord_best_$1.pt')

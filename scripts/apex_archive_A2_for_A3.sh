@@ -1,8 +1,8 @@
 #!/bin/bash
-# A2->A3 stage reset: archive best/last, clear kill-regime EMA, eps re-warm 0.30.
-# Mimics apex_archive_A1_for_A2.sh (E54 pattern). A3 adds opponents
+# Stage reset: archive best/last, clear kill-regime EMA, eps re-warm 0.30.
+# Mimics apex_archive_A1_for_A2.sh. This stage adds opponents
 # (peaceful+collector, Task 3) so kill rewards (+5) enter the return mix and
-# the old solo EMA (-29.6) is incomparable — same logic as the heaven->classic
+# the solo EMA (-29.6) is incomparable -- same logic as the heaven->classic
 # handoff. Keeps q_net/target/optimizer/total_steps momentum; only
 # best_ema/ema_reward cleared and epsilon_steps rewound. Atomic tmp+replace.
 # Usage: bash scripts/apex_archive_A2_for_A3.sh

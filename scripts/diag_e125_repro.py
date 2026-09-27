@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""E125 A0: reproduce the round-18 solo approach-oscillation freeze and
-dump the top bomb plans around the flip ticks.
+"""Reproduce the solo approach-oscillation freeze and dump the top bomb
+plans around the flip ticks.
 
-Drives BombeRLeWorld solo (Harvy, classic, seed 0) with the gap
+Drives BombeRLeWorld solo (Harvey, classic, seed 0) with the gap
 recorder on, then analyzes the recorded jsonl: for every round scoring
 <= 2, prints the action histogram, the longest two-tile alternation
 window, and a per-tick plan dump (committed bomb target ba / first bf /
-scores) over that window. Zero agent-code behavior change.
+scores) over that window.
 
 Usage: python3 scripts/diag_e125_repro.py [--rounds 20] [--seed 0]
 """
@@ -18,10 +18,10 @@ from collections import Counter
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
-os.environ.setdefault('ARBITER_GAP_DIAG',
+os.environ.setdefault('HARVEY_GAP_DIAG',
                       os.path.join(REPO, 'results', 'e125_repro'))
-os.environ.setdefault('ARBITER_DEVICE', 'cpu')
-GAP = os.environ['ARBITER_GAP_DIAG'] + '_gap.jsonl'
+os.environ.setdefault('HARVEY_DEVICE', 'cpu')
+GAP = os.environ['HARVEY_GAP_DIAG'] + '_gap.jsonl'
 
 
 def load_rounds(path):
@@ -70,7 +70,7 @@ def main():
         save_stats=False, match_name='e125_repro', seed=a.seed,
         silence_errors=True, scenario='classic')
     os.makedirs('/tmp/opencode/e125', exist_ok=True)
-    world = BombeRLeWorld(args, [('Harvy', False)])
+    world = BombeRLeWorld(args, [('Harvey', False)])
 
     scores = []
     ridx = 0
@@ -107,8 +107,8 @@ def main():
         arena = np.load(os.path.join(REPO, 'results', 'e125_arena.npy'))
         snap = json.load(open(os.path.join(REPO, 'results',
                                            'e125_snap.json')))
-        from agent_code.Harvy.search import _bfs_path, score_plan
-        from agent_code.Harvy.sim import from_game_state
+        from agent_code.Harvey.search import _bfs_path, score_plan
+        from agent_code.Harvey.sim import from_game_state
         for (lbl, pos) in (('snap', tuple(snap['pos'])),
                            ('11,8', (11, 8)), ('11,9', (11, 9))):
             gs = {'round': 1, 'step': snap.get('step', 80), 'field': arena,

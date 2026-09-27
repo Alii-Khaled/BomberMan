@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pool matched-seed E135 ablations and apply the fixed promotion gate."""
+"""Pool matched-seed route ablations and apply the fixed promotion gate."""
 
 from __future__ import annotations
 
@@ -24,13 +24,13 @@ def load_arm(prefix: str, arm: str, seeds: list[int]):
 def pooled(docs):
     n = sum(int(d["n_rounds"]) for d in docs)
     scores = np.asarray([
-        rd["Harvy"] for doc in docs for rd in doc["per_round"]
+        rd["Harvey"] for doc in docs for rd in doc["per_round"]
     ], dtype=float)
     sums = {}
     for key in ("round_wins", "kills_total", "suicides_total",
                 "coins_total", "bombs_total", "crates_total"):
-        sums[key] = sum(float(doc["summary"]["Harvy"][key]) for doc in docs)
-    rank = sum(float(doc["summary"]["Harvy"]["mean_rank"])
+        sums[key] = sum(float(doc["summary"]["Harvey"][key]) for doc in docs)
+    rank = sum(float(doc["summary"]["Harvey"]["mean_rank"])
                * int(doc["n_rounds"]) for doc in docs) / n
     return {
         "n": n, "scores": scores, "score_mean": float(scores.mean()),
@@ -54,8 +54,8 @@ def comparison(candidate, control, seeds, cand_docs, ctl_docs, rng):
               / (len(null) + 1))
     seed_deltas = []
     for seed, cand_doc, ctl_doc in zip(seeds, cand_docs, ctl_docs):
-        cs = float(cand_doc["summary"]["Harvy"]["score_mean"])
-        bs = float(ctl_doc["summary"]["Harvy"]["score_mean"])
+        cs = float(cand_doc["summary"]["Harvey"]["score_mean"])
+        bs = float(ctl_doc["summary"]["Harvey"]["score_mean"])
         seed_deltas.append({"seed": seed, "delta": cs - bs})
     ci = [float(x) for x in np.quantile(boot, [0.025, 0.975])]
     gates = {

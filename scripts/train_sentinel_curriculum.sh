@@ -1,5 +1,5 @@
 #!/bin/bash
-# Sentinel curriculum Tasks 1-4 (Project Description §4/§6).
+# Sentinel curriculum Tasks 1-4 (Project Description sections 4/6).
 # Resumable: each stage appends to checkpoints/last.pt + runs/metrics.csv
 # Override: SENTINEL_DEVICE=cpu for CPU-only, N override per stage.
 # Device default: auto (CUDA on Colab when available, else CPU).

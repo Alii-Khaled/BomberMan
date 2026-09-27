@@ -1,5 +1,5 @@
 #!/bin/bash
-# A1->A2 stage reset: archive best/last, clear cross-regime EMA, eps re-warm 0.30.
+# Stage reset: archive best/last, clear cross-regime EMA, eps re-warm 0.30.
 # Mimics train_overlord_curriculum.sh reset_for_next_stage + train_reaper.sh.
 # Keeps q_net/target/optimizer/total_steps momentum; only best_ema/ema_reward
 # cleared and epsilon_steps rewound. Atomic tmp+replace, loss <=5 rounds.

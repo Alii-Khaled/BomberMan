@@ -33,17 +33,17 @@ HORIZON = _env_int('REAPER_HORIZON', 8, 4, 12)
 
 # Minimum distinct first-step escape directions required after planting.
 # BOMB_MARGIN remains an import-compatible alias for older scripts.
-ESC_MARGIN = _env_int('ARBITER_BOMB_ESC_MARGIN', 1, 1, 4)
+ESC_MARGIN = _env_int('HARVEY_BOMB_ESC_MARGIN', 1, 1, 4)
 BOMB_MARGIN = ESC_MARGIN
 
 # Optional joint-route analysis models moving agents and adversarial body blocks.
-JOINT_ROUTES = os.environ.get('ARBITER_JOINT_ROUTES', '0') == '1'
+JOINT_ROUTES = os.environ.get('HARVEY_JOINT_ROUTES', '0') == '1'
 DYNAMIC_ROUTES = os.environ.get(
-    'ARBITER_DYNAMIC_ROUTES', '1' if JOINT_ROUTES else '0') == '1'
+    'HARVEY_DYNAMIC_ROUTES', '1' if JOINT_ROUTES else '0') == '1'
 BODYBLOCK = os.environ.get(
-    'ARBITER_BODYBLOCK', '1' if JOINT_ROUTES else '0') == '1'
-JOINT_HORIZON = _env_int('ARBITER_JOINT_HORIZON', 6, 4, 8)
-JOINT_BODY_D = _env_int('ARBITER_JOINT_BODY_D', 3, 1, 12)
+    'HARVEY_BODYBLOCK', '1' if JOINT_ROUTES else '0') == '1'
+JOINT_HORIZON = _env_int('HARVEY_JOINT_HORIZON', 6, 4, 8)
+JOINT_BODY_D = _env_int('HARVEY_JOINT_BODY_D', 3, 1, 12)
 _ROUTE_CAP = 100000
 
 
@@ -145,10 +145,10 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
     free_b = (ar == 0).reshape(-1).tobytes()          # 1 == walkable floor
     dng = np.asarray(danger, dtype=bool)
     dang_b = dng.reshape(-1).tobytes()                # (t*W + x)*H + y
-    # E88 fix: "lethal at some t >= ct" needs the LAST lethal time, not the
+    # "lethal at some t >= ct" needs the LAST lethal time, not the
     # first (non-contiguous bomb windows), and arrival lethality must be
-    # checked BEFORE a tile is marked safe. Pre-fix, a tile lethal at
-    # t=0..1 (timer-0 bomb) reached at ct=1 was added to found_safe.
+    # checked BEFORE a tile is marked safe. Using the first lethal time,
+    # a tile lethal at t=0..1 reached at ct=1 got added to found_safe.
     ll_flat = last_lethal(dng, horizon).reshape(-1).tolist()
     plane = W * H
 
@@ -233,13 +233,12 @@ def escape_bfs(pos, arena, bombs, others_xy, danger, horizon=HORIZON):
 def escape_route_profile(pos, arena, bombs, danger, horizon=JOINT_HORIZON):
     """Count survivable time-expanded routes without static agent blockers.
 
-    The old trap certificate passed every current agent position to
-    ``escape_bfs`` as a permanent wall.  That can declare a kill merely
-    because an agent occupies an exit *now*, although it moves away before
-    detonation.  This profile intentionally gives the escaping player the
-    benefit of that doubt: only arena walls/crates, bombs and timed danger
-    constrain it.  Counts are capped because only relative route abundance is
-    useful to diagnostics and bomb scoring.
+    Treating every current agent position as a permanent wall can
+    declare a kill because an agent occupies an exit right now, even
+    though it moves away before detonation. We leave agents out of the
+    obstacle set and let only arena walls, crates, bombs and timed
+    danger constrain the escape. Only the relative abundance of routes
+    matters to diagnostics and bomb scoring, so the counts are capped.
     """
     try:
         ar = np.asarray(arena)
@@ -280,8 +279,8 @@ def escape_route_profile(pos, arena, bombs, danger, horizon=JOINT_HORIZON):
             'first_steps': len({f for (_p, f) in cur if f is not None}),
         }
     except Exception:
-        # Fail open: an experimental certificate must never invent a kill or
-        # veto a bomb because its own diagnostic calculation failed.
+        # Fail open: the dynamic certificate must never invent a kill or
+        # veto a bomb because its own calculation raised.
         return {'survives': True, 'routes': _ROUTE_CAP, 'positions': 0,
                 'first_steps': 0}
 
@@ -290,11 +289,11 @@ def _joint_bodyblock_survives(arena, bombs, danger, self_pos, opp_pos,
                               horizon=JOINT_HORIZON):
     """Whether self has a survival policy against one moving body blocker.
 
-    This is a small finite-horizon minimax game.  At each tick Harvey chooses a
-    move, then the opponent is allowed the worst survivable simultaneous move.
-    Same-destination and edge-swap conflicts are treated as a successful block
-    (the conservative engine-order interpretation).  The opponent may move;
-    unlike the old BFS it is never frozen in its current cell.
+    A small finite-horizon minimax game. At each tick we choose a move,
+    then the opponent gets the worst survivable simultaneous move.
+    Same-destination and edge-swap conflicts count as a successful
+    block, the conservative reading of the engine order. The opponent
+    is free to move and never frozen in its current cell.
     """
     try:
         ar = np.asarray(arena)
@@ -368,13 +367,13 @@ def _joint_bodyblock_survives(arena, bombs, danger, self_pos, opp_pos,
 
 
 def joint_bomb_analysis(game_state, horizon=JOINT_HORIZON):
-    """Evaluate a bomb planted HERE using dynamic opponent escape routes.
+    """Evaluate a bomb dropped at our tile with dynamic opponent escapes.
 
-    Returns a compact dict used by ``action_safety`` and diagnostics.  Forced
-    kills are conservative: an opponent is forced only when it has no route
-    even after all moving agents are removed as blockers.  Own robustness is
-    checked separately against each nearby opponent as an adversarial moving
-    body blocker.
+    Returns a compact dict used by action_safety and the diagnostics.
+    Forced kills stay conservative: an opponent is forced only when it
+    has no route even after we remove all moving agents as blockers.
+    We check our own robustness separately against each nearby
+    opponent, treated as an adversarial moving body blocker.
     """
     try:
         arena = np.asarray(game_state['field'])
@@ -428,10 +427,11 @@ def danger_no_explosion(arena, bombs, horizon=HORIZON,
                         power=BOMB_POWER_DEFAULT):
     """Shared precomputed danger for the trap scan.
 
-    Same convention as opp_can_escape's internal danger (no explosion map:
-    an opponent standing in a current explosion is already dead). Callers
-    that evaluate many hypothetical bomb spots compute this ONCE per step
-    and pass it via `danger=` instead of rebuilding it per spot.
+    Same convention as the internal danger of opp_can_escape (no
+    explosion map: an opponent standing in a current explosion is
+    already dead). Callers that evaluate many hypothetical bomb spots
+    compute this once per step and pass it via `danger=` instead of
+    rebuilding it per spot.
     """
     return future_danger(arena, bombs, None, horizon, bomb_timer, power)
 
@@ -441,14 +441,14 @@ def opp_can_escape(arena, bombs, opp_pos, bomb_pos, others_xy=None,
                    power=BOMB_POWER_DEFAULT, danger=None):
     """Can an opponent standing at opp_pos survive a bomb at bomb_pos?
 
-    Adds the hypothetical bomb to danger + bomb set, then runs the
-    time-expanded escape BFS from the opponent's tile. WAIT counts as a
-    survivable first move (the opponent may be safe standing still).
-    Returns (can_survive, dist_to_safe).
+    Adds the hypothetical bomb to the danger map and the bomb set, then
+    runs the time-expanded escape BFS from the opponent tile. WAIT
+    counts as a survivable first move, since the opponent may be safe
+    standing still. Returns (can_survive, dist_to_safe).
 
-    Used by features.py as the trap signal: opps_hit with no escape
-    for the opponent = a kill opportunity. Pass a precomputed `danger`
-    (from danger_no_explosion) to skip the per-call rebuild.
+    features.py uses this as the trap signal: opponents hit with no
+    escape is a kill opportunity. Pass a precomputed `danger` (from
+    danger_no_explosion) to skip the per-call rebuild.
     """
     try:
         ox, oy = int(opp_pos[0]), int(opp_pos[1])
@@ -459,8 +459,8 @@ def opp_can_escape(arena, bombs, opp_pos, bomb_pos, others_xy=None,
         danger = with_hypothetical_bomb(danger, arena, bx, by, horizon,
                                         bomb_timer, power)
         bombs_hyp = list(bombs or []) + [((bx, by), bomb_timer)]
-        # E134 joint-route mode removes live agents from the opponent's
-        # static obstacle set.  A kill is certified only if the opponent has
+        # Joint-route mode removes live agents from the opponent's
+        # static obstacle set. A kill is certified only if the opponent has
         # no escape even when currently occupied exits may open next tick.
         blockers = [] if DYNAMIC_ROUTES else (others_xy or [])
         safe_first, dist = escape_bfs((ox, oy), arena, bombs_hyp,
@@ -473,15 +473,16 @@ def opp_can_escape(arena, bombs, opp_pos, bomb_pos, others_xy=None,
 
 
 def bomb_here_traps(game_state, safety=None, danger=None):
-    """Does bombing HERE right now guarantee a kill? (E37/P5 tactical.)
+    """Does dropping a bomb here guarantee a kill?
 
-    For each opponent in our current blast, runs the exact opponent escape
-    BFS against a hypothetical bomb at our tile. Returns (traps, min_esc)
-    where traps=True iff some opponent cannot escape. Exact computation —
-    no learning, no approximation — so a True here is a forced +5.
-    Shares one danger map across opponents (same convention as the trap
-    feature: no explosion map). Returns (False, inf) when we have no bomb,
-    nobody is in our blast, or anything fails.
+    For each opponent in our current blast, runs the exact opponent
+    escape BFS against a hypothetical bomb at our tile. Returns
+    (traps, min_esc) with traps=True when some opponent cannot escape.
+    This is an exact computation over the opponent escape solver, so a
+    True here is a forced +5. One danger map is shared across
+    opponents, with the same convention as the trap feature (no
+    explosion map). Returns (False, inf) when we have no bomb, nobody
+    is in our blast, or anything fails.
     """
     try:
         arena = np.asarray(game_state['field'])
@@ -565,7 +566,7 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
         if a not in safe:
             safe[a] = False
     # BOMB safety: can we escape if we drop now?
-    # NOTE: after dropping, own tile becomes a bomb tile (blocked for re-entry).
+    # After dropping, own tile becomes a bomb tile (blocked for re-entry).
     # escape_bfs blocks bomb tiles, so pass bombs+own for hypothetical.
     danger_hyp = with_hypothetical_bomb(danger, arena, x, y, horizon, bomb_timer, power)
     bombs_hyp = list(bombs or []) + [((x, y), bomb_timer)]
@@ -604,8 +605,8 @@ def action_safety(game_state, horizon=HORIZON, power=BOMB_POWER_DEFAULT,
                 can_escape = False
         except Exception:
             pass
-    # CRITICAL: staying (WAIT/BOMB) dies if current tile explodes THIS step.
-    # Moving away can still save you, but staying cannot.
+    # Staying (WAIT/BOMB) dies if the current tile explodes this step.
+    # Moving away can still save you; staying cannot.
     try:
         if bool(danger[0, x, y]):
             safe['WAIT'] = False

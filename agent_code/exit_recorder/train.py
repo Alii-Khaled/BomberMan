@@ -46,15 +46,15 @@ def game_events_occurred(self, old_game_state, self_action,
 
 
 def end_of_round(self, last_game_state, last_action, events):
-    # The delegated Harvy policy records ARBITER_DIAG snapshots inside
-    # Harvy.callbacks.act().  Frozen agents do not load a train module, so
+    # The delegated Harvey policy records HARVEY_DIAG snapshots inside
+    # Harvey.callbacks.act(). Frozen agents do not load a train module, so
     # use this behavior-neutral recorder wrapper to flush the terminal
     # events needed by the death-attribution tooling.
     try:
-        from agent_code.Harvy.callbacks import diag_dump_round
+        from agent_code.Harvey.callbacks import diag_dump_round
         diag_dump_round(self, last_action, events)
     except Exception as ex:
-        self.logger.warning(f'Harvy diagnostic flush failed: {ex}')
+        self.logger.warning(f'Harvey diagnostic flush failed: {ex}')
 
     if not hasattr(self, '_exit_demo_dir'):
         self._exit_demo_dir = _demo_dir()

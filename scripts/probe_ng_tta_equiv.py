@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""NG-TTA gather-exactness probe (Inc 0/1 gate, E119).
+"""TTA gather-exactness probe.
 
 The ship's 8x-recompute TTA (state/safety/features recomputed per
-symmetry) is replaced by ONE canonical compute + 7 exact dihedral
-gathers (transform_tensor + AUG_PERMS) — the pretrain-augmentation
-semantics. Verified invariants this probe enforces:
+symmetry) is replaced by one canonical compute + 7 exact dihedral
+gathers (transform_tensor + AUG_PERMS), matching the pretrain
+augmentation semantics. Invariants this probe enforces:
 
   G1 divergence confinement: any feature diff vs the recompute path is
      confined to the escape-tie-break block f[45..48] (flat indices
-     3513..3516) — the escape BFS's first-move claim order is the only
+     3513..3516) -- the escape BFS's first-move claim order is the only
      non-equivariant detail; board tensor + all other scalars are exact.
   G2 raw logit parity: views with identical features must have
-     bit-identical logits (<=1e-6); views whose f[45..48] flipped are
+     identical logits (<=1e-6); views whose f[45..48] flipped are
      accounted for by G1/G3.
   G3 TTA-accumulated pi: must-flee argmax flips == 0, total flip rate
      <= 0.5% (measured 0.10% trek-only at n=2000).
@@ -32,9 +32,9 @@ os.environ.setdefault('OMP_NUM_THREADS', '1')
 import numpy as np
 import torch
 
-import Harvy.features as F
-from Harvy.safety import action_safety
-from Harvy.model import build_model
+import Harvey.features as F
+from Harvey.safety import action_safety
+from Harvey.model import build_model
 
 N_STATES = 1000
 for a in sys.argv[1:]:
@@ -131,7 +131,7 @@ def _tta_accum(logits):
 
 def main():
     model = build_model()
-    wpath = os.path.join(REPO, 'agent_code', 'Harvy',
+    wpath = os.path.join(REPO, 'agent_code', 'Harvey',
                          'my-saved-model.pt')
     if os.path.isfile(wpath):
         obj = torch.load(wpath, map_location='cpu', weights_only=True)

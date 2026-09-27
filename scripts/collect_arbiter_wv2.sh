@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# E98 ship-state warden_v2 label transfer: the SHIP arbiter acts, and at
+# Ship-state warden_v2 label transfer: the ship arbiter acts, and at
 # every ship-visited state arbiter_dagger also records warden_v2's move
 # (acts_w) alongside the ship's own action. Training-time only.
 #
-# Rationale (E86/E88 lesson): label quality on the SHIP's own state
-# distribution is the bottleneck — training on warden-visited states
+# Rationale: label quality on the ship's own state distribution is the
+# bottleneck -- training on warden-visited states (collect_demos) shifts
 # (collect_demos) shifts the prior off the G1 optimum. These rows keep
 # the distribution and replace/augment the labels with the current best
 # warden.

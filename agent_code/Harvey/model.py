@@ -27,7 +27,7 @@ def _env_int(name, default, lo, hi):
     return max(lo, min(hi, v))
 
 
-class ArbiterNGNet(nn.Module):
+class HarveyNet(nn.Module):
     def __init__(self, in_dim=FEATURE_DIM, ch=32, ch2=64, chead=8,
                  hid=256, n_actions=N_ACTIONS):
         super().__init__()
@@ -73,13 +73,13 @@ class ArbiterNGNet(nn.Module):
 
 
 def build_model(in_dim=FEATURE_DIM, hid1=None, hid2=None, hid3=None):
-    """Env-overridable constructor (ARBITER_NG_CH/CH2/CHEAD/HID).
+    """Constructor with env overrides (HARVEY_CH/CH2/CHEAD/HID).
 
-    hid1/2/3 are accepted for interface compatibility with the ship
-    builder (pretrain scripts pass ARBITER_HID*); the NG trunk uses HID
-    for the fused width."""
-    ch = _env_int('ARBITER_NG_CH', 32, 8, 128)
-    ch2 = _env_int('ARBITER_NG_CH2', 64, 8, 256)
-    chead = _env_int('ARBITER_NG_CHEAD', 8, 2, 64)
-    hid = _env_int('ARBITER_NG_HID', 256, 64, 1024)
-    return ArbiterNGNet(in_dim=in_dim, ch=ch, ch2=ch2, chead=chead, hid=hid)
+    hid1/2/3 are accepted so the pretraining scripts can call this the
+    same way as the earlier builder (they pass HARVEY_HID*); the trunk
+    uses HID for the fused width."""
+    ch = _env_int('HARVEY_CH', 32, 8, 128)
+    ch2 = _env_int('HARVEY_CH2', 64, 8, 256)
+    chead = _env_int('HARVEY_CHEAD', 8, 2, 64)
+    hid = _env_int('HARVEY_TRUNK_HID', 256, 64, 1024)
+    return HarveyNet(in_dim=in_dim, ch=ch, ch2=ch2, chead=chead, hid=hid)

@@ -1,8 +1,8 @@
 #!/bin/bash
-# Overlord hybrid cross-sparring (E46/H3) — QUEUED, DO NOT LAUNCH YET.
-# Launches only on: (1) E36-confirmed reaper weights in agent_code/reaper/,
+# Overlord hybrid cross-sparring -- queued, do not launch yet.
+# Launches only on: (1) the confirmed reaper weights in agent_code/reaper/,
 # (2) explicit go. New distribution (learned diverse foe), same classic
-# regime — the one training mechanism not yet tried on overlord.
+# regime.
 #   S1 250: vs reaper + 2x rule_based
 #   S2 250: vs warden_vN + 2x rule_based
 #   + frozen gates: 100 rb (seeds 0+1) + 60 reaper-mix + 60 warden-mix.

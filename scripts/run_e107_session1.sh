@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# E107 Session-1 driver v2: A1 diag legs via main.py (--train 1 +
+# Session-1 driver: diag legs via main.py (--train 1 +
 # --continue-without-training loads train.py so diag_dump_round fires;
-# ARBITER_RL_LR=0 + scratch OUT = no-op learning, weights untouched),
-# then C1 wardenlite screens (8-wide).
+# HARVEY_RL_LR=0 + scratch OUT = no-op learning, weights untouched),
+# then wardenlite screens (8-wide).
 set -u
 cd /home/jovyan/work/BomberMan
 mkdir -p logs results /tmp/opencode/e107
@@ -11,11 +11,11 @@ diag() { # seed
   local seed="$1"
   local out="results/diagstats_e107b1_s${seed}.json"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
-  nice -n 10 env ARBITER_DEVICE=cpu \
-    ARBITER_DIAG="$PWD/results/diag_e107b1" \
-    ARBITER_RL_LR=0 ARBITER_RL_OUT="/tmp/opencode/e107/scratch.pt" \
+  nice -n 10 env HARVEY_DEVICE=cpu \
+    HARVEY_DIAG="$PWD/results/diag_e107b1" \
+    HARVEY_RL_LR=0 HARVEY_RL_OUT="/tmp/opencode/e107/scratch.pt" \
     python3 main.py play --no-gui \
-    --agents Harvy rule_based_agent rule_based_agent rule_based_agent \
+    --agents Harvey rule_based_agent rule_based_agent rule_based_agent \
     --train 1 --continue-without-training --scenario classic \
     --n-rounds 100 --seed "$seed" --save-stats "$out" \
     > "logs/diagleg_s${seed}.log" 2>&1
@@ -25,7 +25,7 @@ diag() { # seed
 diag 0
 diag 1
 
-# C1 arms: ARBITER_OPPMODEL=wardenlite (ship weights, env-only), 8-wide
+# Wardenlite arms: HARVEY_OPPMODEL=wardenlite (ship weights, env-only), 8-wide
 run() { # tag btag seed rounds opponents...
   local tag="$1" btag="$2" seed="$3" rounds="$4"
   shift 4
@@ -33,8 +33,8 @@ run() { # tag btag seed rounds opponents...
   local ldir="/tmp/opencode/e107/${tag}_${btag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
-  nice -n 10 env ARBITER_DEVICE=cpu ARBITER_OPPMODEL=wardenlite \
-    python3 scripts/tournament_eval.py --agents Harvy "$@" \
+  nice -n 10 env HARVEY_DEVICE=cpu HARVEY_OPPMODEL=wardenlite \
+    python3 scripts/tournament_eval.py --agents Harvey "$@" \
     --n-rounds "$rounds" --seed "$seed" --scenario classic \
     --log-dir "$ldir" --match-name "${tag}_${btag}_s${seed}" --out "$out" \
     > "logs/tourney_${tag}_${btag}_s${seed}.log" 2>&1

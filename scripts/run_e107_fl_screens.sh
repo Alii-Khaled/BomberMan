@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E107 C2 screens: ARBITER_FLEE_LOOK=1 (ship weights, env-only).
+# Flee-lookahead screens: HARVEY_FLEE_LOOK=1 (ship weights, env-only).
 # STRONG 40x5 + UNSEEN legs 40x2, 8-wide.
 set -u
 cd /home/jovyan/work/BomberMan
@@ -12,8 +12,8 @@ run() { # tag btag seed rounds opponents...
   local ldir="/tmp/opencode/e107/${tag}_${btag}_s${seed}"
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
-  nice -n 10 env ARBITER_DEVICE=cpu ARBITER_FLEE_LOOK=1 \
-    python3 scripts/tournament_eval.py --agents Harvy "$@" \
+  nice -n 10 env HARVEY_DEVICE=cpu HARVEY_FLEE_LOOK=1 \
+    python3 scripts/tournament_eval.py --agents Harvey "$@" \
     --n-rounds "$rounds" --seed "$seed" --scenario classic \
     --log-dir "$ldir" --match-name "${tag}_${btag}_s${seed}" --out "$out" \
     > "logs/tourney_${tag}_${btag}_s${seed}.log" 2>&1

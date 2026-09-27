@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""E130 (P0) early-game opponent-ful oscillation probe.
+"""Early-game opponent-ful oscillation probe.
 
-The E128/E130 telemetry showed 27-32% of opening move-ticks are
-immediate reversals (~82-89% with no own bomb nearby and no flee). Two
+Recorded telemetry: 27-32% of opening move-ticks are immediate
+reversals (~82-89% with no own bomb nearby and no flee). Two
 mechanisms, two arms:
 
   G1  ship (arms off): the round-18 K-cap membership flip reproduces in
-      an OPPONENT-FUL state (the E125 fix is solo-gated) — no bomb in
-      60 ticks on the freeze fixture with a far opponent.
-  G2  ARBITER_COMMIT_OPP=1: the committed approach completes (bomb
+      an opponent-ful state (the existing fix is solo-gated) -- no bomb
+      in 60 ticks on the freeze fixture with a far opponent.
+  G2  HARVEY_COMMIT_OPP=1: the committed approach completes (bomb
       planted, crates destroyed, no death, opponent-ful).
-  G3  abandon: a NEW enemy bomb makes the committed first step unsafe
+  G3  abandon: a new enemy bomb makes the committed first step unsafe
       -> commitment cleared, arbitration returns a legal action.
-  G4  ARBITER_BACKTRACK_OPP: an opponent-ful forced-reversal history
+  G4  HARVEY_BACKTRACK_OPP: an opponent-ful forced-reversal history
       flips the S0 choice; solo history with the same knob ON is
-      UNCHANGED (solo untouched).
-  G5  both arms off = ship bit-parity on a benign state.
+      unchanged (solo untouched).
+  G5  both arms off = ship parity on a benign state.
 
 Usage: python3 scripts/probe_arbiter_early.py
 """
@@ -33,10 +33,10 @@ os.environ.setdefault('OMP_NUM_THREADS', '1')
 
 import numpy as np
 
-import agent_code.Harvy.search as S
-import agent_code.Harvy.callbacks as WC
-from agent_code.Harvy.safety import action_safety
-from agent_code.Harvy.sim import (from_game_state, to_game_state,
+import agent_code.Harvey.search as S
+import agent_code.Harvey.callbacks as WC
+from agent_code.Harvey.safety import action_safety
+from agent_code.Harvey.sim import (from_game_state, to_game_state,
                                        step as sim_step)
 
 fails = []
@@ -126,8 +126,8 @@ def mk_agent_bare():
 
 
 # G1 ship S0-flicker on a no-plan corridor (opponent-ful) ----------------------
-# The E125 K-cap flip needs the solo radius-8 pool; with opponents alive
-# the radius is 4 and margin-clearing plans DO commit — so the
+# The K-cap flip needs the solo radius-8 pool; with opponents alive
+# the radius is 4 and margin-clearing plans do commit -- so the
 # opponent-ful flicker lives in search-None states (S0). Fixture: a
 # corridor whose only bombable cluster yields 1 crate (payoff < the 0.6
 # margin over the move baseline) -> search returns None -> S0 flickers

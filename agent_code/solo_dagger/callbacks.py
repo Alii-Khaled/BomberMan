@@ -1,16 +1,17 @@
-"""E114 solo-DAgger recorder (training-only, never ships).
+"""Solo-DAgger recorder (training-only, never part of the tournament
+entry).
 
-The SHIP policy (agent_code.Harvy, env flags apply) plays the game;
-at every step where no opponent is alive the state is recorded with the
-coin_collector_agent (or ARBITER_SOLO_LABEL teacher) action as the label.
-Output is apex-format npz per round (img 12x17x17 uint8, sc float32[16],
-act uint8) consumed by scripts/pretrain_arbiter_ng.py with
---dirs results/apex_demos,results/apex_ng_demos,<APEX_DEMO_OUT>.
+The Harvey inference policy (agent_code.Harvey, env flags apply) plays the
+game; at every step where no opponent is alive the state is recorded
+with the coin_collector_agent (or SOLO_LABEL teacher) action
+as the label. Output is apex-format npz per round (img 12x17x17 uint8,
+sc float32[16], act uint8) consumed by scripts/pretrain_arbiter_ng.py
+with --dirs results/apex_demos,results/apex_ng_demos,<APEX_DEMO_OUT>.
 
-Purpose: the BC prior is OOD in solo states (E112: the agent freezes);
-E112's inference fix (solo margin + loop escalation) handles the
-mechanics, this corpus teaches the prior the farming policy directly so
-2-opponent/mixed states inherit it too.
+Purpose: the BC prior is OOD in solo states and the agent freezes.
+The inference fix (solo margin + loop escalation) handles the
+mechanics; this corpus teaches the prior the farming policy directly
+so 2-opponent/mixed states inherit it too.
 
 Env:
   APEX_DEMO_OUT   output root (default results/apex_solo_dagger)
@@ -57,8 +58,8 @@ def _apex_features(game_state):
 
 def setup(self):
     self.logger.info('solo_dagger setup (label=%s)' % TEACHER)
-    # acting policy: the ship itself (same self object, exact behavior)
-    import agent_code.Harvy.callbacks as arb
+    # acting policy: the tournament policy itself (same self object)
+    import agent_code.Harvey.callbacks as arb
     arb.setup(self)
     self._dag_arb = arb
     # labeling policy: private namespace so its histories evolve along
@@ -115,13 +116,13 @@ def act(self, game_state):
     if rnd != self._cur_round:
         _flush(self)
         self._cur_round = rnd
-    # ship acts (env flags apply exactly as in play)
+    # Harvey acts with the same inference flags as in ordinary play.
     a = self._dag_arb.act(self, game_state)
     # record only solo states, labeled by the teacher
     try:
         step = int(game_state.get('step', 0))
         if step >= MIN_STEP and not (game_state.get('others') or []):
-            from agent_code.Harvy.safety import action_safety
+            from agent_code.Harvey.safety import action_safety
             lab_a = self._lab_mod.act(self._lab, game_state)
             sf = action_safety(game_state)
             if lab_a in A2I and sf.get('valid', {}).get(lab_a, False):

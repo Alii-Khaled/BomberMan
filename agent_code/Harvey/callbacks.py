@@ -1,27 +1,33 @@
-"""ARBITER act policy (S0): learned policy prior + thin survival
-skeleton + warden-semantics mask filter. NO heuristic/Q blending.
+"""Action selection for Harvey.
 
-Structural rule from A4 (E62): the net NEVER shares a vote with a
-heuristic over root actions (apex double-counted warden into Q-delta
--0.42). Here pi ranks, V evaluates leaves (P1), and the heuristic
-carries ONLY survival content: must_flee override, loop tie-break,
-bomb-repeat tie-break — all bounded to <=0.5, an order below typical
-logit gaps. Everything else (navigation, economy, combat, placement)
-is the network's job.
+The policy network ranks candidate moves from a 98-value feature
+vector. A safety layer narrows the candidate set first, and a bounded
+lookahead search (search.py) decides bomb placement. The network never
+blends its scores with a heuristic: it ranks moves, the value head
+prices search leaves, and the survival code only removes moves that
+get us killed. Navigation, crate clearing and combat come from the
+learned prior.
 
-Decision (S0, ARBITER_SEARCH=off):
-  1. mask = action_safety(game_state) -> valid / safe / danger timeline.
-  2. pi logits over 98-dim features (single forward also yields V, logged).
-  3. must_flee (own tile lethal t<=1): restrict to safe moves (warden).
-     else: rank valid moves by pi (S2 arm1: unconditional mask filter
-     cost ~0.4 — the mask binds only under threat).
-  4. Loop/bomb-repeat tie-breaks (bounded), BOMB gated on mask-safe.
-  5. Budget guard (ARBITER_TIME_BUDGET 0.30): features+forward must fit
-     in 60%/90%; on exhaustion degrade to mask + tie-breaks (pi=uniform).
-P1 adds the bounded best-first search between steps 2 and 3
-(ARBITER_SEARCH=search, agent_code/Harvey/search.py); the tactical proven-kill override
-(ARBITER_SEARCH=tactical) is an inference-only exact computation.
-'search+tactical' (E69) runs both: forced +5 first, search decides rest.
+Letting a heuristic share the vote double-counts the same board facts
+and flattens the policy. Every survival adjustment here is capped at
+0.5, an order of magnitude below a typical logit gap, so the network
+keeps control of the ranking.
+
+Decision order with HARVEY_SEARCH=off:
+  1. action_safety(game_state) returns valid, safe and a danger timeline.
+  2. One forward pass returns policy logits over 6 actions and a value.
+  3. If our own tile is lethal within one step, keep only safe moves.
+     Otherwise rank every valid move by policy score.
+  4. Apply the loop and bomb-repeat tie-breaks; BOMB stays mask-safe.
+  5. A wall-clock budget (HARVEY_TIME_BUDGET, 0.30 s) covers the
+     feature build and the forward pass. Exhaustion degrades to the
+     mask and the tie-breaks with uniform policy scores.
+
+HARVEY_SEARCH=search inserts the bounded best-first search of
+search.py between steps 2 and 3. HARVEY_SEARCH=tactical adds the
+proven-kill check, which runs the exact opponent escape solver. The
+combined setting runs the forced kill first and hands the rest to the
+search.
 """
 from collections import deque
 import os
@@ -44,38 +50,38 @@ from .features import transform_tensor, AUG_PERMS, N_CHANNELS
 from .model import build_model, ACTION_LIST
 
 ACTION_TO_IDX = {a: i for i, a in enumerate(ACTION_LIST)}
-# NG flat layout: raveled board tensor ++ scalars (features.FEATURE_DIM).
+# Flat input: raveled board tensor then scalars (features.FEATURE_DIM).
 _TENSOR_DIM = N_CHANNELS * 17 * 17
 
 # Optional per-tick state trace. Every round is appended to
-# <ARBITER_DIAG>_deaths.jsonl; unset means no diagnostic overhead.
+# <HARVEY_DIAG>_deaths.jsonl; unset means no diagnostic overhead.
 _DIAG = os.path.abspath(
-    os.environ.get('ARBITER_DIAG', '').strip()) if \
-    os.environ.get('ARBITER_DIAG', '').strip() else ''
+    os.environ.get('HARVEY_DIAG', '').strip()) if \
+    os.environ.get('HARVEY_DIAG', '').strip() else ''
 
 # Movement fallback: learned policy ('pi') or the warden heuristic.
 # Search/tactical logic still owns bombs and the safety mask always binds.
-POLICY = os.environ.get('ARBITER_POLICY', 'pi').strip().lower()
+POLICY = os.environ.get('HARVEY_POLICY', 'pi').strip().lower()
 
-# Optional per-stage timing profiler; writes JSONL when ARBITER_PERF is set.
-_PERF_RAW = os.environ.get('ARBITER_PERF', '').strip()
+# Optional per-stage timing profiler; writes JSONL when HARVEY_PERF is set.
+_PERF_RAW = os.environ.get('HARVEY_PERF', '').strip()
 _PERF = os.path.abspath(_PERF_RAW) if _PERF_RAW else ''
 _PERF_ON = bool(_PERF)
 
 # Preferred inference device; setup() falls back to CPU if unavailable.
-DEVICE_NAME = os.environ.get('ARBITER_DEVICE', 'cuda:0').strip() or 'cuda:0'
+DEVICE_NAME = os.environ.get('HARVEY_DEVICE', 'cuda:0').strip() or 'cuda:0'
 
 # Optional trace for coin, opening-tempo, and solo-endgame diagnostics.
-_GAP_RAW = os.environ.get('ARBITER_GAP_DIAG', '').strip()
+_GAP_RAW = os.environ.get('HARVEY_GAP_DIAG', '').strip()
 _GAP = os.path.abspath(_GAP_RAW) if _GAP_RAW else ''
 _GAP_ON = bool(_GAP)
 
 # Optional telemetry for states evaluated by the joint-route bomb analysis.
-_ROUTE_DIAG_RAW = os.environ.get('ARBITER_ROUTE_DIAG', '').strip()
+_ROUTE_DIAG_RAW = os.environ.get('HARVEY_ROUTE_DIAG', '').strip()
 _ROUTE_DIAG = os.path.abspath(_ROUTE_DIAG_RAW) if _ROUTE_DIAG_RAW else ''
 
 # Include search-selected bomb decisions in the RL training trace.
-BOMB_TRACE = os.environ.get('ARBITER_RL_BOMB_TRACE', '0') == '1'
+BOMB_TRACE = os.environ.get('HARVEY_RL_BOMB_TRACE', '0') == '1'
 
 
 def _diag_snapshot(self, game_state, t0_unused=0.0):
@@ -171,7 +177,7 @@ def _env_float(name, default):
 
 
 def _perf_acc(self, bucket, t_start):
-    """Add ms to a timing bucket (ARBITER_PERF only; no-op otherwise)."""
+    """Add ms to a timing bucket (HARVEY_PERF only; no-op otherwise)."""
     if not _PERF_ON:
         return
     try:
@@ -185,7 +191,7 @@ def _perf_acc(self, bucket, t_start):
 
 
 def _perf_record(self, game_state, action, t0):
-    """Append the per-tick perf record (ARBITER_PERF only)."""
+    """Append the per-tick perf record (HARVEY_PERF only)."""
     if not _PERF_ON:
         return
     try:
@@ -222,7 +228,7 @@ def _perf_record(self, game_state, action, t0):
 
 
 def perf_flush_round(self):
-    """Dump accumulated perf records (ARBITER_PERF only)."""
+    """Dump accumulated perf records (HARVEY_PERF only)."""
     if not _PERF_ON:
         return
     try:
@@ -238,7 +244,7 @@ def perf_flush_round(self):
 
 
 def gap_flush_round(self):
-    """Dump accumulated gap-diagnosis records (ARBITER_GAP_DIAG only).
+    """Dump accumulated gap-diagnosis records (HARVEY_GAP_DIAG only).
 
     Writes a round_meta line + the tick buffer for the round that just
     ended (or is about to be replaced). Called from the round-change
@@ -278,10 +284,11 @@ def _gap_bfs_from(arena, blocked, start):
 
 
 def _cointake_step(game_state, safety, d_cap):
-    """Exact certified coin-take (E122): first step onto the shortest
-    mask-safe path to the nearest visible collectable coin reachable
-    within d_cap steps. Returns the action or None. Exact +1 when it
-    fires: the coin tile is free, so reaching it collects deterministically.
+    """Certified coin collection: first step onto the shortest mask-safe
+    path to the nearest visible coin reachable within d_cap steps.
+
+    Returns the action, or None. The +1 is certain once this fires:
+    the coin tile is free, so reaching it collects the coin.
     """
     try:
         arena = np.asarray(game_state['field'])
@@ -334,7 +341,7 @@ def _cointake_step(game_state, safety, d_cap):
 
 
 def _gap_record(self, game_state, action):
-    """Compact per-tick gap record (ARBITER_GAP_DIAG only)."""
+    """Compact per-tick gap record (HARVEY_GAP_DIAG only)."""
     if not _GAP_ON:
         return
     try:
@@ -444,52 +451,52 @@ def _gap_record(self, game_state, action):
 
 
 # Decision layer: search, tactical, both, or off (learned-policy fallback).
-SEARCH = os.environ.get('ARBITER_SEARCH', 'search').strip().lower()
+SEARCH = os.environ.get('HARVEY_SEARCH', 'search').strip().lower()
 # The supported mode names are deliberately substring-composable.
 _SEARCH_ON = 'search' in SEARCH
 _TACTICAL_ON = 'tactical' in SEARCH
-TIME_BUDGET = _env_float('ARBITER_TIME_BUDGET', 0.30)
+TIME_BUDGET = _env_float('HARVEY_TIME_BUDGET', 0.30)
 # Ablations: replace the policy prior with uniform scores or disable leaf V.
-PI_OFF = os.environ.get('ARBITER_PI_OFF', '0') == '1'
-V_OFF = os.environ.get('ARBITER_V_OFF', '0') == '1'
-LOOP3 = _env_float('ARBITER_LOOP3', 0.45)
-LOOP2 = _env_float('ARBITER_LOOP2', 0.15)
-BOMB_REPEAT = _env_float('ARBITER_BOMB_REPEAT', 0.9)
+PI_OFF = os.environ.get('HARVEY_PI_OFF', '0') == '1'
+V_OFF = os.environ.get('HARVEY_V_OFF', '0') == '1'
+LOOP3 = _env_float('HARVEY_LOOP3', 0.45)
+LOOP2 = _env_float('HARVEY_LOOP2', 0.15)
+BOMB_REPEAT = _env_float('HARVEY_BOMB_REPEAT', 0.9)
 # Loop escalation: 0=bounded only, 1=all states, 2=solo states only.
-LOOP_ESC = os.environ.get('ARBITER_LOOP_ESC', '2').strip() or '0'
-LOOP_ESC_STEP = _env_float('ARBITER_LOOP_ESC_STEP', 0.5)
-LOOP_ESC_CAP = _env_float('ARBITER_LOOP_ESC_CAP', 3.0)
+LOOP_ESC = os.environ.get('HARVEY_LOOP_ESC', '2').strip() or '0'
+LOOP_ESC_STEP = _env_float('HARVEY_LOOP_ESC_STEP', 0.5)
+LOOP_ESC_CAP = _env_float('HARVEY_LOOP_ESC_CAP', 3.0)
 # Optional anti-pin steering re-ranks only already-safe moves.
-ANTIPIN = _env_float('ARBITER_ANTIPIN', 0.0) > 0.0
-ANTIPIN_D = int(_env_float('ARBITER_ANTIPIN_D', 2))
-ANTIPIN_MOB = int(_env_float('ARBITER_ANTIPIN_MOB', 1))
-ANTIPIN_DEADEND = _env_float('ARBITER_ANTIPIN_DEADEND', 0.0) > 0.0
-TRAP_BONUS = _env_float('ARBITER_TRAP_BONUS', 0.0)
+ANTIPIN = _env_float('HARVEY_ANTIPIN', 0.0) > 0.0
+ANTIPIN_D = int(_env_float('HARVEY_ANTIPIN_D', 2))
+ANTIPIN_MOB = int(_env_float('HARVEY_ANTIPIN_MOB', 1))
+ANTIPIN_DEADEND = _env_float('HARVEY_ANTIPIN_DEADEND', 0.0) > 0.0
+TRAP_BONUS = _env_float('HARVEY_TRAP_BONUS', 0.0)
 # Average policy logits over all eight board symmetries.
-TTA = os.environ.get('ARBITER_TTA', '1') == '1'
+TTA = os.environ.get('HARVEY_TTA', '1') == '1'
 # Optional flee heuristic re-ranks only valid, mask-safe moves.
-FLEE_Q = os.environ.get('ARBITER_FLEE_Q', '0') == '1'
+FLEE_Q = os.environ.get('HARVEY_FLEE_Q', '0') == '1'
 # Optional seven-tick survival rollout for must-flee states.
-FLEE_LOOK = os.environ.get('ARBITER_FLEE_LOOK', '0') == '1'
+FLEE_LOOK = os.environ.get('HARVEY_FLEE_LOOK', '0') == '1'
 # Take a visible coin when a short BFS path has a valid, mask-safe first step.
-COINTAKE = os.environ.get('ARBITER_COINTAKE', '1') == '1'
-COINTAKE_D = int(_env_float('ARBITER_COINTAKE_D', 3))
+COINTAKE = os.environ.get('HARVEY_COINTAKE', '1') == '1'
+COINTAKE_D = int(_env_float('HARVEY_COINTAKE_D', 3))
 # Solo-only immediate-reversal penalty; zero disables it.
-BACKTRACK = _env_float('ARBITER_BACKTRACK', 0.0)
+BACKTRACK = _env_float('HARVEY_BACKTRACK', 0.0)
 # Immediate-reversal penalty while opponents remain; zero disables it.
-BACKTRACK_OPP = _env_float('ARBITER_BACKTRACK_OPP', 0.5)
+BACKTRACK_OPP = _env_float('HARVEY_BACKTRACK_OPP', 0.5)
 _DELTAS = {'UP': (0, -1), 'DOWN': (0, 1), 'LEFT': (-1, 0),
            'RIGHT': (1, 0), 'WAIT': (0, 0), 'BOMB': (0, 0)}
 _DIRS4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
 
 def _flee_quality_choice(arena, bombs, others_xy, x, y, valid, safe, pi):
-    """Best safe flee move by open-space + opponent-distance (E90).
+    """Best safe flee move by open space and opponent distance.
 
-    Only considers moves already marked valid+safe by the mask. Score =
-    free non-occupied 4-neighbours at the destination + 0.25 * min
-    Manhattan distance to an opponent; pi breaks ties. Returns None when
-    no safe move exists.
+    Only considers moves already marked valid and safe by the mask.
+    Score = free non-occupied 4-neighbours at the destination +
+    0.25 * min Manhattan distance to an opponent; the policy breaks
+    ties. Returns None when no safe move exists.
     """
     try:
         W, H = arena.shape[0], arena.shape[1]
@@ -527,11 +534,11 @@ def _flee_quality_choice(arena, bombs, others_xy, x, y, valid, safe, pi):
 
 
 def _loop_penalty(cnt, solo=False):
-    """E112 tie-break loop penalty for a destination visited `cnt` times.
+    """Tie-break penalty for a destination we have visited `cnt` times.
 
-    Pure and directly probed. LOOP_ESC '1' escalates always, '2' escalates
-    only in solo states (no opponent alive), '0' keeps the validated
-    bounded LOOP3/LOOP2 pair.
+    Pure, so the probes can call it directly. LOOP_ESC "1" escalates in
+    every state, "2" only in solo states (no opponent alive), and "0"
+    keeps the bounded LOOP3/LOOP2 pair.
     """
     if (LOOP_ESC == '1') or (LOOP_ESC == '2' and solo):
         if cnt >= 2:
@@ -562,10 +569,10 @@ def setup(self):
     self.model = build_model()
     here = os.path.dirname(os.path.abspath(__file__))
     loaded = False
-    # ARBITER_NG_MODEL takes precedence over the legacy ARBITER_MODEL path.
+    # HARVEY_WEIGHTS takes precedence over the legacy HARVEY_MODEL path.
     _cands = []
-    _env_model = (os.environ.get('ARBITER_NG_MODEL', '').strip()
-                  or os.environ.get('ARBITER_MODEL', '').strip())
+    _env_model = (os.environ.get('HARVEY_WEIGHTS', '').strip()
+                  or os.environ.get('HARVEY_MODEL', '').strip())
     if _env_model:
         # Resolve relative model paths against the repository root.
         if not os.path.isabs(_env_model):
@@ -576,7 +583,7 @@ def setup(self):
         else:
             try:
                 self.logger.warning(
-                    f'ARBITER_MODEL not found: {_env_model}')
+                    f'HARVEY_MODEL not found: {_env_model}')
             except Exception:
                 pass
     _cands += [os.path.join(here, 'my-saved-model.pt'),
@@ -594,10 +601,10 @@ def setup(self):
                             break
                 self.model.load_state_dict(obj, strict=False)
                 loaded = True
-                self.logger.info(f'arbiter loaded {cand}')
+                self.logger.info(f'Harvey loaded {cand}')
                 break
             except Exception as ex:
-                self.logger.warning(f'arbiter load failed {cand}: {ex}')
+                self.logger.warning(f'Harvey load failed {cand}: {ex}')
     self._device = None
     if _HAS_TORCH:
         try:
@@ -625,7 +632,7 @@ def setup(self):
             self._fast = None
     if not loaded:
         try:
-            self.logger.info('arbiter: no weights, pi uniform + V zero '
+            self.logger.info('Harvey: no weights, pi uniform + V zero '
                              '(heuristic skeleton drives play)')
         except Exception:
             pass
@@ -633,7 +640,10 @@ def setup(self):
     self.bomb_history = deque([], 5)
     self.current_round = 0
     self.flee_timer = 0
-    # Initialize state used only by the optional warden movement fallback.
+    # The warden movement fallback is an ablation hook and is off by default.
+    # It reads the warden_v2 agent out of this repository, so it only works
+    # when the whole repo is present. The guard below keeps a missing module
+    # from affecting play.
     self._warden = None
     if POLICY == 'warden':
         try:
@@ -643,7 +653,7 @@ def setup(self):
             _wc.setup(_w)
             self._warden = _w
             self._warden_mod = _wc
-            self.logger.info('arbiter policy=warden (hybrid S0 moves)')
+            self.logger.info('Harvey policy=warden (hybrid moves)')
         except Exception as ex:
             self._warden = None
             try:
@@ -665,12 +675,13 @@ def _must_flee(game_state, danger):
 
 
 def _flee_lookahead_choice(game_state, valid, safe, pi, x, y):
-    """E107 C2: exact-sim survival lookahead for survival-critical moves.
+    """Exact-sim lookahead for moves where our survival is at stake.
 
-    For each admissible successor (pi order), roll out ~7 ticks with the
-    search's own opponent model (CRN-style shared per-tick draws) and a
-    danger-aware continuation for us. Returns the first move whose
-    rollout survives, else None (caller falls back to the myopic rank).
+    For each admissible successor in policy order, roll out about 7
+    ticks with the search opponent model, sharing per-tick draws across
+    rollouts, plus a danger-aware continuation for us. Returns the
+    first move whose rollout survives, else None (the caller falls
+    back to the myopic ranking).
     """
     try:
         from .sim import from_game_state, step as sim_step, valid_actions
@@ -741,9 +752,9 @@ def _flee_lookahead_choice(game_state, valid, safe, pi, x, y):
 def _warden_move(self, game_state, valid, safe, threat):
     """Best warden_v2 move (BOMB excluded) that is valid for this agent.
 
-    E97 hybrid: warden_v2's heuristic carries the crate/coin/kill
-    navigation; arbiter's search carries bomb placement. Returns None
-    when the hook is off or warden has no admissible move.
+    The hybrid split: warden_v2 carries crate, coin and kill navigation;
+    the search carries bomb placement. Returns None when the hook is
+    off or warden has no admissible move.
     """
     w = getattr(self, '_warden', None)
     if w is None:
@@ -780,13 +791,12 @@ def _warden_hist_update(self, action, x, y, nxt):
 
 
 def act(self, game_state):
-    """Exception-armored entry (P1.1): any failure -> WAIT fallback.
+    """Guarded entry point: any failure falls back to WAIT.
 
-    The success path is bit-identical to the validated flow (see
-    _act_impl); the armor only converts a tournament-killing crash
-    (the engine has no fallback agent — an unguarded act exception
-    kills the whole game, or benches us for the round under
-    --silence-errors) into a single WAIT.
+    The success path matches _act_impl exactly; the guard only converts
+    a crash into a single WAIT. The engine has no fallback agent, so an
+    unguarded exception in act() kills the whole game (or benches us
+    for the round under --silence-errors).
     """
     t0 = time.perf_counter()
     try:
@@ -808,7 +818,7 @@ def act(self, game_state):
         return a
     except Exception:
         try:
-            self.logger.warning('arbiter act failed; WAIT fallback',
+            self.logger.warning('Harvey act failed; WAIT fallback',
                                 exc_info=True)
         except Exception:
             pass
@@ -1187,7 +1197,7 @@ def _act_impl(self, game_state, t0):
             continue
         if valid.get(a):
             return _commit(self, a, x, y, nxt, bombs_left)
-    # Least-bad fallback: nothing valid ranked — take any valid move.
+    # Last resort: nothing valid ranked, so take any valid move.
     for i in order:
         a = ACTION_LIST[i]
         if valid.get(a):
@@ -1210,7 +1220,7 @@ def _commit(self, a, x, y, nxt, bombs_left):
 
 
 def _rl_trace_bomb(self, game_state, safety, valid):
-    """E102: record a search/tactical-committed BOMB step for REINFORCE.
+    """Record a search/tactical-committed BOMB step for REINFORCE.
 
     Allowed set = every mask-valid action at this state (BOMB included);
     chosen = BOMB. Returns flow via returns-to-go as for move steps.

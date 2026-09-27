@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# E97 plant-gate probe runner: off vs on-subset-off + liveness + determinism.
+# Plant-gate probe runner: off vs on-subset-off + liveness + determinism.
 # Usage: bash scripts/probe_arbiter_plant.sh
 set -u
 cd "$(dirname "$0")/.."

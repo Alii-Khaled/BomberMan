@@ -1,5 +1,5 @@
 #!/bin/bash
-# Frozen bake-off for reaper candidates (E37/P4a+P6).
+# Frozen bake-off for reaper candidates.
 # Usage: bash scripts/bakeoff_reaper.sh <run_dir> [<run_dir> ...]
 # Each run_dir must contain checkpoints/best.pt (a sweep job dir or the
 # main agent dir). For every candidate: stage an isolated agent copy

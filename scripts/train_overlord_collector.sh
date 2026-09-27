@@ -1,13 +1,13 @@
 #!/bin/bash
-# Overlord collector classroom (E43): economy with opponents, classic only.
-# Base: O3s-best ep741 (EMA cleared, eps re-warm ~=0.15 env steps, C2/C5).
-# Bonus: CRATE_EXTRA +0.15/extra-crate (cap 3) bundled in (probed 5/5 in
-# scripts/probe_multicrate.py; stated Huber caveat — the stage's main lever
+# Overlord collector classroom: economy with opponents, classic only.
+# Base: validation best ep741 (EMA cleared, eps re-warm ~=0.15 env steps, counting, sparring-light).
+# Bonus: CRATE_EXTRA +0.15/extra-crate (cap 3) bundled in (probed in
+# scripts/probe_multicrate.py; Huber caveat noted -- the stage's main lever
 # is the collector distribution, never solo again).
 #   C1 300: vs 3x coin_collector_agent (crate-race pressure, hunt stays warm)
 #   + frozen gates: 100 rb (seeds 0+1) + 60 collector-matrix.
-# Pre-registered gates: crates/round 11.6 -> 16+ with NO frozen regression
-# vs 3.79 ship; miss either -> revert bonus, stop, ledger E44.
+# Pre-registered gates: crates/round 11.6 -> 16+ with no frozen regression
+# vs 3.79 ship; miss either -> revert the bonus and stop.
 # Resumable: STAGE_C1_N=0 to skip straight to gates.
 # Guard: watch_overlord_focused.sh (matches train_overlord_collector).
 set -e

@@ -1,11 +1,11 @@
 #!/bin/bash
-# Overlord W0 crate-light stage (E40): last training card.
-# Base: O3s-best ep741 (EMA cleared, eps re-warm ~=0.15 env steps, C2/C5).
-# W0 200 rounds solo crate-light (density 0.4, 9 coins — training-only
+# Overlord W0 crate-light stage.
+# Base: validation best ep741 (EMA cleared, eps re-warm ~=0.15 env steps, counting, sparring-light).
+# W0 200 rounds solo crate-light (density 0.4, 9 coins -- training-only
 # scenario in settings.py) -> 30rd quick screen (stop if <2.5) ->
 # frozen 100 rb classic + 60 warden-mix.
-# Continue-gates (E40): coins lift vs O2s 1.34 with NO frozen-score
-# regression vs 3.79 ship; anything else -> stop, ledger, report.
+# Continue-gates: coins lift above the 1.34 baseline with no frozen-score
+# regression vs 3.79 ship; anything else -> stop and report.
 # Resumable: STAGE_W0_N=0 to skip straight to gates.
 # Guard: watch_overlord_focused.sh (matches train_overlord_cratelight).
 set -e

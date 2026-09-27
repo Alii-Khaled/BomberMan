@@ -1,14 +1,14 @@
 #!/bin/bash
-# Overlord CHAMP retune (E31 Track 2): single-change discipline.
-# Base: O3s-best ep741 in last.pt (EMA cleared, eps re-warm ~=0.20 env steps,
-# C2 counting, C5 sparring-light). One change vs validation: opponent
-# schedule + low re-warm. NO pull, NO arch change, NO UTD change.
+# Overlord CHAMP retune: single-change discipline.
+# Base: validation best ep741 in last.pt (EMA cleared, eps re-warm ~=0.20
+# env steps, counting, sparring-light). One change vs validation: opponent
+# schedule + low re-warm. No pull, no arch change, no UTD change.
 #   R1 400: gate matchup 3x rule_based (consolidation)
 #   R2a 200: warden_vN + 2x rule_based (discipline sparring)
 #   R2b 200: sentinel + 2x rule_based (diverse learned foe; --train 1 => only overlord learns)
 #   + frozen gates: 100 rb + 60 warden-mix + 60 sentinel-mix (CPU).
 # Resumable: STAGE_R1_N=0 etc. Guard: watch_overlord_focused.sh (patched to
-# match train_overlord_champ). No auto-launch — manual gates between stages.
+# match train_overlord_champ). No auto-launch; manual gates between stages.
 set -e
 cd "$(dirname "$0")/.."
 PY="${PY:-python3}"

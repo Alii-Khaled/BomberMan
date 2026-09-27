@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the E135 four-way route/body-block ablation in alternating order."""
+"""Run the four-way route/body-block ablation in alternating order."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import sys
 
 REPO = Path(__file__).resolve().parents[1]
 PYTHON = REPO / ".venv" / "bin" / "python"
-MODEL = REPO / "agent_code" / "Harvy" / "my-saved-model.pt"
+MODEL = REPO / "agent_code" / "Harvey" / "my-saved-model.pt"
 
 ARMS = {
     "control": ("0", "0", "0"),
@@ -44,18 +44,18 @@ def main() -> None:
             joint, dynamic, body = ARMS[arm]
             env = os.environ.copy()
             env.update({
-                "ARBITER_DEVICE": "cpu",
-                "ARBITER_NG_MODEL": str(MODEL),
-                "ARBITER_JOINT_ROUTES": joint,
-                "ARBITER_DYNAMIC_ROUTES": dynamic,
-                "ARBITER_BODYBLOCK": body,
+                "HARVEY_DEVICE": "cpu",
+                "HARVEY_WEIGHTS": str(MODEL),
+                "HARVEY_JOINT_ROUTES": joint,
+                "HARVEY_DYNAMIC_ROUTES": dynamic,
+                "HARVEY_BODYBLOCK": body,
             })
             if args.telemetry and arm != "control":
                 diag = REPO / "results" / f"{args.prefix}_{arm}_s{seed}.jsonl"
-                env["ARBITER_ROUTE_DIAG"] = str(diag)
+                env["HARVEY_ROUTE_DIAG"] = str(diag)
             cmd = [
                 str(PYTHON), "scripts/tournament_eval.py",
-                "--agents", "Harvy", "rule_based_agent",
+                "--agents", "Harvey", "rule_based_agent",
                 "rule_based_agent", "rule_based_agent",
                 "--n-rounds", str(args.rounds), "--seed", str(seed),
                 "--scenario", "classic", "--out", str(out),

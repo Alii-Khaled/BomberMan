@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Field-proxy matrix (P1.3): arbiter vs field archetypes that proxy the
+# Field-proxy matrix: arbiter vs field archetypes that proxy the
 # unseen tournament field (no Discord downloads available). Frozen CPU,
-# 40 rounds x seeds 0,1 — same discipline as G2-G4, lighter N.
+# 40 rounds x seeds 0,1 -- same discipline as G2-G4, lighter N.
 #   STRONG : arbiter warden_vN overlord sentinel      (hunters present)
 #   RACER  : arbiter coin_collector x2 + overlord     (crate-race field)
 #   WEAK   : arbiter peaceful random overlord         (free-kill farm)

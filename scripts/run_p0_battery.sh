@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# P0 confirm batteries (P0cash/E104): for control(=ship) + 2 candidates.
+# Confirm batteries for the control (=ship) + 2 candidates.
 #   G1 re-legs 100x2 (same-session-clean pooled metric)
 #   STRONG 40x10  (lobby: <agent> warden_v2 overlord sentinel)
 #   UNSEEN: UMIX 100x2 (coward bomber rusher) + 4 archetype legs 40x2
@@ -19,13 +19,13 @@ run() { # mtag btag agent model seed rounds opponents...
   mkdir -p "$ldir"
   if [ -f "$out" ]; then echo "SKIP $out"; return; fi
   if [ -n "$model" ]; then
-    nice -n 10 env ARBITER_DEVICE=cpu ARBITER_NG_MODEL="$model" \
+    nice -n 10 env HARVEY_DEVICE=cpu HARVEY_WEIGHTS="$model" \
       python3 scripts/tournament_eval.py --agents "$agent" "$@" \
       --n-rounds "$rounds" --seed "$seed" --scenario classic \
       --log-dir "$ldir" --match-name "${mtag}_${btag}_s${seed}" \
       --out "$out" > "logs/tourney_${mtag}_${btag}_s${seed}.log" 2>&1
   else
-    nice -n 10 env ARBITER_DEVICE=cpu \
+    nice -n 10 env HARVEY_DEVICE=cpu \
       python3 scripts/tournament_eval.py --agents "$agent" "$@" \
       --n-rounds "$rounds" --seed "$seed" --scenario classic \
       --log-dir "$ldir" --match-name "${mtag}_${btag}_s${seed}" \
@@ -34,7 +34,7 @@ run() { # mtag btag agent model seed rounds opponents...
   echo "DONE $mtag $btag s$seed rc=$?"
 }
 
-MODELS="ctl:arbiter: b1e150:arbiter_ng:$PWD/results/e104_b1.pt.ep150 ng20:arbiter_ng:$PWD/results/arbiter_ng_full.pt"
+MODELS="ctl:arbiter: b1e150:Harvey:$PWD/results/e104_b1.pt.ep150 ng20:Harvey:$PWD/results/arbiter_ng_full.pt"
 
 # build the 66-game job list, interleaving models for uniform load.
 # Fields are '|'-separated so empty model strings survive word handling.

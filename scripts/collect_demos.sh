@@ -4,9 +4,9 @@
 # npz files to results/demos/<teacher>/ (training-time only, never ships).
 # Teachers act greedily (their own train flags are absent -> epsilon 0).
 #
-# E37/P4: demos are collected in the GATE fields (3x rb, warden-mix, 3x
-# random, 3x collector) — NOT vs weak peaceful/collector lineups — so the BC
-# distribution matches where the policy will be evaluated. Per-teacher
+# Demos are collected in the gate fields (3x rb, warden-mix, 3x
+# random, 3x collector) so the BC distribution matches where the policy
+# will be evaluated (weak peaceful/collector lineups would skew it). Per-teacher
 # budgets split across fields: WARDEN_N/SENTINEL_N/OVERLORD_N totals, or
 # set FIELD_N=0 to skip a field. STAGE_DAGGER_N>0 appends a DAgger round:
 # the current student (REAPER_STUDENT_PT, default my-saved-model.pt) acts

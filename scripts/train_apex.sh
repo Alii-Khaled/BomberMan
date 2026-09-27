@@ -1,41 +1,41 @@
 #!/bin/bash
 # Apex training (OOM-safe defaults for 16 GiB Jupyter containers).
 #
-# WHY THIS EXISTS: running `main.py play --train` inside a notebook cell runs
+# Why this exists: running `main.py play --train` inside a notebook cell runs
 # the full CNN+DQN loop in the Jupyter kernel process. With the legacy
 # 300k float32 replay (~8 GiB raw + overhead) the cgroup (16G) OOMKills the
 # whole singleuser server -> full Lab disconnect, no traceback. This script
 # runs in a TERMINAL (detached), with capped replay + uint8 storage + sane
 # batch/EOR, so the Lab server stays alive.
 #
-# Usage (in a terminal, NOT a notebook cell):
+# Usage (in a terminal, not a notebook cell):
 #   bash scripts/train_apex.sh
 #   STAGE_A1_N=750 STAGE_A2_N=1500 bash scripts/train_apex.sh
 #   STAGE_A1_N=0 STAGE_A2_N=0 STAGE_A3_N=750 bash scripts/train_apex.sh
-#     (A3 = Task-3 hunting vs peaceful+collector; run
+#     (Task-3 hunting vs peaceful+collector; run
 #     scripts/apex_archive_A2_for_A3.sh first for the EMA/epsilon reset)
 #   APEX_DEMO=results/apex_demos_all STAGE_A1_N=0 STAGE_A2_N=0 STAGE_A3_N=0 \
 #     STAGE_A4_N=750 bash scripts/train_apex.sh
-#     (A4 = A3 + DQfD demos; run scripts/apex_archive_A3_for_A4.sh first)
+#     (Task-3 + DQfD demos; run scripts/apex_archive_A3_for_A4.sh first)
 #   nohup bash scripts/train_apex.sh > logs/apex_train.log 2>&1 &
 #   tmux new -d -s apex 'bash scripts/train_apex.sh > logs/apex_A2.log 2>&1'
 #   tmux attach -t apex   # reattach after the browser/terminal tab dies
 #
-# WHY tmux/detached: the Jupyter terminal tab (xterm.js) can die at random
+# Why tmux/detached: the Jupyter terminal tab (xterm.js) can die at random
 # points on multi-hour runs while the backend keeps going. main.py now
 # defaults to plain newline logs for --no-gui (APEX_TQDM=0) instead of a
 # per-round tqdm \\r rewrite, but always launch detached so a dead tab
 # never takes training down with it. If the tab dies: open a fresh one
-# and run `tmux ls; tmux attach -t apex` — do NOT start a second training.
+# and run `tmux ls; tmux attach -t apex`; do not start a second training.
 #
 # Env overrides (all optional):
-#   APEX_TQDM (default 0) — 0 = plain "[progress] round N/M" log every
+#   APEX_TQDM (default 0) -- 0 = plain "[progress] round N/M" log every
 #     APEX_LOG_EVERY (default 25); 1 = throttled tqdm bar (~1 update/min).
 #     TQDM_DISABLE=1 / NO_TQDM=1 also force plain iteration in main.py.
-#   APEX_LOG_EVERY (default 25) — newline progress cadence.
-#   APEX_BUFFER (default 100000, max 300000) — replay cap. 100k uint8 ~= 0.7G.
-#   APEX_BATCH (default 256 here, code default 512) — per-update batch.
-#   APEX_UTD / APEX_EOR_UPDATES (defaults 1 / 2 here) — update fan-out.
+#   APEX_LOG_EVERY (default 25) -- newline progress cadence.
+#   APEX_BUFFER (default 100000, max 300000) -- replay cap. 100k uint8 ~= 0.7G.
+#   APEX_BATCH (default 256 here, code default 512) -- per-update batch.
+#   APEX_UTD / APEX_EOR_UPDATES (defaults 1 / 2 here) -- update fan-out.
 #   APEX_SAVE_EVERY (default 5), APEX_EPS_DECAY (default 100000).
 #   APEX_EXPORT_CWD=1 restores the legacy second my-saved-model.pt copy.
 #   PY (default python3), SEED via APEX_SEED.
@@ -53,22 +53,22 @@ export APEX_BUFFER=${APEX_BUFFER:-100000}
 export APEX_EPS_DECAY=${APEX_EPS_DECAY:-100000} APEX_SAVE_EVERY=${APEX_SAVE_EVERY:-5}
 export APEX_CHANNELS_LAST=${APEX_CHANNELS_LAST:-1} APEX_COMPILE=${APEX_COMPILE:-0}
 export APEX_BASE=${APEX_BASE:-96} APEX_FC=${APEX_FC:-512} APEX_NORM=${APEX_NORM:-bn} APEX_DEEP=${APEX_DEEP:-0}
-# DQfD demos (A4+): flat dir of B3 npz (see results/apex_demos_all symlink
-# farm; train.py globs non-recursive). Empty = pure TD (A1-A3 behavior).
+# DQfD demos: flat dir of npz (see results/apex_demos_all symlink
+# farm; train.py globs non-recursive). Empty = pure TD.
 export APEX_DEMO=${APEX_DEMO:-} APEX_DEMO_W=${APEX_DEMO_W:-1.0}
 # Absolutize: the backend chdirs into agent_code/<name>/ around every
-# callback, so a relative APEX_DEMO would resolve nowhere (0 pairs, DQfD
-# silently off — caught once on A4 launch). Anchor at repo root (pwd here).
+# callback, so a relative APEX_DEMO resolves nowhere (0 pairs, DQfD
+# silently off). Anchor at repo root (pwd here).
 if [ -n "${APEX_DEMO:-}" ] && [ "${APEX_DEMO#/}" = "${APEX_DEMO}" ]; then
   _abs="$(pwd)/${APEX_DEMO}"; [ -d "$_abs" ] && export APEX_DEMO="$_abs"
   unset _abs
 fi
-# Hard gate (S3): a configured-but-empty demo dir means DQfD is silently
-# off (E60's 30-round pure-TD incident; train.py only warns). Refuse to
+# Hard gate: a configured-but-empty demo dir means DQfD is silently
+# off (train.py only warns). Refuse to
 # launch rather than burn GPU hours on the wrong objective.
 if [ -n "${APEX_DEMO:-}" ]; then
   # -readable (not just -name): the farm is symlinks by design, and a
-  # dangling link must NOT count (wiped 2026-09-09 left 400 of them).
+  # dangling link must not count.
   _n=$(find "${APEX_DEMO}" -maxdepth 1 -name '*.npz' -readable 2>/dev/null | wc -l)
   if [ "$_n" -eq 0 ]; then
     echo "REFUSE: APEX_DEMO=${APEX_DEMO} holds 0 readable npz (dangling? wiped 2026-09-09 once already)"; exit 1

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# E123 canonical gate (arm half only): composed candidate
-#   ARBITER_COINTAKE=1 ARBITER_COINTAKE_D=3 ARBITER_SOLO_RADIUS=8
-# vs the same-session E122 ctl legs (ship defaults, run this session).
+# Canonical gate (arm half only): composed candidate
+#   HARVEY_COINTAKE=1 HARVEY_COINTAKE_D=3 HARVEY_SOLO_RADIUS=8
+# vs the same-session ctl legs (ship defaults, run this session).
 set -u
 cd /home/jovyan/work/BomberMan
 TAG="${1:?tag}"; ENVV="${2:-}"
@@ -15,7 +15,7 @@ run() { # leg agent seed rounds opponents...
   local ldir="/tmp/opencode/e123bat/${TAG}_${leg}_s${seed}"
   mkdir -p "$ldir"
   [ -f "$out" ] && { echo "SKIP $out"; return 0; }
-  nice -n 10 env ARBITER_DEVICE=cpu $ENVV \
+  nice -n 10 env HARVEY_DEVICE=cpu $ENVV \
     python3 scripts/tournament_eval.py --agents "$agent" "$@" \
     --n-rounds "$rounds" --seed "$seed" --scenario classic \
     --log-dir "$ldir" --match-name "${TAG}_${leg}_s${seed}" \
@@ -41,7 +41,7 @@ echo "jobs=${#JOBS[@]}"
 for j in "${JOBS[@]}"; do
   IFS='|' read -r leg seed rounds opps <<< "$j"
   # shellcheck disable=SC2086
-  run "$leg" Harvy "$seed" "$rounds" $opps &
+  run "$leg" Harvey "$seed" "$rounds" $opps &
   while [ "$(jobs -rp | wc -l)" -ge "$MAXJOBS" ]; do wait -n || true; done
 done
 wait
