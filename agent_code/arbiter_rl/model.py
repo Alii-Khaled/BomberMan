@@ -2,14 +2,8 @@
 features (FEATURE_DIM inputs), with a policy prior head pi (6 logits)
 and a state-value head V (1 scalar, score-margin-to-go).
 
-The net never votes on root actions. pi prunes the search and ranks
-the base fallback; V evaluates search leaves only. A dueling Q head
-with veto authority over an equivalent heuristic double-counted the
-warden and lost 0.42 in evaluation (the apex failure), so the split is
-structural.
-
-Repo-wide convention: zero-init heads, so pi starts uniform and V
-starts at 0, and the heuristic skeleton drives early play.
+The policy ranks fallback actions; optional leaf-value scoring uses V.
+Zero-initialized heads give uniform initial policy scores and V=0.
 """
 import os
 import torch

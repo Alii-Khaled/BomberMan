@@ -1,4 +1,7 @@
-# Gap findings (E122 Phase 0) -- ship = arbiter_ng E108+E112+E119
+# E122 navigation and endgame diagnostics
+
+Historical configuration: Arbiter-NG with E108 weights and E112/E119
+inference changes. The recorded follow-up tests appear below.
 
 Instrumentation: `HARVEY_GAP_DIAG` per-tick recorder (behavior-neutral,
 bit-parity verified on seed-42 solo 6 rds: identical per-round scores).
@@ -43,7 +46,7 @@ G1 vs 3x rule_based 40x2 (seeds 0/1), L5 vs 3x random 40x2 (seeds 0/1)
 - 4,143 margin-vetoed 1-crate bomb ticks (p_reveal-priced singles below
  the 0.15 margin).
 
-## Arms queued
+## Follow-up configurations tested
 - E122: HARVEY_COINTAKE=1 (d=2) -- flee-window + pi-rank coin recovery.
 - E123: SOLO_MARGIN sweep {0.05,0.1,0.15}; SOLO_RADIUS {8,12};
  BACKTRACK {0.5,1.5}; SOLO_TREK re-screen (coin+yield+crate treks,

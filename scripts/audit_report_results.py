@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Read-only audit of the E130 and final-agent numbers quoted in the report.
 
-Run from any directory with ``python3 scripts/audit_report_results.py``.
-The ignored ``results/`` tree and D1 BC weights must be present; they can
-be restored from the separately distributed evaluation-records archive.
-No match is played, no files are changed, and no tournament result is inferred.
+Run from the repository root with ``python3 -B scripts/audit_report_results.py``.
+The required results and D1 BC weights are tracked under ``results/``.
+This audit reads stored records and does not play new matches.
 """
 
 from __future__ import annotations

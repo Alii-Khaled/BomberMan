@@ -1,22 +1,15 @@
-"""Bounded best-first search over exact-dynamics plans.
+"""Bounded rollout search over move and bomb-approach plans.
 
-Plans are scored by exact payoff plus a learned leaf value. The network
-does not vote on root actions; it prices consequences that the payoff
-terms cannot see.
+A plan contains a move or BFS path plus BOMB, followed by a continuation
+through detonation. Opponents use a seeded approximate policy. Scores
+combine coins, crate credit, estimated reveals, certified kills, and death
+penalties relative to the leading opponent. Escape certificates assume
+the modeled board and blockers.
 
-A plan is a committed own-action prefix (a BFS path to a bomb tile plus
-BOMB, or a single move) followed by a cheap continuation to detonation.
-Opponents follow an avoid-lethal-if-possible policy with seeded,
-deterministic randomness per round and step. Kills count at full value
-only when certified against optimal flight (opp_can_escape); kills
-that depend on rollout luck are ignored.
-Score(plan) = exact margin delta (crates*w + coins + 5*certified kills
-- 8*own death + coin-reveal expectation) + V_BLEND * V(s_end).
-
-Budgets: wall-clock (shared with act via HARVEY_TIME_BUDGET), a plan
-cap, and a leaf-value cap (features cost 1.18 ms against 0.031 ms for
-sim.step, so leaf evaluation is the binding constraint). Exhaustion
-falls back to the policy ranking.
+Search shares the callback time budget and limits plans and leaf calls.
+V_BLEND defaults to zero; the selected checkpoint has a zero value head.
+If no bomb plan clears the move baseline and margin, the callback uses
+its coin-route or policy fallback.
 """
 import os
 import time

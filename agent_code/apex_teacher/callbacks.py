@@ -4,7 +4,7 @@ TEACHER env: warden_v2 | warden_v1 | sentinel | overlord (default warden_v2).
 Records per step: img uint8 (12x17x17, x4 scale, lossless),
 sc float32 (16: overlord-8 + apex-extras-8), act uint8 (teacher action).
 One npz per round -> APEX_DEMO_OUT/<teacher>/round_%06d.npz.
-Deleted after the demo collection (temporary harness).
+This recorder is retained for training-data collection.
 
 The teacher acts every game (natural teacher distribution); the recorder
 only observes. Teacher state lives on a private namespace (histories

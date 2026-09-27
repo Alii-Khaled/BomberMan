@@ -1,6 +1,4 @@
-"""ARBITER bounded best-first search: exact-dynamics plans ranked by
-exact payoff + learned leaf value. The net never votes on root actions;
-it evaluates consequences the heuristic cannot see.
+"""Arbiter-v2 rollout search with optional learned leaf-value scoring.
 
 Plan = committed own-action prefix (BFS path to a bomb tile + BOMB, or a
 single move) + cheap continuation to detonation settle. Opponents use an
@@ -10,9 +8,9 @@ optimal flight (opp_can_escape); rollout-luck kills are ignored.
 Score(plan) = exact margin delta (crates*w + coins + 5*certified kills
 - 8*own death + coin-reveal expectation) + V_BLEND * V(s_end).
 
-Budgets: wall-clock (shares ARBITER_TIME_BUDGET with act), plan cap,
-leaf-V cap (features cost 1.18 ms vs sim.step 0.031 ms, so V is the
-binding constraint). Exhaustion degrades to the base ranking.
+Search shares ARBITER_TIME_BUDGET with act and caps plans and leaf calls.
+If no plan qualifies, the callback uses its policy fallback. Opponent
+responses and hidden-coin rewards are approximations.
 """
 import os
 import time

@@ -73,11 +73,10 @@ class HarveyNet(nn.Module):
 
 
 def build_model(in_dim=FEATURE_DIM, hid1=None, hid2=None, hid3=None):
-    """Constructor with env overrides (HARVEY_CH/CH2/CHEAD/HID).
+    """Build with HARVEY_CH/CH2/CHEAD/TRUNK_HID overrides.
 
-    hid1/2/3 are accepted so the pretraining scripts can call this the
-    same way as the earlier builder (they pass HARVEY_HID*); the trunk
-    uses HID for the fused width."""
+    Legacy in_dim/hid1/hid2/hid3 arguments do not alter the architecture.
+    """
     ch = _env_int('HARVEY_CH', 32, 8, 128)
     ch2 = _env_int('HARVEY_CH2', 64, 8, 256)
     chead = _env_int('HARVEY_CHEAD', 8, 2, 64)

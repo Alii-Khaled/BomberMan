@@ -1,13 +1,7 @@
-"""Reaper act policy: learned Q (weight 1.0) + thin heuristic + strict mask.
+"""Reaper action selection: learned Q, heuristic adjustments, and safety mask.
 
-Thin heuristic = safety-driven flee scores, loop penalties, WAIT penalty,
-bomb-repeat penalty. Everything else (pathfinding, placement, hunting,
-endgame) is the network's job: the Q was behavior-cloned from a strong
-teacher then RL-refined, and the features give it BFS pathfinding +
-placement value + opponent-model signals.
-
-Safety mask from safety.py (margin gate, exact blast, time-expanded
-escape). Fallback without torch: mask + heuristic only.
+Adjustments cover escape, repeated positions, WAIT, and repeated bombs.
+Without PyTorch, action selection uses the mask and heuristic scores.
 """
 from collections import deque
 import os

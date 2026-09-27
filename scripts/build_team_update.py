@@ -1,9 +1,9 @@
-"""Team progress update PDF: visual, AI- and stages-focused.
+"""Historical Sentinel training-progress PDF.
 
 Reads live state (metrics, stage JSONs, eval CI, figures) and writes
 results/team_update.pdf via matplotlib PdfPages (no extra deps):
   p1 cover: title banner + KPI cards + curriculum timeline
-  p2 AI approach: architecture, learning loop, infra wins
+  p2 learning approach: architecture, training loop, throughput
   p3 stages: per-stage goal/config/outcome/what-was-learned cards
   p4-5 training figures | p6 frozen eval + outlook
 Usage: .venv/bin/python scripts/build_team_update.py

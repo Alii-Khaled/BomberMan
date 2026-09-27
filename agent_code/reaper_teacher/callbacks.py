@@ -9,8 +9,7 @@ so delegation is exact.
 
 DAgger mode (REAPER_DAGGER=1): the student (reaper with current
 weights) acts, and the teacher only labels the visited state. This
-puts teacher supervision on the student's own state distribution,
-which fixes the off-distribution blindness of pure teacher demos. The
+puts teacher supervision on states visited by the student. The
 recorder's train.py saves (features, teacher_action) in this mode.
 Student weights come from REAPER_STUDENT_PT (defaults to
 agent_code/reaper/my-saved-model.pt).

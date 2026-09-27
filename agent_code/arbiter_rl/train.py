@@ -1,11 +1,7 @@
-"""ARBITER-RL: KL-anchored REINFORCE fine-tune of pi.
+"""Historical Arbiter-RL return-weighted policy update.
 
-Only the move fallback is a pi decision (the search owns bombs); steps
-where search/tactical acted carry no trace entry. Rewards are the exact
-engine objective plus reaper's death/invalid/wait terms; returns-to-go
-over the whole round feed the traced steps. KL(pi || frozen BC prior)
-anchors calibration. Runs on the callbacks' device (main CUDA device
-with CPU fallback); the net is tiny.
+Round returns weight traced actions; KL(frozen BC prior || current policy)
+anchors the update. Search-bomb tracing and stability controls are optional.
 """
 import copy
 import os

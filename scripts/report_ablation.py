@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Frozen, evaluation-only Harvey ablation; does not edit tournament code.
 
-Each round uses its own recorded environment and per-agent random streams.
-The four arms share initial boards and player seats, not later game states.
+The four arms share initial boards and player seats. Per-agent Python/NumPy
+module states are isolated; Warden-v2's private generator is not seeded here.
 Usage:
   python3 scripts/report_ablation.py battery --seeds 10 --rounds 20 --jobs 8
   python3 scripts/report_ablation.py summarize --seeds 10 --rounds 20
@@ -25,7 +25,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 OUT = ROOT / "results" / "report_ablation"
-LOG = Path("/tmp/opencode/report_ablation")
+LOG = ROOT / "logs" / "report_ablation"
 ARMS = ("final", "neutral", "search_off", "bc")
 FIELDS = {
     "g1": ("rule_based_agent",) * 3,

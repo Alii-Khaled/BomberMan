@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Check that two source trees differ only in comments and docstrings.
 
-We run this before and after a style rewrite to show that no behaviour
-moved. Two independent checks, both required to pass:
+Two static comparisons must pass:
 
   TOKEN  Tokenises both versions and compares the token stream with
          comments and string statements dropped. Catches any change to
-         names, literals, operators or layout.
+         names, literals, or operators.
 
   AST    Parses both versions and compares the syntax tree with string
          statements dropped. Independent of formatting.
@@ -15,6 +14,9 @@ An optional JSON rename map lets the same check cover a mechanical
 rename. The map rewrites the old version's names and string literals
 before the comparison, so a rename gets verified the same way as a
 comment edit.
+
+This check excludes docstring introspection and does not establish runtime
+equivalence for arbitrary renames.
 
 Usage:
     python3 scripts/check_equivalence.py BEFORE AFTER [--map renames.json]
@@ -73,9 +75,8 @@ def rename(text, rules, literals=()):
 def text_spans(source):
     """(lineno, col_offset) starts of every non-semantic string literal.
 
-    Covers docstrings and bare string statements sitting anywhere in a
-    block. Both are text, and both are no-ops at run time, so editing
-    them cannot change behaviour. The parser is the authority here.
+    Includes docstrings and bare string statements. Docstrings may still
+    affect introspection or CLI help when code reads __doc__.
     """
     spans = set()
     try:

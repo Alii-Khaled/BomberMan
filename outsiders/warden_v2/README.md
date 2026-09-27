@@ -1,25 +1,21 @@
 # Warden v2
 
-Versioned enhancement of the outsider sparring agent. Use the versioned
-name (`warden_v2`) everywhere; never a bare `warden`.
+The team's revised heuristic baseline. Use `warden_v2` to select this
+version; `outsiders/warden_v1/` retains the earlier reference. Inference
+uses NumPy on CPU.
 
-Warden v1 stays frozen in `outsiders/warden_v1/` as the historical
-reference. This directory is self-contained (numpy only, CPU-only, no
-torch, no absolute paths).
-
-## Validated results
+## Historical local results
 
 - G1 vs 3x `rule_based_agent`, paired 100x2 head-to-head vs `warden_v1`:
   v2 4.400 pooled / win 0.309 / rank 2.21 vs v1 4.260 / 0.342 / 2.24.
-  Parity (single-sample battery numbers range 4.19-5.10 depending on the
-  unseeded rule_based RNG, so paired runs are the evidence).
+  The agents played in the same games. Scores from separate samples ranged
+  from 4.19 to 5.10; launch seeds alone do not fix all agent randomness.
 - Paired G1 vs `arbiter` (2x rule_based, 100x2): v2 4.670 / win 0.398
   vs arbiter 4.180 / 0.328 (supporting field, not the G1 protocol).
 - STRONG lobby (`arbiter` + `overlord` + `sentinel`), 40x5 x2 samples:
   combined 10 seeds v2 score **5.60** vs arbiter 5.03 (+0.57), win
   **0.393** vs 0.377, rank 2.03 vs 2.00; vs v1 (5.160 / 0.357 / 2.09)
-  the score edge holds. The strict "beat the submitted agent everywhere" bar is
-  directional, not statistically established.
+  These comparisons concern the historical Arbiter policy, not final Harvey.
 - Probe: `python3 scripts/probe_warden.py` 7/7 (engine blast/step
   parity, action validity, determinism, latency p99 < 20 ms).
 
@@ -30,14 +26,15 @@ torch, no absolute paths).
   moves into a live blast when danger windows were non-contiguous).
 - **Boolean danger timeline** over `WARDEN_HORIZON` (default 8): no
   earliest-lethal information loss.
-- **Deterministic seeded RNG** (`WARDEN_SEED`) for reproducible A/B.
+- **Private RNG**: set `WARDEN_SEED` for repeatable agent draws. Without it,
+  setup uses system entropy; the engine's `--seed` does not control it.
 
 ## Optional settings (default off)
 
-- `WARDEN_SEARCH=rollout`: bounded exact-dynamics rollout search
+- `WARDEN_SEARCH=rollout`: bounded rollout search with approximate opponents
   (`search.py`) over moves + certified bomb plans with CRN-paired greedy
   opponents; G1 2.370 (bomb suppression), keep off.
-- `WARDEN_SEARCH=danger|moves`: selective search — danger-mode
+- `WARDEN_SEARCH=danger|moves`: selective search. Danger-mode
   invokes the rollout only while fleeing / an own bomb is live, moves-mode
   arbitrates moves only; both keep heuristic bomb ownership. G1 40x2:
   base 4.71 vs danger 3.89 / danger+escape-commit 3.88 /

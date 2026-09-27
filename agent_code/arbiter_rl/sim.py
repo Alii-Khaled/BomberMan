@@ -1,4 +1,4 @@
-"""ARBITER exact forward simulator (numpy + engine semantics, no torch).
+"""NumPy rollout simulator for the historical Arbiter-RL policy.
 
 Replicates environment.py do_step order exactly per simulated step:
   1. apply actions sequentially (movement via tile_is_free rules;
@@ -15,18 +15,11 @@ Bomb cycle: dropped at t (timer 4->3 same step) -> detonates during
 step t+4 -> lethal t+4,t+5 -> bombs_left back at t+6. Matches the mask's
 danger model (safety.py) and the brief (BOMB_TIMER 4, POWER 3).
 
-Two intentional approximations:
-  1 (movement order): engine applies in seating order; sim applies
-     self (index 0) then opponents in others-order. Matters only when
-     two agents contest one tile in one step (rare; replanning every
-     step washes single-step artifacts out).
-  2 (hidden coins): game_state hides coins under crates. The engine
-     reveals them deterministically; the sim books expected coins per
-     cleared crate (p = remaining-hidden / remaining-crates, all terms
-     observable: total 9 - visible - collected_est, where collected_est
-     = total_score - 5 * observed_deaths). Exact payoffs (crates, kills,
-     deaths, collections of visible coins) are unaffected.
-Everything else (blast geometry, timers, scoring, blocking) is exact.
+The simulator moves self first; the engine randomizes action order.
+Hidden-coin reveals use an expectation based on remaining coins and crates.
+Observations omit bomb ownership and explosion stage; from_game_state
+uses the assumptions documented below. Probes compare blast and step rules
+against the engine on constructed states.
 """
 import numpy as np
 

@@ -1,24 +1,28 @@
-# Sentinel experiment ledger
+# Experiment ledger
 
-Living record of every experiment run on the Sentinel agent: what was changed,
-why, what happened, and the verdict. Source material for report 6
-(Experiments and Results) and 5 (Training) -- see *Project Description* 9.
-Companion files: `docs/training_stages.md` (stage dossier),
-`results/figures/captions.md` (figure captions), raw data in `results/`.
+Dated settings, observations, and decisions for all model families. Entries
+retain their original experiment IDs, attribution, and historical status;
+later corrections supersede earlier conclusions. AI-assisted entries identify
+that assistance in their author fields. The current submission is Harvey.
 
-A note on names: the submitted agent grew out of this work under several
-directory names. Early entries call it `arbiter` or `arbiter_ng`, later ones
-`Harvy`, and the final directory is `agent_code/Harvey/`. The code is the
-same line; only the name moved.
+Arbiter, Arbiter-v2, Arbiter-RL, and the later board/scalar NG policy are
+distinct variants. NG became Harvey; older checkpoints and inference settings
+are not interchangeable. Historical `Harvy` paths predate the final rename.
 
-## How to use this file (read before appending)
+For current commands, use [the training guide](training_stages.md) and
+[configuration reference](configuration.md). Public raw inputs are indexed
+in [`evidence/manifest.json`](../evidence/manifest.json); other historical
+paths may refer to private or missing files.
+
+## Historical recording protocol
 
 1. **Append-only.** Copy the template from 4, take the next free ID, fill it in.
   Never rewrite old entries -- supersede them with a new entry that references
   the old ID. History (including failures) is report material.
-2. **Paired arenas for A/B.** Same `--seed` for all variants in one comparison
-  (map RNG is fixed by seed). Note: seed does **not** fix agent RNG
-  (`np.random.seed()` bare in `setup`, `shuffle` in rule_based) -- see E09.
+2. **Launch seeds for A/B.** Reuse `--seed` across variants, but do not assume
+  matched arenas after the first round: world generation and turn ordering
+  share an RNG. The seed also does not fix agents' private randomness. The
+  report-stage runner controls starting boards separately; see report §4.3.
 3. **Ship-decision bar.** Directional screens may use 40 rounds x 1 seed, but
   nothing ships without **>=100 rounds x 2 seeds** (run-to-run noise on
   40 rounds is +/-0.8 score -- proven in E09).
@@ -34,8 +38,8 @@ same line; only the name moved.
   `results/archive/`. Training curve -> `agent_code/sentinel/runs/metrics.csv`.
 6. **Lineage + scoreboard.** When new weights become "the" model, add a row to
   2 and update 5. When a gate/matrix lands, update 5.
-7. **Author field.** Every entry carries author + date (report 9 requires
-  author marks per section -- lift these directly).
+7. **Author field.** Retain the recorded contributor or assistance and date.
+  Report section authorship is recorded separately in the delivered report.
 
 ## Model lineage (weights)
 

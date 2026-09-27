@@ -1,8 +1,7 @@
-"""ARBITER training hooks. Offline pretraining lives in
-scripts/pretrain_arbiter.py; this file only satisfies the framework
-interface for --train runs. The online loop (league policy iteration)
-fills in later: search-policy targets for pi, backed-up values for V,
-PER + warmup-guarded best_ema.
+"""Framework training hooks for the offline-trained Arbiter-v2 policy.
+
+Pretraining lives in scripts/pretrain_arbiter.py. These callbacks do not
+perform online learning.
 """
 import events as e
 

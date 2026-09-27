@@ -1,11 +1,10 @@
-"""KL-anchored REINFORCE fine-tuning for the policy head.
+"""KL-anchored, return-weighted policy fine-tuning.
 
-Only the move fallback is a policy decision, since the search owns
-bombs; steps where search or tactical acted carry no trace entry.
-Rewards are the exact engine objective plus death, invalid-action and
-wait terms, and returns-to-go over the whole round feed the traced
-steps. KL(policy || frozen BC prior) anchors calibration. Runs on the
-callbacks device (CUDA with CPU fallback); the net is small.
+Traces contain sampled fallback moves and, when BOMB_TRACE is enabled,
+search-selected bombs. Event returns weight the chosen-action likelihood;
+KL(frozen BC prior || current policy) limits drift. Search labels are not
+on-policy samples. The update uses canonical features, while callback
+sampling may use symmetry-averaged logits; see the report's training audit.
 """
 import copy
 import os

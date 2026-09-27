@@ -62,9 +62,9 @@ Layout (indices), directions in DELTAS order (UP DOWN LEFT RIGHT):
   97     score margin vs NEAREST opponent (norm, signed)
 
 Symmetry support: the 8 dihedral transforms of the 17x17 board map the
-dir-indexed segments onto each other via a fixed permutation (built once);
-scalars are invariant. ``apply_aug`` / ``transform_state`` / ``map_action``
-let training augment transitions by recomputing/permuting features exactly.
+directional segments onto each other via a fixed permutation. Non-directional
+scalars remain unchanged. The escape solver's first-move tie-break can differ
+when features are recomputed after a transform; inference uses permutations.
 """
 from collections import deque
 

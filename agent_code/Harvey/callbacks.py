@@ -1,33 +1,15 @@
-"""Action selection for Harvey.
+"""Harvey's policy, safety checks, and bounded search controller.
 
-The policy network ranks candidate moves from a 98-value feature
-vector. A safety layer narrows the candidate set first, and a bounded
-lookahead search (search.py) decides bomb placement. The network never
-blends its scores with a heuristic: it ranks moves, the value head
-prices search leaves, and the survival code only removes moves that
-get us killed. Navigation, crate clearing and combat come from the
-learned prior.
+Inputs combine a 12x17x17 board tensor with 98 scalars. Default inference
+averages logits across eight symmetry views, tries bomb-plan search, then
+a short coin route, and finally ranks fallback actions with loop penalties.
+Immediate danger and post-plant escape restrict fallback to safe actions
+when available; BOMB requires the safety gate. The selected value head is
+zero and default search uses no leaf value.
 
-Letting a heuristic share the vote double-counts the same board facts
-and flattens the policy. Every survival adjustment here is capped at
-0.5, an order of magnitude below a typical logit gap, so the network
-keeps control of the ranking.
-
-Decision order with HARVEY_SEARCH=off:
-  1. action_safety(game_state) returns valid, safe and a danger timeline.
-  2. One forward pass returns policy logits over 6 actions and a value.
-  3. If our own tile is lethal within one step, keep only safe moves.
-     Otherwise rank every valid move by policy score.
-  4. Apply the loop and bomb-repeat tie-breaks; BOMB stays mask-safe.
-  5. A wall-clock budget (HARVEY_TIME_BUDGET, 0.30 s) covers the
-     feature build and the forward pass. Exhaustion degrades to the
-     mask and the tie-breaks with uniform policy scores.
-
-HARVEY_SEARCH=search inserts the bounded best-first search of
-search.py between steps 2 and 3. HARVEY_SEARCH=tactical adds the
-proven-kill check, which runs the exact opponent escape solver. The
-combined setting runs the forced kill first and hands the rest to the
-search.
+HARVEY_SEARCH selects search, tactical trap checks, both, or neither.
+HARVEY_TIME_BUDGET (0.30 s) covers safety, feature construction, inference,
+and search. Optional diagnostics record branch choices and timing.
 """
 from collections import deque
 import os
@@ -126,13 +108,7 @@ def _diag_snapshot(self, game_state, t0_unused=0.0):
 
 
 def diag_dump_round(self, last_action, events):
-    """Called from train.py end_of_round (the dispatched hook).
-
-    Writes <prefix>_deaths.jsonl: a round_meta line + the full per-tick
-    buffer for EVERY round (survival context enables the missed-kill
-    inventory; death rounds carry KILLED_SELF / GOT_KILLED in the
-    accumulated round events).
-    """
+    """Flush round metadata and tick records from the training end hook."""
     if not _DIAG:
         return
     try:
@@ -284,11 +260,9 @@ def _gap_bfs_from(arena, blocked, start):
 
 
 def _cointake_step(game_state, safety, d_cap):
-    """Certified coin collection: first step onto the shortest mask-safe
-    path to the nearest visible coin reachable within d_cap steps.
+    """Return a safe first step toward a coin within d_cap, or None.
 
-    Returns the action, or None. The +1 is certain once this fires:
-    the coin tile is free, so reaching it collects the coin.
+    Later steps and coin availability depend on subsequent observations.
     """
     try:
         arena = np.asarray(game_state['field'])
@@ -534,12 +508,7 @@ def _flee_quality_choice(arena, bombs, others_xy, x, y, valid, safe, pi):
 
 
 def _loop_penalty(cnt, solo=False):
-    """Tie-break penalty for a destination we have visited `cnt` times.
-
-    Pure, so the probes can call it directly. LOOP_ESC "1" escalates in
-    every state, "2" only in solo states (no opponent alive), and "0"
-    keeps the bounded LOOP3/LOOP2 pair.
-    """
+    """Destination repetition penalty, with optional solo-only escalation."""
     if (LOOP_ESC == '1') or (LOOP_ESC == '2' and solo):
         if cnt >= 2:
             return -min(LOOP_ESC_STEP * (cnt - 1), LOOP_ESC_CAP)
@@ -640,10 +609,7 @@ def setup(self):
     self.bomb_history = deque([], 5)
     self.current_round = 0
     self.flee_timer = 0
-    # The warden movement fallback is an ablation hook and is off by default.
-    # It reads the warden_v2 agent out of this repository, so it only works
-    # when the whole repo is present. The guard below keeps a missing module
-    # from affecting play.
+    # The optional Warden ablation needs the full repository.
     self._warden = None
     if POLICY == 'warden':
         try:
@@ -791,13 +757,7 @@ def _warden_hist_update(self, action, x, y, nxt):
 
 
 def act(self, game_state):
-    """Guarded entry point: any failure falls back to WAIT.
-
-    The success path matches _act_impl exactly; the guard only converts
-    a crash into a single WAIT. The engine has no fallback agent, so an
-    unguarded exception in act() kills the whole game (or benches us
-    for the round under --silence-errors).
-    """
+    """Choose an action; log unexpected errors and return WAIT on failure."""
     t0 = time.perf_counter()
     try:
         a = _act_impl(self, game_state, t0)
@@ -1042,8 +1002,7 @@ def _act_impl(self, game_state, t0):
                 return 'BOMB'
     except Exception:
         pass
-    # Search selects root actions; the network value scores leaves only.
-    # Failure or budget exhaustion falls through to the policy ranking.
+    # Search returns a plan step or falls through; leaf value is default-off.
     self._last_search = None
     self._search_decided = False
     try:

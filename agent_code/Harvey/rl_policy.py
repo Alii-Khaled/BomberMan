@@ -1,4 +1,4 @@
-# On-policy masked-softmax sampling, active only during RL fine-tuning.
+"""Masked movement sampling and canonical-feature traces for RL training."""
 import os
 
 import numpy as np

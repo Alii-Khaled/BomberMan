@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "baseline_commit": "5ef5dc67d71a1c6c9140c640794b7b6799d173ae",
+  "note": "Original evaluation fingerprints remain in manifest.json. Agent and opponent edits affect comments/docstrings only. The report runner also changes its log directory.",
+  "files": {
+    "agent_code/Harvey/callbacks.py": {
+      "sha256": "2280af8047c2b16591b049b2779b9c1e02b4b94f82eb65dfdddbc097618846f6",
+      "changes": "comments_and_docstrings"
+    },
+    "agent_code/Harvey/features.py": {
+      "sha256": "44c600e6fbdc80f778358b1f4c8ffca2a6f07453bee2d7d189c60098fc22b9aa",
+      "changes": "comments_and_docstrings"
+    },
+    "agent_code/Harvey/model.py": {
+      "sha256": "8347c6290fe3b98868b4e239aaf6a1a722938999f98ac7f53f35de5903f87863",
+      "changes": "comments_and_docstrings"
+    },
+    "agent_code/Harvey/rl_policy.py": {
+      "sha256": "57737627f7dd11d219dd72b3773612dd46c680ee78ddb7d428dfd38ba37816ef",
+      "changes": "comments_and_docstrings"
+    },
+    "agent_code/Harvey/search.py": {
+      "sha256": "3ae44756f952e7fdc1d9b8d7c2bccc3cf42fafd0eebf75fb6cdf3ba35f40fc2d",
+      "changes": "comments_and_docstrings"
+    },
+    "agent_code/Harvey/sim.py": {
+      "sha256": "766e297431e06bed0cefb186f1b0065c04b55390bd10e722d18d25b207aaeb2a",
+      "changes": "comments_and_docstrings"
+    },
+    "agent_code/Harvey/train.py": {
+      "sha256": "c6bf96d073b575da625269a7eb505be8d1a8dd9237dc6f628c9f5be93b8c0e6a",
+      "changes": "comments_and_docstrings"
+    },
+    "outsiders/warden_v2/sim.py": {
+      "sha256": "26b88831e78c7662d50d081cdac415f058d722fd5ef1daeaa10b45853f2b2a2c",
+      "changes": "comments_and_docstrings"
+    },
+    "scripts/report_ablation.py": {
+      "sha256": "4817a20e03511d61f2fa238228974677771fdd5da532718e32da2b756a85bb0d",
+      "changes": "comments_and_docstrings_and_log_path",
+      "source_replacements": [
+        [
+          "LOG = Path(\"/tmp/opencode/report_ablation\")",
+          "LOG = ROOT / \"logs\" / \"report_ablation\""
+        ]
+      ]
+    }
+  }
+}

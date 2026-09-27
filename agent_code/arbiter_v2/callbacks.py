@@ -1,27 +1,7 @@
-"""ARBITER act policy: learned policy prior + thin survival skeleton +
-warden-semantics mask filter, with no heuristic or Q blending.
+"""Historical Arbiter-v2 controller over 114 scalar features.
 
-The net never shares a vote with a heuristic over root actions (apex
-double-counted warden into its Q and lost 0.42 in evaluation). Here pi
-ranks, V evaluates leaves, and the heuristic carries survival content
-only: must_flee override, loop tie-break, bomb-repeat tie-break, all
-bounded to <=0.5, an order below typical logit gaps. Everything else
-(navigation, economy, combat, placement) is the network's job.
-
-Decision (ARBITER_SEARCH=off):
-  1. mask = action_safety(game_state) -> valid / safe / danger timeline.
-  2. pi logits over 114-dim features (single forward also yields V, logged).
-  3. must_flee (own tile lethal t<=1): restrict to safe moves (warden).
-     else: rank valid moves by pi with an unconditional mask filter
-     (the mask binds only under threat).
-  4. Loop/bomb-repeat tie-breaks (bounded), BOMB gated on mask-safe.
-  5. Budget guard (ARBITER_TIME_BUDGET 0.30): features+forward must fit
-     in 60%/90%; on exhaustion degrade to mask + tie-breaks (pi=uniform).
-The bounded best-first search runs between steps 2 and 3
-(ARBITER_SEARCH=search, agent_code/arbiter_v2/search.py); the tactical proven-kill
-override (ARBITER_SEARCH=tactical) runs at inference with exact
-dynamics. 'search+tactical' runs both: the forced +5 first, then the
-search decides the rest.
+The policy ranks fallback actions alongside repetition penalties.
+Safety checks and optional search use the same contract as Arbiter.
 """
 from collections import deque
 import os

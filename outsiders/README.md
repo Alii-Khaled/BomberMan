@@ -1,10 +1,9 @@
-# Outsiders — evaluation and sparring agents
+# Evaluation and sparring agents
 
 This directory contains team-written heuristic references and evaluation-only
 opponent archetypes. These agents may be used for training data or evaluation
 as stated in the experiment records; none is a separate learned model or
-part of the Harvey tournament payload (`agent_code/Harvey/`). The directory
-may also hold separately credited downloaded opponents if they are added.
+part of the Harvey tournament payload (`agent_code/Harvey/`).
 
 ## Layout
 
@@ -20,7 +19,7 @@ outsiders/
     sim.py
     search.py
     README.md
-  <future>/            <- downloaded agents, one subdir each
+  unseen_*/            <- evaluation archetypes
 ```
 
 Naming rule: the warden is always referenced with a version suffix
@@ -38,11 +37,8 @@ agent_code/warden_v1 -> ../outsiders/warden_v1
 agent_code/warden_v2 -> ../outsiders/warden_v2
 ```
 
-Add future agents the same way:
-`ln -s ../outsiders/<name> agent_code/<name>` (relative to `agent_code/`)
-
-Downloaded agents go to `#final-project-beat-my-agent` on Discord; drop the
-files into `outsiders/<name>/`, symlink, and cite the source in the report.
+From the repository root, create another link with
+`ln -s ../outsiders/<name> agent_code/<name>`.
 
 ## Registry
 

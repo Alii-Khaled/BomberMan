@@ -1,8 +1,6 @@
-"""Reaper: small dueling MLP over engineered features.
+"""Dueling MLP over Reaper's engineered features.
 
-~400K params, CPU-forward <1 ms. Zero-init value/advantage heads so Q
-starts near zero (behavior cloned / heuristically seeded policy dominates
-early, learned Q grows from scratch; same stabilization as overlord).
+Zero-initialized value and advantage heads give initial Q values of zero.
 """
 import os
 import torch

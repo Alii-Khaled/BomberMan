@@ -127,6 +127,7 @@ submission/
 !/evidence/figure_values.json
 !/evidence/training_values.json
 !/evidence/ablation_values.json
+!/evidence/source_review.json
 
 # Sentinel training artefacts (keep my-saved-model.pt + best.pt export)
 agent_code/sentinel/checkpoints/ep_*.pt

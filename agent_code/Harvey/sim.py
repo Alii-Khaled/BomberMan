@@ -1,6 +1,6 @@
-"""Harvey exact forward simulator (numpy + engine semantics, no torch).
+"""NumPy rollout simulator for Harvey.
 
-Replicates environment.py do_step order EXACTLY per simulated step:
+Follows environment.py's step order:
   1. apply actions sequentially (movement via tile_is_free rules;
      BOMB iff bombs_left; else WAIT/INVALID = stand still),
   2. collect_coins (+1 standing on collectable),
@@ -15,20 +15,11 @@ Bomb cycle: dropped at t (timer 4->3 same step) -> detonates during
 step t+4 -> lethal t+4,t+5 -> bombs_left back at t+6. Matches the mask's
 danger model (safety.py) and the brief (BOMB_TIMER 4, POWER 3).
 
-Two deliberate approximations, both covered by the probes:
-  Movement order: the engine applies actions in seating order; the sim
-     applies self (index 0) then opponents in others-order. This only
-     matters when two agents contest one tile in one step, which is
-     rare, and replanning every step washes out single-step artifacts.
-  Hidden coins: game_state hides coins under crates. The engine
-     reveals them deterministically; the sim books expected coins per
-     cleared crate (p = remaining-hidden / remaining-crates, all terms
-     observable: total 9 - visible - collected_est, where collected_est
-     = total_score - 5 * observed_deaths). Exact payoffs (crates, kills,
-     deaths, collections of visible coins) are unaffected.
-Everything else (blast geometry, timers, scoring, blocking) is exact
-and the probes check it against the engine's own step functions in
-scripts/probe_arbiter_sim.py.
+Approximations: the simulator moves self before opponents, whereas the
+engine randomizes action order. It estimates hidden-coin reveals from
+remaining coins and crates. Observations also omit bomb ownership and
+explosion stage, so from_game_state uses the assumptions noted below.
+The historical Arbiter simulator probes test blast, timing, and step rules.
 """
 import numpy as np
 

@@ -3,7 +3,9 @@
   "weights": "my-saved-model.pt",
   "source": "results/e108rl.pt.ep225",
   "experiment": "E108 D1 recipe iteration (widened league BC + RL leg)",
-  "recipe": "NG-1 BC on the WIDENED league corpus (1586 files: +350 ship self-play mirror, +225 warden_v1, +150 collector, +50 random; val_acc 0.806 vs 0.794 on the E101 corpus) -> E104-recipe RL leg (KL-anchored REINFORCE, STABLE adaptive beta + revert guard, BOMB_TRACE, lr 5e-5 beta 0.1, 300 eps vs rule_based x2 + warden_v2), ep225 checkpoint",
+  "recipe": "Board/scalar BC on 1511 demonstration files (346263 usable actions; 311428 training, 34835 validation). Selected epoch 10 of 14 at validation accuracy 0.8063. KL-anchored, return-weighted RL with adaptive beta, revert guard and search-bomb traces; learning rate 5e-5, initial beta 0.1, 300 rounds against two rule-based agents and Warden-v2. Selected RL episode 225.",
+  "recipe_sources": ["logs/e108_bc.log", "results/arbiter_ng_d1.meta.json", "results/e108rl.csv"],
+  "metric_note": "pooled_win and control win values are joint-top rates; warden_head_to_head.win is the strict pairwise outscore rate. These are historical E108 results.",
   "decision": {
     "bar": "pooled multi-battery (G1 100x2 + STRONG 40x10 + UNSEEN UMIX 100x2 + archetype legs 40x2)",
     "pooled_score": 6.65,
@@ -46,16 +48,22 @@
     }
   ],
   "date": "2026-09-14",
-  "notes": "All batteries CPU, tournament conditions, 1120 rounds/model vs same-session control; G1 dipped -0.20 (accepted: pooled bar); default load path + wardenlite smoke-verified.",
+  "notes": "Historical E108 CPU battery: 1120 rounds per model against a same-session control. Later inference changes retained these weights. The final report-stage ablation found no demonstrated score gain over the D1 BC checkpoint.",
   "inference_flags": {
-    "note": "E112 solo/endgame fix promoted after this weights export",
-    "ARBITER_SOLO_MARGIN": 0.15,
-    "ARBITER_LOOP_ESC": "2",
+    "note": "Current Harvey defaults include inference changes through E130; E108 battery results above predate them.",
+    "HARVEY_SOLO_MARGIN": 0.15,
+    "HARVEY_LOOP_ESC": "2",
+    "HARVEY_COINTAKE": "1",
+    "HARVEY_COINTAKE_D": 3,
+    "HARVEY_SOLO_RADIUS": 8,
+    "HARVEY_SOLO_COMMIT": 6,
+    "HARVEY_COMMIT_OPP": "1",
+    "HARVEY_BACKTRACK_OPP": 0.5,
     "ship_switch_params": [
       "agent_code/Harvey/search.py",
       "agent_code/Harvey/callbacks.py"
     ],
-    "restore_pre_e112": "ARBITER_SOLO_MARGIN=-1 ARBITER_LOOP_ESC=0",
+    "restore_pre_e112_solo_settings": "HARVEY_SOLO_MARGIN=-1 HARVEY_LOOP_ESC=0 (later inference changes remain active)",
     "evidence": "E112 ledger: pooled 6.465/0.656 vs 6.466/0.668; L5 2.15->7.80; solo 5.0->8.2/9"
   }
 }

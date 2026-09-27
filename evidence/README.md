@@ -8,10 +8,19 @@ head-to-head JSON files. The raw files retain the paths printed in the
 appendix. Only the files named in the manifest were published; other
 training output in `results/` remains ignored by Git.
 
-The figure-input fingerprints live here as `figure_values.json`,
-`training_values.json` and `ablation_values.json`. Their copies inside the
-private report source are identical. `manifest.json` also records hashes
-of the evaluation code and opponent source used to check the final ablation.
+The figure-input fingerprints are `figure_values.json`,
+`training_values.json` and `ablation_values.json`. `manifest.json` also
+records hashes of the evaluation code and opponent source used to check
+the final ablation.
+
+`source_review.json` records the later documentation cleanup against Git
+commit `5ef5dc67d71a1c6c9140c640794b7b6799d173ae`. The original manifest's
+hashes remain intact. The verifier checks the original bytes from that
+commit, the reviewed files' hashes, and their executable tokens and syntax
+trees. Agent changes consist only of comments/docstrings. The ablation
+runner also redirects logs to the repository's `logs/report_ablation/`;
+the review records that source replacement explicitly. Use a full Git
+clone for this source-history check.
 
 From a fresh clone, run:
 

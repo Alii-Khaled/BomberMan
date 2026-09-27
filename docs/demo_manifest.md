@@ -1,16 +1,21 @@
-# Demo corpus manifest (S3, 2026-09-09)
+# Historical demonstration corpora
+
+These records describe private training data. The E108 D1 run used 1,511
+files, as recorded in `logs/e108_bc.log`; the earlier collections below
+are not a complete D1 manifest. Backup paths require a team-held copy and
+are not public download locations. Set `DEMO_BACKUP` to that copy's root.
 
 Restored after the 2026-09-09 disk cleanup wiped `results/apex_demos/`
 (400 npz, E51) and `results/demos/` (838 npz, E33-E37). E51's stats JSONs
 survive in `results/archive/e51_demos/`. Corpus fingerprint (sha256 of the
 sorted per-file sha256 list): **`e2239e6b1ac463d7`**.
-Backup (byte-identical, verified loadable): `/home/jovyan/work/__shared/demos_backup/`
+Backup layout (verified at collection time): `$DEMO_BACKUP/`
 (`apex_demos/`, `demos/`, `apex_demos_all/` as symlinks, `apex_demos_all_resolved/`).
 
 ## Arbiter self-distillation corpus (E80, 2026-09-09; `results/demos/arbiter_self[_<field>]/`)
 
-Recorder: `agent_code/arbiter_dagger/` (SHIP arbiter acts, every acted
-state saved as (98-dim feats, executed action)). Command:
+Recorder: `agent_code/arbiter_dagger/`, using the historical Arbiter policy
+and saving 98-feature/action pairs. Command:
 `DAGGER_N=200 bash scripts/collect_arbiter_self.sh` (gate-field split
 rb 50% / wm 25% / random 12.5% / collector 12.5%).
 
@@ -26,15 +31,15 @@ Action mix: UP .204 / RIGHT .195 / DOWN .204 / LEFT .193 / WAIT .123 /
 BOMB .081. Fingerprint (sha256 of sorted per-file sha256 list):
 **`17e2f691acb4a43d`** (matches the ledger's 51,482 teacher-4 rows, E80).
 Backup (byte-identical, fingerprint-verified):
-`/home/jovyan/work/__shared/demos_backup/arbiter_self/` (same four dirs).
-Restore: `cp -r /home/jovyan/work/__shared/demos_backup/arbiter_self/<dir>
-results/demos/` then re-verify the fingerprint.
+`$DEMO_BACKUP/arbiter_self/` (same four dirs).
+Restore a directory with `cp -r "$DEMO_BACKUP/arbiter_self/<dir>" results/demos/`
+after replacing `<dir>` with its name, then recheck the fingerprint.
 
 ## Arbiter E88 corrected-feature corpus (2026-09-10; `results/demos/arbiter_self_e88[_<field>]/`)
 
 Recorder: `agent_code/arbiter_dagger/` running the promoted E88 act
 config (corrected escape solver + score margin 0.6). Command:
-`DEMO_PREFIX=arbiter_self_e88 DAGGER_N=200 HARVEY_BOMB_SCORE_MARGIN=0.6
+`DEMO_PREFIX=arbiter_self_e88 DAGGER_N=200 ARBITER_BOMB_SCORE_MARGIN=0.6
 bash scripts/collect_arbiter_self.sh`. The rb dir holds 112 rounds: a
 first launch was killed after 12 rounds and the detached rerun resumed
 from the recorder's max round-ID, so both segments share one
@@ -53,7 +58,7 @@ Action mix: UP .191 / RIGHT .212 / DOWN .191 / LEFT .209 / WAIT .125 / BOMB .071
 Fingerprint (sha256 of sorted per-file sha256 list):
 **`df8aad3c9d46b720`** (equals the E88 cache's 55,066 teacher-4 rows).
 Backup (byte-identical, fingerprint-verified):
-`/home/jovyan/work/__shared/demos_backup/arbiter_self_e88/` (same four dirs).
+`$DEMO_BACKUP/arbiter_self_e88/` (same four dirs).
 Usage: the E88 corrected-feature retrain trains on re-extracted
 apex-format rows + these rows only (`python3 scripts/arbiter_extract.py
 --reaper-include=arbiter_self_e88`); the E80 buggy-feature corpus is
@@ -62,14 +67,14 @@ excluded by design (E88 ledger).
 ## Apex-format (`results/apex_demos/<teacher>/`, B3: img uint8 T,12,17,17 x4 + sc T,16 + act T,)
 
 Recorder: `agent_code/apex_teacher/` (`APEX_TEACHER=<t>`, resume-safe round IDs).
-Command: `bash scripts/collect_apex_demos.sh` (new in S3).
+Command: `bash scripts/collect_apex_demos.sh`.
 
 | Teacher | Rounds | Steps | Fields (rb / warden-mix / 3xcollector / crate-light) |
 |---|---|---|---|
 | warden_v1 | 200 | 54,275 | 100 / 50 / 25 / 25 |
 | sentinel | 100 | 25,027 | 51 / 25 / 12 / 12 |
 | overlord | 100 | 24,659 | 51 / 25 / 12 / 12 |
-| coin_collector_agent (NEW -- only 3.39 crates/bomb demonstrator in repo) | 100 | 19,251 | 51 / 25 / 12 / 12 |
+| coin_collector_agent | 100 | 19,251 | 51 / 25 / 12 / 12 |
 | **Total** | **500** | **123,212** | |
 
 Action mix: UP .186 / RIGHT .178 / DOWN .185 / LEFT .176 / WAIT .193 / BOMB .082.
@@ -79,7 +84,7 @@ Stats: `results/apex_demos_<teacher>_{rb,wm,co,cr}.json`.
 ## Reaper-format (`results/demos/<teacher>[_<field>]/`, feats T,98 + acts T,)
 
 Recorder: `agent_code/reaper_teacher/`. Command: `bash scripts/collect_demos.sh`
-(unchanged -- gate-fields mix rb 50% / wm 25% / random 12.5% / collector 12.5%).
+(field mix: rb 50% / wm 25% / random 12.5% / collector 12.5%).
 
 | Teacher | Rounds | Fields |
 |---|---|---|
@@ -94,11 +99,8 @@ Recorder: `agent_code/reaper_teacher/`. Command: `bash scripts/collect_demos.sh`
 globs non-recursive; relative targets resolve nowhere under the backend
 chdir). Rebuild: see S3 log; verify with `find results/apex_demos_all -xtype l | wc -l` (= 0).
 
-## Loader gates (E52 class, retired)
+## Loader checks
 
-- Library (`agent_code/apex/train.py:_load_demos`): warns loudly with cwd
- diagnostics on configured-but-empty (E60).
-- Launcher (`scripts/train_apex.sh`): **refuses** to start when
- `APEX_DEMO` holds 0 *readable* npz (`-readable`, so dangling links do
- not count -- S3 probe: refuses dangling farm, refuses missing dir,
- passes real npz).
+`agent_code/apex/train.py:_load_demos` logs the working directory when
+a configured corpus contains no data. `scripts/train_apex.sh` stops if
+`APEX_DEMO` contains no readable `.npz` files; dangling links do not count.
