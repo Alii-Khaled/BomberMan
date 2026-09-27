@@ -1,7 +1,7 @@
 # Demo corpus manifest (S3, 2026-09-09)
 
 Restored after the 2026-09-09 disk cleanup wiped `results/apex_demos/`
-(400 npz, E51) and `results/demos/` (838 npz, E33–E37). E51's stats JSONs
+(400 npz, E51) and `results/demos/` (838 npz, E33-E37). E51's stats JSONs
 survive in `results/archive/e51_demos/`. Corpus fingerprint (sha256 of the
 sorted per-file sha256 list): **`e2239e6b1ac463d7`**.
 Backup (byte-identical, verified loadable): `/home/jovyan/work/__shared/demos_backup/`
@@ -34,7 +34,7 @@ results/demos/` then re-verify the fingerprint.
 
 Recorder: `agent_code/arbiter_dagger/` running the promoted E88 act
 config (corrected escape solver + score margin 0.6). Command:
-`DEMO_PREFIX=arbiter_self_e88 DAGGER_N=200 ARBITER_BOMB_SCORE_MARGIN=0.6
+`DEMO_PREFIX=arbiter_self_e88 DAGGER_N=200 HARVEY_BOMB_SCORE_MARGIN=0.6
 bash scripts/collect_arbiter_self.sh`. The rb dir holds 112 rounds: a
 first launch was killed after 12 rounds and the detached rerun resumed
 from the recorder's max round-ID, so both segments share one
@@ -59,27 +59,27 @@ apex-format rows + these rows only (`python3 scripts/arbiter_extract.py
 --reaper-include=arbiter_self_e88`); the E80 buggy-feature corpus is
 excluded by design (E88 ledger).
 
-## Apex-format (`results/apex_demos/<teacher>/`, B3: img uint8 T,12,17,17 ×4 + sc T,16 + act T,)
+## Apex-format (`results/apex_demos/<teacher>/`, B3: img uint8 T,12,17,17 x4 + sc T,16 + act T,)
 
 Recorder: `agent_code/apex_teacher/` (`APEX_TEACHER=<t>`, resume-safe round IDs).
 Command: `bash scripts/collect_apex_demos.sh` (new in S3).
 
-| Teacher | Rounds | Steps | Fields (rb / warden-mix / 3×collector / crate-light) |
+| Teacher | Rounds | Steps | Fields (rb / warden-mix / 3xcollector / crate-light) |
 |---|---|---|---|
 | warden_v1 | 200 | 54,275 | 100 / 50 / 25 / 25 |
 | sentinel | 100 | 25,027 | 51 / 25 / 12 / 12 |
 | overlord | 100 | 24,659 | 51 / 25 / 12 / 12 |
-| coin_collector_agent (NEW — only 3.39 crates/bomb demonstrator in repo) | 100 | 19,251 | 51 / 25 / 12 / 12 |
+| coin_collector_agent (NEW -- only 3.39 crates/bomb demonstrator in repo) | 100 | 19,251 | 51 / 25 / 12 / 12 |
 | **Total** | **500** | **123,212** | |
 
 Action mix: UP .186 / RIGHT .178 / DOWN .185 / LEFT .176 / WAIT .193 / BOMB .082.
-Validation: 500/500 load, shapes exact, values ⊆ {0,…,4}, 0 bad files.
+Validation: 500/500 load, shapes exact, values in {0,...,4}, 0 bad files.
 Stats: `results/apex_demos_<teacher>_{rb,wm,co,cr}.json`.
 
 ## Reaper-format (`results/demos/<teacher>[_<field>]/`, feats T,98 + acts T,)
 
 Recorder: `agent_code/reaper_teacher/`. Command: `bash scripts/collect_demos.sh`
-(unchanged — gate-fields mix rb 50% / wm 25% / random 12.5% / collector 12.5%).
+(unchanged -- gate-fields mix rb 50% / wm 25% / random 12.5% / collector 12.5%).
 
 | Teacher | Rounds | Fields |
 |---|---|---|
@@ -97,8 +97,8 @@ chdir). Rebuild: see S3 log; verify with `find results/apex_demos_all -xtype l |
 ## Loader gates (E52 class, retired)
 
 - Library (`agent_code/apex/train.py:_load_demos`): warns loudly with cwd
-  diagnostics on configured-but-empty (E60).
+ diagnostics on configured-but-empty (E60).
 - Launcher (`scripts/train_apex.sh`): **refuses** to start when
-  `APEX_DEMO` holds 0 *readable* npz (`-readable`, so dangling links do
-  not count — S3 probe: refuses dangling farm, refuses missing dir,
-  passes real npz).
+ `APEX_DEMO` holds 0 *readable* npz (`-readable`, so dangling links do
+ not count -- S3 probe: refuses dangling farm, refuses missing dir,
+ passes real npz).

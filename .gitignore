@@ -114,6 +114,19 @@ replays/
 results/
 output/
 submission/
+# The course requires the report PDF to stay out of the public code repository.
+# Keep the editable draft, build files and figures local too.
+/report/
+# Keep the old draft available locally without publishing it as report prose.
+/docs/overlord_report_draft.md
+# Publish only the evidence index and figure-input fingerprints. The local
+# archive stays out of Git; selected raw results are force-added by manifest.
+/evidence/*
+!/evidence/README.md
+!/evidence/manifest.json
+!/evidence/figure_values.json
+!/evidence/training_values.json
+!/evidence/ablation_values.json
 
 # Sentinel training artefacts (keep my-saved-model.pt + best.pt export)
 agent_code/sentinel/checkpoints/ep_*.pt

@@ -1,258 +1,353 @@
 # BomberMan RL
 
-Train Reinforcement Learning agents for the classic game Bomberman (course project setup).
-Tournament inference is CPU-only with a 0.5 s/step budget; training defaults to
-CUDA with AMP (Google Colab ready).
+Reinforcement learning agents for the classic game Bomberman, built on the
+course framework from
+[`ukoethe/bomberman_rl`](https://github.com/ukoethe/bomberman_rl).
+Four agents share a board, move one tile or drop a bomb per step, and score
+points for coins and for blowing each other up. Episodes run 400 steps and
+every agent gets 0.5 s per decision.
 
-Current ship (E130): **Harvey (E108: D1-BC + rl225 + wardenlite)**
-with the E112 solo/endgame fix, the E119 inference fast path, the
-E122/E123 gap fixes (certified coin-take d=3, solo bomb radius 8),
-E125 (committed solo bomb-approach — the verified K-cap membership
-flip freeze is gone: solo 8.94/9, tail 0/100), and **E130: the
-opening-flicker fix** (ARBITER_COMMIT_OPP=1 + ARBITER_BACKTRACK_OPP=0.5:
-the opponent-ful opening reversals 27-32% of move-ticks drop ~40%,
-early bombs 7.6 -> 8.4/rd, composed canonical gate **g1 +0.64 / +6.5%
-round-win**, pooled +0.085 within 1 SE). E125 hysteresis arm, E129
-PLANT_OPP and the E124 opening margins all rejected at their gates.
-See `docs/experiments.md` E125/E128/E129/E130 and
-`results/gaps_findings.md`.
-Legacy ship notes (E111, pre-E112): the same weights (E108) —
-CNN+scalar fused policy (3566-dim lossless board tensor + 98 scalars)
-over the exact-dynamics lookahead search; BC warm-start on the widened
-league corpus (1586 files incl. ship self-play mirror + warden_v1;
-val 0.806), then RL fine-tuned (E104 recipe: KL-anchored REINFORCE,
-adaptive anchor + revert guard, bomb-trace, vs rule_based x2 +
-warden_v2), rollout opponent model `wardenlite`. E108 battery (G1
-100x2 + STRONG 40x10 + UNSEEN, 1120 rounds): **pooled 6.650 / win
-0.681** vs E107 ship 6.388/0.640; **beats warden_v2 head-to-head
-5.853 vs 5.065 (win 55%)** in the same lobby (E88 was −0.73 behind).
-Submission-test simulation + probe gates passed (E111).
-Legacy: E88 arbiter preserved as `__shared/arbiter_ship_e88.zip`.
-Backup: **overlord** (CNN, 3.79). Report models: **sentinel** (MLP
-Dueling-DQN curriculum), **reaper** (distilled feature-MLP), **apex**
-(synthesis CNN — unshipped: learned Q net-negative, see
-`docs/experiments.md` E61).
+Training runs on CUDA with AMP and works on Google Colab. Tournament
+inference runs on CPU inside the 0.5 s budget.
 
-Rule-based / scripted opponents (`rule_based_agent`, `coin_collector_agent`,
-`peaceful_agent`, `random_agent`) are included for curriculum training and eval,
-plus the outsider sparring agents `warden_v1` (frozen heuristic reference)
-and `warden_v2` (active: v1 + corrected escape solver, 8-step danger
-horizon, deterministic RNG, probe-gated), and the **unseen-behavior
-sparring suite** `outsiders/unseen_{coward,bomber,rusher,racer}` (eval-only
-held-out proxies, E106: never shipped, never used as teachers).
+**Local tournament candidate: [`agent_code/Harvey/`](agent_code/Harvey/).**
+Confirm the actual MaMPF-uploaded zip before identifying it with this tree.
+In the historical E130 battery it scored 7.116 points/round and finished
+jointly top in 0.641 of 1,120 rounds; the 5.853-to-5.065 comparison with
+`warden_v2` used the same weights in the earlier E108 inference setting
+and a different opponent cohort.
+
+## Models
+
+The project develops several agents. The report describes all of them.
+
+| Agent | Where | Method |
+|---|---|---|
+| **Harvey** | `agent_code/Harvey/` | CNN over a 12x17x17 board tensor fused with an MLP over 98 scalars. Behavioural-cloning warm start, then KL-anchored policy updates. Local tournament candidate; actual upload unverified. |
+| **sentinel** | `agent_code/sentinel/` | MLP Dueling DQN over 46 engineered scalars, trained on a four-stage curriculum. |
+| **overlord** | `agent_code/overlord/` | CNN DQN on the board tensor, trained on the same curriculum. Backup to Harvey. |
+| **reaper** | `agent_code/reaper/` | Feature MLP distilled from `warden_v2` and `sentinel` by behavioral cloning. |
+| **apex** | `agent_code/apex/` | Synthesis CNN. The learned Q values came out net negative, so it stays in the report and out of the tournament. |
+| **arbiter, arbiter_v2, arbiter_rl** | `agent_code/` | Earlier generations of the Harvey line. Kept as the ablation history behind the final design. |
+
+Training-only helpers, never submitted: `arbiter_dagger`,
+`arbiter_v2_dagger`, `apex_teacher`, `reaper_teacher`, `solo_dagger`,
+`exit_recorder`.
+
+Sparring and evaluation opponents:
+
+- `rule_based_agent`, `coin_collector_agent`, `peaceful_agent`, `random_agent`
+  ship with the framework and drive the curriculum.
+- `outsiders/warden_v1` is a frozen heuristic reference. `outsiders/warden_v2`
+  adds a corrected escape solver, an eight-step danger horizon and a
+  deterministic RNG.
+- `outsiders/unseen_{coward,bomber,rusher,racer}` are evaluation-only
+  behavior proxies, not training teachers. Repeated selection against them
+  means they are not an untouched final test set.
+
+## How Harvey decides
+
+The policy network ranks moves. A safety layer cuts the candidate set down
+first, and a bounded lookahead search decides bomb placement. The split
+matters: a heuristic that shares the vote with the network double-counts the
+same board facts and flattens the policy, so every survival adjustment is
+capped at 0.5, an order of magnitude below a typical logit gap.
+
+1. `action_safety` returns which actions are valid, which survive, and a
+   danger timeline eight steps deep.
+2. One batched forward pass over eight symmetry views returns six-action policy scores and a state value; the saved value head is zero and the default search blend is zero.
+3. If our own tile is lethal within one step, only safe moves survive.
+   Otherwise every valid move is ranked by policy score.
+4. Loop and bomb-repeat tie-breaks apply. `BOMB` stays mask-safe.
+5. The search runs inside a wall-clock budget and returns a bomb plan only
+   when it beats the best move plan by a score margin.
+
+Three components sit under that:
+
+- `features.py` builds 98 scalars plus the board tensor. The scalars cover
+  per-direction context, BFS routes to coins, crates and opponents, an escape
+  solver, and a directional kill table. A docstring lists every index. The
+  eight board symmetries act on the vector through a fixed permutation, which
+  is what the training-time augmentation uses.
+- `safety.py` does wall-aware blast geometry, future danger for t = 0..8, and
+  a time-expanded BFS escape. Danger windows are non-contiguous, so the
+  escape query keys on the *last* lethal time rather than the first.
+- `sim.py` is a forward simulator that reproduces `environment.py` step order
+  exactly. It makes two documented approximations, on movement order and on
+  hidden coins, and the probes check the rest against the engine's own step
+  functions.
+
+Training (`train.py`) fine-tunes the policy head with REINFORCE, anchored by
+KL against the frozen cloning prior, with a revert guard on the anchor.
 
 ## Requirements
 
-- Python >= 3.12
-- PyTorch with CUDA for training (`torch>=2.5.1,<2.6`, `torchvision>=0.20.1,<0.21`);
-  CPU-only works for inference, eval, and (slow) training.
-- The rest: `numpy pygame scikit-learn scipy tqdm matplotlib tensorboard`
-  (see `pyproject.toml`). No new libraries for arbiter (torch + numpy only at
-  inference; brief §2 compliant).
+Python 3.12 or newer.
+
+For **inference, evaluation and the tournament**, the agent needs only
+`numpy` and `torch`. The supplied Docker image already has both, so
+`agent_code/Harvey/requirements.txt` installs nothing extra.
+
+For **training**, install the following:
+
+```bash
+pip install torch torchvision
+pip install numpy pygame matplotlib tqdm
+```
+
+Torch needs CUDA for comfortable training speed. CPU works for inference,
+evaluation and slow training runs.
 
 ## Setup
 
-Local (uv):
+Local, with [uv](https://github.com/astral-sh/uv):
 
 ```bash
 uv sync
-uv run python main.py play --no-gui --agents arbiter rule_based_agent --n-rounds 1
+uv run python main.py play --no-gui --agents Harvey rule_based_agent --n-rounds 1
 ```
 
-Google Colab (fresh GPU runtime):
+Google Colab on a fresh GPU runtime:
 
 ```bash
 git clone https://github.com/Alii-Khaled/BomberMan && cd BomberMan
 pip install torch torchvision
-pip install pygame scikit-learn scipy tqdm matplotlib tensorboard
-python3 test_gpu.py   # expect a GPU name + PASS (active device: cuda)
+pip install numpy pygame matplotlib tqdm
+python3 test_gpu.py   # expect a GPU name and PASS (active device: cuda)
 ```
 
-Arbiter P0 weights (`agent_code/arbiter/my-saved-model.pt`, 639 KB) are
-committed — no extra files needed. To resume **overlord** training on Colab,
-copy two checkpoint files from Google Drive into the repo (they are
-git-ignored, ~10 MB each):
+Trained weights are committed, so the agents run without extra downloads:
 
-- `agent_code/overlord/checkpoints/last.pt`
-- `agent_code/overlord/checkpoints/best.pt`
+- `agent_code/Harvey/my-saved-model.pt` (local candidate; confirm actual upload)
+- `agent_code/sentinel/my-saved-model.pt` and
+  `agent_code/sentinel/checkpoints/best.pt`
+- `agent_code/{overlord,reaper,apex,arbiter}/my-saved-model.pt`
 
-Sentinel resumes from `agent_code/sentinel/checkpoints/best.pt`, which *is*
-committed — no extra files needed.
+To resume `overlord` training on Colab, copy two git-ignored checkpoints back
+into the repo, about 10 MB each:
+`agent_code/overlord/checkpoints/last.pt` and `.../best.pt`.
 
-Demo corpora (`results/apex_demos/` 500 rounds; `results/demos/` 1,312 npz
-incl. the E80/E86/E88 arbiter self-distillation sets) are training-time
-only, git-ignored; byte-identical mirrors live outside the repo (see
-`docs/demo_manifest.md` for fingerprints + restore procedure).
+Demonstration corpora (`results/apex_demos/`, 500 rounds, and
+`results/demos/`, 1312 npz files) are training-time only and git-ignored.
+`docs/demo_manifest.md` holds their fingerprints and the restore procedure.
 
 ## Training
 
-Arbiter (offline warm start, then frozen gates — no curriculum training):
+Harvey's weights came from board-plus-scalar cloning followed by a
+KL-anchored policy update. The earlier Arbiter scalar-only pipeline has
+different inputs; its commands do not reproduce Harvey's final weights.
+With the historical demonstration corpus restored, the NG cloning
+entry point is:
 
 ```bash
-bash scripts/collect_apex_demos.sh     # teacher demos (warden_v2/sentinel/overlord/collector)
-bash scripts/collect_demos.sh          # reaper-format demos (98-dim features)
-python3 scripts/arbiter_extract.py     # joint pi/V cache (results/arbiter_p0_cache.npz)
-python3 scripts/pretrain_arbiter.py    # CE + margin regression, gate val_acc >= 0.5
+python3 scripts/pretrain_arbiter_ng.py \
+  --dirs results/apex_demos,results/apex_ng_demos \
+  --cache results/arbiter_ng_scalars.npz --epochs 14 --batch 256 \
+  --init-scalars agent_code/arbiter/my-saved-model.pt \
+  --out results/arbiter_ng_retrain.pt
 ```
 
-E88 corrected-feature refresh (after the escape-solver fix; candidate-only —
-the ship weights remain the E80 export, see E88 in `docs/experiments.md`):
+The selected E108 run used 1,511 demonstration files and chose BC epoch
+10, then RL episode 225 after frozen evaluation. The corpus is not
+public, and the original RL launch environment is incomplete; this
+command is an entry point, not a promise of byte-identical retraining.
+
+The legacy curricula cover tasks 1 to 4 from the brief, from coin gathering
+through crate clearing to full combat:
 
 ```bash
-DEMO_PREFIX=arbiter_self_e88 DAGGER_N=200 ARBITER_BOMB_SCORE_MARGIN=0.6 \
-  bash scripts/collect_arbiter_self.sh
-python3 scripts/arbiter_extract.py --out results/arbiter_e88_cache.npz \
-  --reaper-include=arbiter_self_e88
-ARBITER_PI_TEACHERS="0 1 2 4" python3 scripts/pretrain_arbiter.py \
-  --cache results/arbiter_e88_cache.npz --out results/arbiter_e88_candidate.pt
+bash scripts/train_sentinel_curriculum.sh   # coin-heaven -> classic solo -> hunt -> vs rule_based
+bash scripts/train_overlord_curriculum.sh   # the same ladder for the CNN agent
 ```
 
-Legacy curricula:
-
-```bash
-bash scripts/train_sentinel_curriculum.sh   # Tasks 1-4: coin-heaven -> classic solo -> hunt -> vs rule_based
-bash scripts/train_overlord_curriculum.sh   # O1-O4, same ladder for the CNN agent
-```
-
-Single run example:
+A single run:
 
 ```bash
 python3 main.py play --no-gui --agents sentinel --train 1 \
   --scenario classic --n-rounds 1500 --save-stats results/sentinel_stage2.json
 ```
 
-`--train N` puts the first N agents in training mode; `--train 0` with
-`--continue-without-training` runs a frozen eval. Checkpoints land in
-`agent_code/<agent>/checkpoints/` (`last.pt` every round, `best.pt` on EMA
-improvement, `ep_NNNNNN.pt` snapshots); per-round metrics append to
-`agent_code/<agent>/runs/metrics.csv`; tournament weights export to
-`agent_code/<agent>/my-saved-model.pt` (CPU state dict).
+`--train N` puts the first N agents into training mode. `--train 0` with
+`--continue-without-training` runs a frozen evaluation. Checkpoints land in
+`agent_code/<agent>/checkpoints/` (`last.pt` each round, `best.pt` on EMA
+improvement, `ep_NNNNNN.pt` snapshots). Per-round metrics append to
+`agent_code/<agent>/runs/metrics.csv`. Tournament weights export to
+`agent_code/<agent>/my-saved-model.pt` as a CPU state dict.
 
 ### Environment knobs
 
+These knobs default to the current local configuration. The controlled
+ablations vary one switch or checkpoint in that code; earlier historical
+variants also had other code changes.
+
 | Variable | Default | Effect |
 |---|---|---|
-| `ARBITER_SEARCH` | `search` (= ship) | `off` = pi-only fallback (S0); `tactical` = proven-kill overlay |
-| `ARBITER_TIME_BUDGET` | `0.30` | wall-clock search budget per step (0.5 s tournament limit) |
-| `ARBITER_V_BLEND` | `1.0` | leaf-value weight (V null per E66 — 0 also ships) |
-| `ARBITER_BOMB_MARGIN` | `0.6` | bomb plan must beat best move by this to execute (legacy alias for `ARBITER_BOMB_SCORE_MARGIN`) |
-| `ARBITER_BOMB_SCORE_MARGIN` | `0.6` | E88 de-conflicted search bomb-vs-move score margin (was 0.2) |
-| `ARBITER_DUEL_BOMB_MARGIN` / `_D` | `0` / `3` | E132 rejected arm: extra margin for an immediate plant near an opponent; default off |
-| `ARBITER_JOINT_ROUTES` | `0` | Legacy combined switch for both E134 components; E135 four-way ablation rejected the combined arm, so default off |
-| `ARBITER_DYNAMIC_ROUTES` | inherited from `ARBITER_JOINT_ROUTES` | E135 opponent kill certification with moving blockers removed; independent ablation switch, default off |
-| `ARBITER_BODYBLOCK` | inherited from `ARBITER_JOINT_ROUTES` | E135 minimax own-escape check against nearby moving body blockers; independent ablation switch, default off |
-| `ARBITER_ROUTE_DIAG` | unset | Optional JSONL path for route counts, forced-kill certificates, body-block vetoes, and selected actions |
-| `ARBITER_JOINT_HORIZON` / `_BODY_D` | `6` / `3` | E134 route horizon and maximum Manhattan distance for adversarial body-block analysis (used only when `ARBITER_JOINT_ROUTES=1`) |
-| `ARBITER_BOMB_ESC_MARGIN` | `1` | E87/E88 post-plant first-step escape-direction count required for the mask's BOMB certificate |
-| `ARBITER_SOLO_MARGIN` | `0.15` | E112 ship: bomb-vs-move score margin while no opponent is alive (`<0` restores the pre-E112 BOMB_MARGIN behavior) |
-| `ARBITER_LOOP_ESC` | `2` | E112 ship: loop tie-break mode (`0` = bounded LOOP3/LOOP2, `1` = escalate everywhere, `2` = escalate solo-only) |
-| `ARBITER_LOOP_ESC_STEP` / `_CAP` | `0.5` / `3.0` | escalation slope / cap for `ARBITER_LOOP_ESC` |
-| `ARBITER_SOLO_TREK` | `0` | E112 rejected arm: solo BFS trek move plans (documented, default off) |
-| `ARBITER_SOLO_RADIUS` | `8` | E123 ship: bomb-tile candidate BFS radius while no opponent is alive (`0` = ship RADIUS 4; 12 rejected) |
-| `ARBITER_COINTAKE` | `1` | E122 ship: certified coin-take overlay (exact +1, first step of the shortest mask-safe path to a visible coin) |
-| `ARBITER_COINTAKE_D` | `3` | E122 coin-take reach in BFS steps (sweep 1/2/3 picked 3) |
-| `ARBITER_SOLO_COMMIT` | `6` | E125 ship: committed bomb-approach while solo (fixes the verified position-dependent K-cap membership flip that ping-ponged the endgame; `0` restores pre-E125) |
-| `ARBITER_SOLO_COMMIT_MAX` | `6` | E125 max committed-approach age in ticks |
-| `ARBITER_BOMB_HYST` | `0` | E125 rejected arm: sticky-target arbitration bonus (G1 screens -0.89; off) |
-| `ARBITER_BACKTRACK` | `0` | E123 rejected arm: solo immediate-reversal penalty (binds, no score lift; off) |
-| `ARBITER_COMMIT_OPP` | `1` | E130 ship: committed bomb-approach in opponent-ful play (opening reversals -40%, early bombs 7.6 -> 8.4/rd; `0` = solo-only commit) |
-| `ARBITER_BACKTRACK_OPP` | `0.5` | E130 ship: opponent-ful immediate-reversal penalty (composed gate g1 +0.64; `0` restores) |
-| `ARBITER_OPEN_MARGIN` | `-1` | E124 rejected arm: opening phase bomb margin (no visible coins, step<`ARBITER_OPEN_T`; off) |
-| `ARBITER_OPEN_T` | `100` | E124 opening window length (steps) |
-| `ARBITER_HUNT_OPEN` | `0` | E124 rejected arm: opening-only pursuit plans (E82 lesson reconfirmed; off) |
-| `ARBITER_ANTIPIN` (+ `_D`/`_MOB`/`_DEADEND`) | `0` | E114 rejected arm: armed-enemy pocket guard (default off; 40x4 STRONG lift did not survive 40x10) |
-| `ARBITER_KILL_P` | `1.0` | E113 rejected sweep: certified-kill credit scale (0.5/0.25 both below control) |
-| `ARBITER_ESC_DIST` | `3.0` | proven-escape distance gate for bomb tiles |
-| `ARBITER_SEEDS` | `1` | legacy E71 knob (post-E78 no-op: moves use `ARBITER_MOVE_SEEDS`, bombs 1; logged in search debug only) |
-| `ARBITER_CRN` | `1` | common random numbers: all plans share per-tick opponent draws (E88 ship; `0` restores unpaired) |
-| `ARBITER_PLANT_ESC` | `1` | min post-plant escape directions for the search bomb gate (E88; clean E87 redo) |
-| `ARBITER_PI_OFF` / `ARBITER_V_OFF` | `0` | `1` forces uniform prior / zero value (ablations) |
-| `ARBITER_MODEL` | unset | eval-only candidate weights path (gating; tournament default = `my-saved-model.pt`) |
-| `ARBITER_FLEE_Q` | `0` | `1` = post-plant flee moves ranked by open space/opponent distance (E90; rejected, ablation only) |
-| `ARBITER_RL_SELF_DEATH` / `_ENEMY_DEATH` | `-8` / `-6` | Training-only death reward overrides; E132 risk-weighted continuation used `-12` self-death and was rejected |
-| `SENTINEL_DEVICE` / `OVERLORD_DEVICE` | `auto` (CUDA if available, else CPU) | `cpu` forces CPU (tournament condition) |
-| `SENTINEL_AMP` / `OVERLORD_AMP` | `1` | `0` disables AMP autocast + GradScaler (fp32) |
-| `SENTINEL_OPT` / `OVERLORD_OPT` | `adam` | `lion` selects the Lion optimizer |
-| `SENTINEL_LR` / `OVERLORD_LR` | agent default | base LR override |
-| `SENTINEL_SCHEDULE` / `OVERLORD_SCHEDULE` | `0` | `1` enables warmup + cosine LR schedule |
-| `SENTINEL_TUNED` / `OVERLORD_TUNED` | `0` | `1` applies the DQN preset (Adam eps/decay 1e-4) |
-| `SENTINEL_UTD` / `OVERLORD_UTD` | `1` | gradient updates per env step |
-| `SENTINEL_BATCH` / `OVERLORD_BATCH` | `0` (= agent default: 256 / 512) | batch override |
-| `SENTINEL_EOR_UPDATES` / `OVERLORD_EOR_UPDATES` | `4` / `6` | extra updates at round end |
+| `HARVEY_SEARCH` | `search` | `off` runs the policy alone, `tactical` adds the proven-kill check, `search+tactical` runs both |
+| `HARVEY_TIME_BUDGET` | `0.30` | Wall-clock search budget per step, under the 0.5 s tournament limit |
+| `HARVEY_V_BLEND` | `0.0` | Learned leaf-value weight; the selected checkpoint's value head is zero and the default search does not use it. |
+| `HARVEY_BOMB_MARGIN` | `0.6` | Older name for `HARVEY_BOMB_SCORE_MARGIN`, still read |
+| `HARVEY_BOMB_SCORE_MARGIN` | `0.6` | A bomb plan must beat the best move plan by this score margin |
+| `HARVEY_DUEL_BOMB_MARGIN` / `_D` | `0` / `3` | Extra score margin for a plant near an opponent. Off; the measurement lost |
+| `HARVEY_JOINT_ROUTES` | `0` | Turns on both joint-route components. Off; the combined ablation lost |
+| `HARVEY_DYNAMIC_ROUTES` | inherits | Kill certification that lets moving blockers clear out first. Off |
+| `HARVEY_BODYBLOCK` | inherits | Minimax own-escape check against nearby moving blockers. Off |
+| `HARVEY_ROUTE_DIAG` | unset | JSONL path for route counts, forced-kill certificates, body-block vetoes and selected actions |
+| `HARVEY_JOINT_HORIZON` / `_BODY_D` | `6` / `3` | Route horizon and Manhattan range for the body-block analysis |
+| `HARVEY_BOMB_ESC_MARGIN` | `1` | Distinct first-step escape directions the mask needs to certify `BOMB` |
+| `HARVEY_SOLO_MARGIN` | `0.15` | Bomb-versus-move score margin while no opponent is alive. Negative restores the earlier value |
+| `HARVEY_LOOP_ESC` | `2` | Loop tie-break mode: `0` bounded, `1` escalates everywhere, `2` escalates while solo |
+| `HARVEY_LOOP_ESC_STEP` / `_CAP` | `0.5` / `3.0` | Escalation slope and cap for `HARVEY_LOOP_ESC` |
+| `HARVEY_SOLO_TREK` | `0` | Solo BFS trek move plans. Off |
+| `HARVEY_SOLO_RADIUS` | `8` | Bomb-tile candidate BFS radius while solo. `0` restores 4 |
+| `HARVEY_COINTAKE` | `1` | Certified coin collection: the first step of a short mask-safe path to a visible coin. Worth a certain +1 |
+| `HARVEY_COINTAKE_D` | `3` | Reach of that path in BFS steps. A sweep over 1, 2 and 3 picked 3 |
+| `HARVEY_SOLO_COMMIT` | `6` | Commits to a bomb-approach target while solo, which stops the approach oscillating |
+| `HARVEY_SOLO_COMMIT_MAX` | `6` | Age limit on a committed approach, in ticks |
+| `HARVEY_BOMB_HYST` | `0` | Sticky-target arbitration bonus. Off; the screens lost 0.89 |
+| `HARVEY_BACKTRACK` | `0` | Solo immediate-reversal penalty. Off |
+| `HARVEY_COMMIT_OPP` | `1` | Commits to a bomb-approach target with opponents alive. `0` limits it to solo play |
+| `HARVEY_BACKTRACK_OPP` | `0.5` | Immediate-reversal penalty with opponents alive. `0` restores |
+| `HARVEY_OPEN_MARGIN` | `-1` | Opening-phase bomb margin. Off |
+| `HARVEY_OPEN_T` | `100` | Opening window length in steps |
+| `HARVEY_HUNT_OPEN` | `0` | Opening-only pursuit plans. Off |
+| `HARVEY_ANTIPIN` (+ `_D`/`_MOB`/`_DEADEND`) | `0` | Guards against being pinned by an armed enemy. Off |
+| `HARVEY_KILL_P` | `1.0` | Scale on certified-kill credit. A sweep at 0.5 and 0.25 lost to the control |
+| `HARVEY_ESC_DIST` | `3.0` | Proven-escape distance limit for bomb tiles |
+| `HARVEY_SEEDS` | `1` | Rollout seeds for plan scoring. Moves use `HARVEY_MOVE_SEEDS`, bombs use 1 |
+| `HARVEY_CRN` | `1` | Common random numbers, so every plan sees the same per-tick opponent draws. `0` gives each plan its own draws |
+| `HARVEY_PLANT_ESC` | `1` | Minimum post-plant escape directions for the search bomb gate |
+| `HARVEY_PI_OFF` / `HARVEY_V_OFF` | `0` | Ablations: `1` forces a uniform prior or a zero value |
+| `HARVEY_WEIGHTS` | unset | Weights to load instead of `my-saved-model.pt` |
+| `HARVEY_MODEL` | unset | Older name for `HARVEY_WEIGHTS`, still read |
+| `HARVEY_FLEE_Q` | `0` | Ranks post-plant flee moves by open space and opponent distance. Off |
+| `HARVEY_RL_SELF_DEATH` / `_ENEMY_DEATH` | `-8` / `-6` | Training-only death rewards |
+| `SENTINEL_DEVICE` / `OVERLORD_DEVICE` | `auto` | `cpu` forces CPU, which is the tournament condition |
+| `SENTINEL_AMP` / `OVERLORD_AMP` | `1` | `0` disables AMP autocast and GradScaler for fp32 |
+| `SENTINEL_OPT` / `OVERLORD_OPT` | `adam` | `lion` selects the Lion optimiser |
+| `SENTINEL_LR` / `OVERLORD_LR` | agent default | Base learning rate override |
+| `SENTINEL_SCHEDULE` / `OVERLORD_SCHEDULE` | `0` | `1` enables warmup and a cosine schedule |
+| `SENTINEL_TUNED` / `OVERLORD_TUNED` | `0` | `1` applies the DQN preset (Adam eps and decay 1e-4) |
+| `SENTINEL_UTD` / `OVERLORD_UTD` | `1` | Gradient updates per environment step |
+| `SENTINEL_BATCH` / `OVERLORD_BATCH` | `0` | Batch override. The agents default to 256 and 512 |
+| `SENTINEL_EOR_UPDATES` / `OVERLORD_EOR_UPDATES` | `4` / `6` | Extra updates at round end |
 
-Legacy `SENTINEL_DML` / `OVERLORD_DML` are still honored (`0` = force CPU)
-but no longer select any backend — device choice is CUDA-or-CPU only.
+`SENTINEL_DML` and `OVERLORD_DML` are still read, where `0` forces CPU, but
+they no longer choose a backend. Device choice is CUDA or CPU only.
 
 ## Evaluation
 
-Arbiter frozen gates (all CPU, `--train 0 --continue-without-training`):
+Our report treats engine score per round as the primary evaluation outcome
+and also gives joint-top rate (counting every highest-score tie as a top
+finish). `scripts/tournament_eval.py` separately reports fractional win
+credit (splitting ties) and mean rank; these rates must not be conflated.
 
 ```bash
-# G1 rb 100x2 / G2 warden-mix 60x2 / G3 collectors 40x2 / G4 random 40x2
-# S0 pi-only / V0 zero-value / pi0 uniform-prior ablations (see E65-E66)
-python3 scripts/aggregate_arbiter.py   # results/arbiter_summary.csv (pooled tables)
-python3 scripts/plot_arbiter.py        # results/figures/arbiter_*.png + captions
-
-# per-round win rate / mean rank (tournament objective, E88/P1.3):
-python3 scripts/tournament_eval.py --agents arbiter rule_based_agent \
+# per-round win rate and mean rank
+python3 scripts/tournament_eval.py --agents Harvey rule_based_agent \
   rule_based_agent rule_based_agent --n-rounds 40 --seed 0
-python3 scripts/diag_arbiter_deaths.py  # death/missed-kill attribution from ARBITER_DIAG jsonl
+
+# pooled score tables and figures across a battery
+python3 scripts/aggregate_arbiter.py   # results/arbiter_summary.csv
+python3 scripts/plot_arbiter.py        # results/figures/arbiter_*.png
+
+# death and missed-kill attribution from the HARVEY_DIAG trace
+python3 scripts/diag_arbiter_deaths.py
 ```
 
-Legacy (sentinel matrix):
+A battery runs G1 (rule-based, 100 rounds x 2 seeds), G2 (warden mix, 60 x 2),
+G3 (collectors, 40 x 2) and G4 (random, 40 x 2), plus archetype mixtures.
+We used fresh same-session controls and also retained some defect-specific
+repairs without a proved pooled advantage. The full decision ledger lives in
+`docs/experiments.md`.
+
+Historical E130 battery: Harvey scored 7.116 pooled with a 0.641 joint-top rate
+against a same-session control at 7.031 and 0.652. G1 gained 0.640
+points/round and 6.5 percentage points of joint-top rate; the strong lobby
+lost 0.083 points/round and 6.25 percentage points of joint-top rate.
+The five other field legs had identical per-round scores in both arms.
+In a later, separate 200-round controlled ablation, Harvey scored 4.975
+in the strong lobby versus 5.565 for `warden_v2`; the final RL weights did
+not show a score gain over their D1 cloning checkpoint in that ablation.
+These cohorts do not estimate performance against unknown student agents.
+
+The 489 published appendix inputs retain their paths under `results/`
+and `logs/`. From a clone, run `python3 -B
+scripts/verify_report_evidence.py` to check their SHA-256 hashes against
+`evidence/manifest.json`. Then run `python3 -B
+scripts/audit_report_results.py` to check 120 final-ablation cohorts
+(2,400 rounds), matched starting boards, nine seed-block intervals and
+the 520 E130 rounds with identical non-runtime records. No new matches
+are played. See [`evidence/README.md`](evidence/README.md) for scope
+and missing early ledger-only sources. The report PDF and source remain
+outside the public repository.
+
+The legacy sentinel matrix runs through:
 
 ```bash
-bash scripts/run_sentinel_eval.sh            # frozen matrix M1-M8, 40 rounds x 2 seeds
+bash scripts/run_sentinel_eval.sh            # matrix M1-M8, 40 rounds x 2 seeds
 python3 scripts/aggregate_eval.py            # tables
 python3 scripts/plot_eval.py                 # figures
 ```
 
-Ship rule (E30/E106): nothing ships without the pooled multi-battery
-(G1 100x2 + STRONG 40x10 + UNSEEN 1120 rounds) vs a fresh same-session
-control. Current standing (E130): **Harvey+E130 7.116/0.641 vs
-same-session control 7.031/0.652 (pooled +0.085 within 1 SE; the target
-class g1 +0.64 / +6.5% round-win, strong parity, umix+archetypes
-bit-identical)**. E128 death attribution: the corner-pin class (68%,
-unchanged) is the binding loss source; E129 PLANT_OPP and the E124
-opening margins are rejected. Full ledger: `docs/experiments.md`.
-
-## Health checks
+## Tests
 
 ```bash
-python3 test_gpu.py                 # CUDA probe + matmul bench + AMP training step
-python3 test_cuda.py                # sentinel MLP fwd/bwd + checkpoint round-trip
-python3 scripts/check_optimizer.py  # optimizer parity / determinism / factory gates
-python3 scripts/verify_dml_optimizer.py  # full CUDA training-path verification
-python3 test.py                     # 1-round game smoke test
-python3 scripts/probe_arbiter.py    # arbiter static gates (shapes, parity, escape correctness, latency)
-python3 scripts/probe_arbiter_sim.py  # sim-vs-engine parity + long-horizon/mask-survival fuzz (E90)
-python3 scripts/probe_arbiter_crn.py  # CRN rollout-seed wiring + determinism (E88)
-python3 scripts/probe_arbiter_flee.py  # flee-quality ranking wiring (E90 ablation, default off)
-python3 scripts/probe_reaper_features.py  # reaper feature/escape parity gates (9/9)
+python3 test.py                             # one-round smoke test
+python3 test_gpu.py                         # CUDA probe, matmul bench, AMP step
+python3 test_cuda.py                        # sentinel MLP forward/backward and checkpoint round-trip
+python3 scripts/check_optimizer.py          # optimiser parity, determinism, factory
+python3 scripts/verify_dml_optimizer.py     # full CUDA training path
+python3 scripts/check_equivalence.py A B    # prove two source trees differ only in comments and docstrings
+
+python3 scripts/probe_arbiter.py            # shapes, feature/safety parity, escape correctness, latency
+python3 scripts/probe_arbiter_sim.py        # simulator against engine, plus survival fuzzing
+python3 scripts/probe_arbiter_crn.py        # common-random-number wiring and determinism
+python3 scripts/probe_arbiter_flee.py       # flee ranking wiring
+python3 scripts/probe_reaper_features.py    # reaper feature and escape parity
 ```
 
-## Repo layout
+`scripts/check_equivalence.py` is how we guarantee a style or rename pass
+changed no behavior. It compares token streams and syntax trees with comments
+and docstrings removed, and takes a rename map so a mechanical rename can be
+verified the same way. Any difference beyond that fails the run.
 
-- `main.py`, `environment.py`, `settings.py`, `agents.py` — game engine + runner
-- `agent_code/arbiter/` — **ship**: policy/value net (`model.py`), 98-dim
-  features + safety mask (vendored, probe-verified), exact simulator
-  (`sim.py`), bounded search (`search.py`), S0 policy (`callbacks.py`)
-- `agent_code/sentinel/` — MLP agent (`callbacks.py`, `train.py`, `model.py`,
-  `features_mlp.py`, `safety.py`, `device.py`, `checkpointing.py`)
-- `agent_code/overlord/` — CNN agent, backup ship (same structure + `features_cnn.py`)
-- `agent_code/reaper/`, `agent_code/apex/` — report models (distilled MLP, synthesis CNN)
-- `agent_code/solo_dagger/` — training-only solo-DAgger recorder (E115, rejected arm; never ships)
-- `agent_code/{rule_based,coin_collector,peaceful,random}_agent/` — scripted opponents
-- `dml_trainkit.py` — shared kit: update config, CUDA device picker, duty timer,
-  checkpoint store, metrics logging, AMP flag
-- `dml_optimizer.py` — optimizer factory (stock Adam/AdamW on CUDA/CPU, Lion;
-  legacy DML-safe variants kept for old-checkpoint resume) + LR schedule
-- `scripts/` — arbiter pipeline (`collect_apex_demos`, `arbiter_extract`,
-  `pretrain_arbiter`, `probe_arbiter[_sim|_crn]`, `aggregate/plot_arbiter`),
-  win-rate harness (`tournament_eval`), death attribution
-  (`diag_arbiter_deaths`), curricula, eval matrix, optimizer benchmarks
-  and gates
-- `docs/` — `training_stages.md` (stage dossier), `experiments.md` (log),
-  `demo_manifest.md` (corpus fingerprint + restore)
-- `results/`, `logs/`, `agent_code/*/runs/`, heavy checkpoints, demo corpora —
-  local only, git-ignored (see `.gitignore`); mirror + manifest in `docs/`
+## Repository layout
+
+Game framework, unchanged from `ukoethe/bomberman_rl` except where noted:
+
+- `main.py`, `environment.py`, `settings.py`, `agents.py`, `items.py`,
+  `events.py`, `fallbacks.py`, `replay.py` — engine and runner
+- `assets/`, `Dockerfile` — sprites and the tournament image
+- `agent_code/{rule_based,coin_collector,peaceful,random,user,tpl,fail}_agent/`
+  — opponents and the agent template that ship with the framework
+
+Framework files we extend for training only. The tournament plugs the agent
+into the original framework, so none of this runs in official games:
+
+| File | Change |
+|---|---|
+| `agents.py`, `environment.py` | Rotating log handlers. An unbounded log filled the volume and took the notebook server down |
+| `fallbacks.py` | Sets `SDL_AUDIODRIVER=dummy` so headless runs start without audio |
+| `settings.py` | Adds a `crate-light` training scenario with sparse crates |
+| `main.py` | Replaces tqdm with periodic progress lines for long headless runs |
+
+Our code:
+
+- `agent_code/Harvey/` — the local agent candidate: `model.py` (policy and value
+  net), `features.py`, `safety.py`, `sim.py`, `search.py`, `callbacks.py`
+  (decision order), `train.py`, `rl_policy.py`
+- `agent_code/{sentinel,overlord,reaper,apex}/` — the other models
+- `agent_code/{arbiter,arbiter_v2,arbiter_rl}/` — earlier Harvey generations
+- `agent_code/{arbiter_dagger,arbiter_v2_dagger,apex_teacher,reaper_teacher,solo_dagger,exit_recorder}/`
+  — training-only recorders and teachers
+- `outsiders/` — team-written heuristics and evaluation-only behavior proxies
+- `dml_trainkit.py` — update config, CUDA device picker, duty timer, checkpoint
+  store, metrics logging, AMP flag
+- `dml_optimizer.py` — optimiser factory (Adam, AdamW, Lion) and LR schedule
+- `scripts/` — data collection, pretraining, probes and gates, sweeps,
+  evaluation harness, plotting and diagnostics
+- `docs/` — `experiments.md` (full experiment ledger), `training_stages.md`
+  (stage dossier), `demo_manifest.md` (corpus fingerprints and restore)
+- `results/`, `logs/`, `replays/`, `screenshots/`, `agent_code/*/runs/`,
+  heavy checkpoints and demo corpora are local only and git-ignored. The
+  corpus mirror and manifest live in `docs/`.
